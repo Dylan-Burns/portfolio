@@ -12,13 +12,14 @@ export const projects: Project[] = [
     period: "2024 – now",
     frame: "browser",
     links: {
+      app: "https://parahealth.app",
       live: "https://parahealth.ai",
       // TODO(owner): point `demo` at https://demo.parahealth.app once the synthetic-data sandbox exists
     },
-    cover: { src: "/projects/parahealth/cover.svg", alt: "Parahealth dashboard", width: 1600, height: 1000 },
+    cover: { src: "/projects/parahealth/cover.png", alt: "Parahealth marketing site", width: 1600, height: 1000 },
     screenshots: [
-      { src: "/projects/parahealth/shot-1.svg", alt: "Parahealth — authorization queue", width: 1600, height: 1000 },
-      { src: "/projects/parahealth/shot-2.svg", alt: "Parahealth — auto-filled payer form", width: 1600, height: 1000 },
+      // TODO(owner): add shot-app.png — a screenshot of the parahealth.app product (Work Items queue) for the "app" view
+      { src: "/projects/parahealth/shot-technology.jpg", alt: "Parahealth — the marketing site (parahealth.ai): the end-to-end AI platform, clinical notes and EHR data in, authorization decisions out", width: 1600, height: 1000 },
     ],
     problem: [
       "Prior authorization is one of the biggest sources of administrative burden in US healthcare: clinics chase faxes, sit on hold with payers, and re-key the same clinical data into a dozen different portals.",
@@ -37,30 +38,41 @@ export const projects: Project[] = [
   {
     slug: "claruss",
     name: "Claruss",
-    tagline: "A screen-time app that actually helps you change behavior — live on the App Store.",
+    tagline: "Clarity without compromise — a screen-time blocker that actually holds the line.",
     summary:
-      "Most screen-time tools just show you a depressing chart. Claruss is built around intention and gentle friction — it helps you set goals you'll actually keep and notice the moments that matter.",
+      "Claruss blocks the apps and websites you choose on a schedule you set — with real, system-level enforcement, not a polite suggestion. Hardcore and Lockdown modes raise the stakes, an accountability partner can approve early unlocks, and a one-time passcode arrives by email or SMS when you genuinely need out. Built around intention and gentle friction, not another guilt-trip chart.",
     category: "iOS · Consumer",
-    role: "Founder",
-    period: "2023 – now",
+    role: "Developer",
+    period: "2026 – now",
     frame: "phone",
     links: {
       live: "https://www.claruss.app/",
-      // TODO(owner): add the App Store URL (https://apps.apple.com/.../app/claruss/id...) for an "App Store ↗" button
+      appStore: "https://apps.apple.com/us/app/claruss/id6756468602",
     },
-    cover: { src: "/projects/claruss/cover.svg", alt: "Claruss app", width: 1600, height: 1000 },
+    cover: { src: "/projects/claruss/cover.jpg", alt: "Claruss website", width: 1600, height: 1000 },
     screenshots: [
-      { src: "/projects/claruss/shot-1.svg", alt: "Claruss — daily screen-time goal", width: 1170, height: 2532 },
-      { src: "/projects/claruss/shot-2.svg", alt: "Claruss — focus session", width: 1170, height: 2532 },
+      { src: "/projects/claruss/shot-focus.png", alt: "Claruss — an active focus session counting down, with blocked apps and an Unlock button", width: 770, height: 1666 },
+      { src: "/projects/claruss/shot-rules.png", alt: "Claruss — active blocking rules (Deep Work, Bedtime) with schedules and blocked apps", width: 770, height: 1666 },
+      { src: "/projects/claruss/shot-templates.png", alt: "Claruss — starter rule templates: Bedtime, Deep Work, Morning Routine, School Hours", width: 770, height: 1666 },
+      { src: "/projects/claruss/shot-activity.png", alt: "Claruss — weekly screen-time breakdown by category and most-used apps", width: 770, height: 1666 },
+      { src: "/projects/claruss/shot-partner.png", alt: "Claruss — add an accountability partner who approves unlock requests", width: 770, height: 1666 },
+      { src: "/projects/claruss/shot-settings.png", alt: "Claruss — settings: subscription, unlock-code delivery, Hardcore and Lockdown modes", width: 770, height: 1666 },
     ],
     problem: [
       "Screen-time dashboards are guilt machines: lots of data, no behavior change. People want to use their phones more deliberately, not just feel bad about a number.",
+      "And most blockers are trivially defeated — one tap to “ignore for today” and the willpower tax lands right back on you.",
     ],
     whatIBuilt: [
-      "A native iOS app designed around intention-setting and lightweight friction at the right moments, with a clean, calm interface. Shipped it to the App Store and iterated from real usage.",
+      "A native app for iPhone — with Apple Silicon Mac and Vision Pro support — built on Apple's Screen Time / Family Controls APIs: pick the apps and Safari sites to block, set a recurring schedule, and let the system enforce it.",
+      "Designed the friction to be adjustable rather than absolute — Hardcore mode locks rules in place during a cooldown window, Lockdown mode flips to an allow-list, and an accountability partner can sign off on early unlocks. When you truly need out, a one-time passcode is delivered by email or SMS.",
+      "Shipped to the App Store solo — product, design, and engineering — with a 14-day Pro trial that doesn't ask for a card, and iterated from real usage. The app collects no user data.",
     ],
-    stack: ["Swift", "SwiftUI", "Screen Time API", "iOS"],
-    outcomes: ["Launched and available on the iOS App Store.", "Designed, built, and shipped solo."],
+    stack: ["Swift", "SwiftUI", "Screen Time API (Family Controls)", "iOS / macOS / visionOS"],
+    outcomes: [
+      "Live on the App Store — free, with a Claruss Pro subscription ($4.99/mo or $29.99/yr).",
+      "Runs on iPhone, plus Apple Silicon Macs and Apple Vision Pro.",
+      "Designed, built, and shipped solo.",
+    ],
   },
   {
     slug: "wedding",
@@ -73,7 +85,7 @@ export const projects: Project[] = [
     period: "2024",
     frame: "browser",
     links: { live: "https://wedding-ecru-mu.vercel.app/" },
-    cover: { src: "/projects/wedding/cover.svg", alt: "Wedding website", width: 1600, height: 1000 },
+    cover: { src: "/projects/wedding/cover.jpg", alt: "Wedding website", width: 1600, height: 1000 },
     screenshots: [{ src: "/projects/wedding/shot-1.svg", alt: "Wedding website — landing", width: 1600, height: 1000 }],
     problem: [
       "We wanted something nicer and more personal than the cookie-cutter wedding-site templates, without spending weeks on it.",

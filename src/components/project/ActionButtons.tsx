@@ -5,9 +5,14 @@ import type { ProjectLinks } from "@/content/projects.types";
 export function ActionButtons({ links }: { links: ProjectLinks }) {
   return (
     <div className="flex flex-wrap gap-3">
+      {links.app && (
+        <Button href={links.app} external>
+          App
+        </Button>
+      )}
       {links.live && (
-        <Button href={links.live} external>
-          Launch app
+        <Button href={links.live} external variant={links.app ? "secondary" : "primary"}>
+          {links.app ? "Marketing site" : "App Site"}
         </Button>
       )}
       {links.demo && (

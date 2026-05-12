@@ -6,6 +6,7 @@ import { site } from "@/content/site";
 
 export function AboutSection() {
   const { portrait, bio, tools, now } = site.about;
+  const { socials } = site;
   return (
     <Section id="about" className="grid items-start gap-12 md:grid-cols-[280px_1fr]">
       <Reveal>
@@ -32,6 +33,21 @@ export function AboutSection() {
           <div className="mt-6 flex flex-wrap gap-2">
             {tools.map((t) => (
               <Tag key={t}>{t}</Tag>
+            ))}
+          </div>
+        </Reveal>
+        <Reveal delay={0.2}>
+          <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--color-fg-muted)]">
+            {socials.map((s) => (
+              <a
+                key={s.label}
+                href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition-colors hover:text-[var(--color-fg)]"
+              >
+                {s.label} ↗
+              </a>
             ))}
           </div>
         </Reveal>

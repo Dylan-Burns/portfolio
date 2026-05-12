@@ -5,12 +5,12 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { site } from "@/content/site";
 
-type NavLink = { label: string; href: string; download?: true };
+type NavLink = { label: string; href: string };
 
 const links: NavLink[] = [
   { label: "Work", href: "/#work" },
   { label: "About", href: "/#about" },
-  { label: "Resume ↓", href: site.resumePath, download: true },
+  { label: "Résumé", href: "/resume" },
   // Anchors to the Footer's id="contact" (rendered by the layout on every page).
   { label: "Contact", href: "/#contact" },
 ];
@@ -54,7 +54,6 @@ export function Nav() {
             <Link
               key={l.label}
               href={l.href}
-              {...(l.download ? { download: true } : {})}
               className={cn(
                 "transition-colors hover:text-[var(--color-fg)]",
                 l.label === "Contact" &&
@@ -76,7 +75,6 @@ export function Nav() {
           <Link
             key={l.label}
             href={l.href}
-            {...(l.download ? { download: true } : {})}
             onClick={() => setOpen(false)}
             className="text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)]"
           >

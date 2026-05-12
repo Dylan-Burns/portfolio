@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1170" height="2532" viewBox="0 0 1170 2532">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#10142b"/><stop offset="1" stop-color="#1a1f3f"/>
-  </linearGradient></defs>
-  <rect width="1170" height="2532" fill="url(#g)"/>
-  <text x="585" y="1266" fill="#9aa0c8" font-family="sans-serif" font-size="39" text-anchor="middle">Claruss — daily screen-time goal</text>
-  <text x="585" y="1314" fill="#5a6093" font-family="sans-serif" font-size="24" text-anchor="middle">placeholder — replace before launch</text>
-</svg>

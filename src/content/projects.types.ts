@@ -5,8 +5,10 @@ export type ProjectCategory =
   | "Web · Side project";
 
 export interface ProjectLinks {
-  /** Primary "Launch app" target. */
+  /** Primary off-site target — the app, or the project's main public site. */
   live?: string;
+  /** The product/platform app, when `live` points at a separate marketing site (e.g. Parahealth). */
+  app?: string;
   /** iOS App Store URL. */
   appStore?: string;
   /** Public source repository, if any. */

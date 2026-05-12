@@ -3,20 +3,19 @@ import type { SiteConfig } from "./projects.types";
 export const site: SiteConfig = {
   name: "Dylan Burns",
   role: "Builder & Founder",
-  // TODO(owner): swap to the real domain once chosen (e.g. https://dylanburns.dev)
-  url: "https://dylanburns.dev",
+  url: "https://www.burnsdylan.com",
   email: "dylanburns1524@gmail.com",
   resumePath: "/dylan-burns-resume.pdf",
   socials: [
     { label: "GitHub", href: "https://github.com/Dylan-Burns" },
-    // TODO(owner): add LinkedIn / X if wanted
+    { label: "LinkedIn", href: "https://www.linkedin.com/in/dylan-burns-" },
   ],
   about: {
     portrait: {
-      src: "/about/portrait.svg",
+      src: "/about/portrait.jpg",
       alt: "Portrait of Dylan Burns",
-      width: 1200,
-      height: 1500,
+      width: 1195,
+      height: 896,
     },
     bio: [
       // TODO(owner): real bio
