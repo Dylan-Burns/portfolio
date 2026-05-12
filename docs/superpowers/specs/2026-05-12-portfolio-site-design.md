@@ -53,11 +53,11 @@ Top-to-bottom:
 Single template, used by all four projects; only the data and the "launch" affordances differ.
 
 1. **Nav** (same component as home; anchor links route back to `/#work` etc.).
-2. **Project hero** — meta line (`category · period · role`), project name, summary paragraph, and an action row. Action buttons render conditionally from `links`:
+2. **Project hero** — meta line (`category · period · role`), project name, summary paragraph, and an action row. **Every action button renders conditionally** — each appears only when its link is present in `links`:
    - `Launch app ↗` (→ `links.live`)
    - `App Store ↗` (→ `links.appStore`)
    - `View source ↗` (→ `links.source`)
-   - `Try interactive demo ↗` (→ `links.demo`) — only when present
+   - `Try interactive demo ↗` (→ `links.demo`)
 3. **Gallery** — screenshots (in an appropriate frame: browser chrome for web apps, iPhone frame for iOS apps) and an optional looping muted video. Layout adapts to how many assets exist.
 4. **Build story** — structured blocks: **Problem** → **What I built** → **Stack** (chip list from `stack[]`) → **Outcomes** (bulleted from `outcomes[]`).
 5. **Project nav** — previous / next project links (wrap around).
@@ -67,7 +67,7 @@ Single template, used by all four projects; only the data and the "launch" affor
 | Slug | Name | Category | Role | "Launch" target | Asset treatment |
 |---|---|---|---|---|---|
 | `parahealth` | Parahealth | Healthcare · AI | Founder | `https://parahealth.ai` (marketing site) | Video walkthrough + product screenshots in a browser frame. A `links.demo` slot is reserved, to be pointed at `https://demo.parahealth.app` once a synthetic-data sandbox exists (out of scope for this build). |
-| `claruss` | Claruss | iOS · Consumer | Founder | App Store URL (`https://claruss.app` and/or App Store link — to confirm) | iPhone-framed screenshots + screen-recording video. |
+| `claruss` | Claruss | iOS · Consumer | Founder | App Store URL (see §9) | iPhone-framed screenshots + screen-recording video. |
 | `wedding` | Wedding site | Web · Personal | Builder | `https://wedding-ecru-mu.vercel.app/` | Screenshots in a browser frame; short scroll-through video optional. |
 | `grocery` | Grocery tracker | Web · Side project | Builder | **URL TBD — needed from owner** | Screenshots in a browser frame. |
 
@@ -138,8 +138,8 @@ interface Project {
   cover: ProjectImage;
   screenshots: ProjectImage[];
   video?: { src: string; poster?: string };
-  problem: string;            // markdown-free prose (string[] of paragraphs is fine)
-  whatIBuilt: string;
+  problem: string[];          // one entry per paragraph, plain text
+  whatIBuilt: string[];       // one entry per paragraph, plain text
   stack: string[];
   outcomes: string[];
 }
@@ -184,7 +184,7 @@ None of these block scaffolding or building the site structure; they get swapped
 
 1. Scaffold Next.js (App Router, TS) + Tailwind v4 + `next/font`; base `layout.tsx`, theme tokens, global styles.
 2. Design-system primitives: `Button`, `Tag`, `SectionLabel/Heading`, `GlowBackdrop`/`GradientOrb`, `Reveal`, `PageTransition`; `Nav` + `Footer`.
-3. `src/content/site.ts` + `src/content/projects.ts` (with placeholder data/assets) and the Vitest data test.
+3. Define the `Project`/`ProjectLinks` types and write the Vitest data test against them *first*; then add `src/content/site.ts` + `src/content/projects.ts` with placeholder data/assets and make the test pass.
 4. Home page: `Hero` → `ProjectGrid`/`ProjectCard` → `AboutSection` → `ContactSection`.
 5. `/work/[slug]` template: `ProjectHero`/`ActionButtons` → `Gallery` (`BrowserFrame`/`PhoneFrame`) → `BuildStory` → `ProjectPager`; wire all four projects.
 6. Motion polish (reveals, hover, route transitions) + reduced-motion handling + responsive passes.
