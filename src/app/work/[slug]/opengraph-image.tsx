@@ -5,6 +5,7 @@ export { generateStaticParams } from "./page"; // prerender one OG image per pro
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+export const alt = "Dylan Burns — portfolio project";
 
 export default async function OpengraphImage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

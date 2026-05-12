@@ -40,6 +40,11 @@
     text-rendering: optimizeLegibility;
   }
   ::selection { background: color-mix(in oklab, var(--color-accent) 35%, transparent); }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }

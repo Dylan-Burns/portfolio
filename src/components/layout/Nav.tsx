@@ -34,7 +34,7 @@ export function Nav() {
           "border-b border-[var(--color-border)] bg-[color-mix(in_oklab,var(--color-bg)_72%,transparent)] backdrop-blur-md",
       )}
     >
-      <nav className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+      <nav aria-label="Main" className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
         <Link href="/" className="font-[family-name:var(--font-display)] text-sm font-bold tracking-tight">
           {site.name}
         </Link>
@@ -67,24 +67,23 @@ export function Nav() {
         </div>
       </nav>
 
-      {open && (
-        <div
-          id="mobile-nav"
-          className="flex flex-col gap-3 border-t border-[var(--color-border)] bg-[var(--color-bg-2)] px-6 py-4 text-sm md:hidden"
-        >
-          {links.map((l) => (
-            <Link
-              key={l.label}
-              href={l.href}
-              {...(l.download ? { download: true } : {})}
-              onClick={() => setOpen(false)}
-              className="text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)]"
-            >
-              {l.label}
-            </Link>
-          ))}
-        </div>
-      )}
+      <div
+        id="mobile-nav"
+        hidden={!open}
+        className="flex flex-col gap-3 border-t border-[var(--color-border)] bg-[var(--color-bg-2)] px-6 py-4 text-sm md:hidden"
+      >
+        {links.map((l) => (
+          <Link
+            key={l.label}
+            href={l.href}
+            {...(l.download ? { download: true } : {})}
+            onClick={() => setOpen(false)}
+            className="text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)]"
+          >
+            {l.label}
+          </Link>
+        ))}
+      </div>
     </header>
   );
 }
