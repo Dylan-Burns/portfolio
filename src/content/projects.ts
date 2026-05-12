@@ -45,9 +45,8 @@ export const projects: Project[] = [
     period: "2023 – now",
     frame: "phone",
     links: {
-      // TODO(owner): confirm primary target — claruss.app vs the direct App Store URL
-      live: "https://claruss.app",
-      appStore: "https://apps.apple.com/app/claruss",
+      live: "https://www.claruss.app/",
+      // TODO(owner): add the App Store URL (https://apps.apple.com/.../app/claruss/id...) for an "App Store ↗" button
     },
     cover: { src: "/projects/claruss/cover.svg", alt: "Claruss app", width: 1600, height: 1000 },
     screenshots: [
