@@ -1,1 +1,55 @@
 @import "tailwindcss";
+
+@theme {
+  /* surfaces */
+  --color-bg: #07070d;
+  --color-bg-2: #0c0d1a;
+  --color-surface: rgba(255, 255, 255, 0.045);
+  --color-surface-hover: rgba(255, 255, 255, 0.07);
+  --color-border: rgba(255, 255, 255, 0.09);
+  --color-border-strong: rgba(255, 255, 255, 0.16);
+
+  /* text */
+  --color-fg: #e7e9f5;
+  --color-fg-muted: #a3a8cd;
+  --color-fg-subtle: #7e85bd;
+
+  /* accents */
+  --color-accent: #8b93ff;       /* indigo-ish */
+  --color-accent-2: #22d3ee;     /* cyan */
+  --color-accent-3: #c084fc;     /* violet */
+  --color-live: #3ddc97;         /* "live" green for launch affordances */
+
+  /* type — composed from the next/font variables wired in layout.tsx */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  /* radii / shadow */
+  --radius-card: 14px;
+  --radius-button: 9px;
+  --shadow-glow: 0 30px 90px rgba(0, 0, 0, 0.55);
+}
+
+@layer base {
+  html { color-scheme: dark; scroll-behavior: smooth; }
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection { background: color-mix(in oklab, var(--color-accent) 35%, transparent); }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
+}
+
+/* utility: gradient text */
+@utility text-gradient {
+  background: linear-gradient(180deg, #ffffff, color-mix(in oklab, var(--color-fg) 70%, var(--color-accent)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
