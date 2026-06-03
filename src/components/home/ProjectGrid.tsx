@@ -1,7 +1,7 @@
 import { projects } from "@/content/projects";
 import { Section, SectionHeading, SectionLabel } from "@/components/ui/Section";
 import { Reveal } from "@/components/motion/Reveal";
-import { ProjectCard } from "./ProjectCard";
+import { ProjectCarousel } from "./ProjectCarousel";
 
 export function ProjectGrid() {
   return (
@@ -14,16 +14,13 @@ export function ProjectGrid() {
       </Reveal>
       <Reveal delay={0.1}>
         <p className="mt-4 max-w-xl text-[var(--color-fg-muted)]">
-          Each one shipped — designed, built, and deployed. Click in for the story, then go use the real thing.
+          Each one shipped — designed, built, and deployed. Slide a project into the spotlight, click in for the
+          story, then go use the real thing.
         </p>
       </Reveal>
-      <div className="mt-12 grid gap-5 md:grid-cols-2">
-        {projects.map((p, i) => (
-          <Reveal key={p.slug} delay={i * 0.06}>
-            <ProjectCard project={p} />
-          </Reveal>
-        ))}
-      </div>
+      <Reveal delay={0.15}>
+        <ProjectCarousel projects={projects} />
+      </Reveal>
     </Section>
   );
 }
