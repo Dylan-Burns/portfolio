@@ -26,7 +26,10 @@ export function AboutSection() {
             {bio.map((para, i) => (
               <p key={i}>{para}</p>
             ))}
-            <p className="text-[var(--color-fg-subtle)] italic">{now}</p>
+            <p className="flex items-center gap-2.5 text-[var(--color-fg-subtle)]">
+              <span aria-hidden className="inline-block h-2 w-2 shrink-0 rounded-full bg-[var(--color-live)] shadow-[0_0_8px_var(--color-live)]" />
+              <span className="italic">{now}</span>
+            </p>
           </div>
         </Reveal>
         <Reveal delay={0.15}>
@@ -37,7 +40,7 @@ export function AboutSection() {
           </div>
         </Reveal>
         <Reveal delay={0.2}>
-          <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--color-fg-muted)]">
+          <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 font-[family-name:var(--font-mono)] text-xs text-[var(--color-fg-muted)]">
             {socials.map((s) => (
               <a
                 key={s.label}
