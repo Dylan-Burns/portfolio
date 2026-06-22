@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { SectionLabel } from "@/components/ui/Section";
 import { site } from "@/content/site";
@@ -11,10 +12,16 @@ export const metadata: Metadata = {
 export default function ResumePage() {
   return (
     <main className="mx-auto w-full max-w-5xl px-6 pb-24 pt-28 md:pt-36">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <Link
+        href="/"
+        className="font-[family-name:var(--font-mono)] text-xs text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)]"
+      >
+        ← work
+      </Link>
+      <div className="mt-7 flex flex-wrap items-end justify-between gap-4">
         <div>
           <SectionLabel>Résumé</SectionLabel>
-          <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight text-gradient md:text-5xl">
+          <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight text-[var(--color-fg)] md:text-5xl">
             {site.name}
           </h1>
         </div>
