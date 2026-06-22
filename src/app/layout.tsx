@@ -4,7 +4,7 @@ import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import { site } from "@/content/site";
 import { Nav } from "@/components/layout/Nav";
 import { Footer } from "@/components/layout/Footer";
-import { GlowBackdrop } from "@/components/visuals/GlowBackdrop";
+import { ParticleField } from "@/components/visuals/ParticleField";
 import { PageTransition } from "@/components/motion/PageTransition";
 import "./globals.css";
 
@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable}`}>
       <body className="min-h-dvh antialiased">
-        <GlowBackdrop />
+        <ParticleField />
         <Nav />
         <PageTransition>{children}</PageTransition>
         <Footer />
