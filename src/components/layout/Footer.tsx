@@ -5,8 +5,8 @@ export function Footer() {
   return (
     <footer id="contact" className="scroll-mt-24 border-t border-[var(--color-border)]">
       <div className="mx-auto w-full max-w-5xl px-6 py-20 md:py-28">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--color-fg-subtle)]">Contact</p>
-        <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight md:text-5xl">
+        <p className="label-mono uppercase">Contact</p>
+        <h2 className="mt-3 text-gradient font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight md:text-5xl">
           Let&apos;s build something.
         </h2>
         <a
@@ -15,7 +15,7 @@ export function Footer() {
         >
           {site.email}
         </a>
-        <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--color-fg-muted)]">
+        <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-[family-name:var(--font-mono)] text-xs text-[var(--color-fg-muted)]">
           {site.socials.map((s) => (
             <a
               key={s.label}
@@ -28,7 +28,7 @@ export function Footer() {
             </a>
           ))}
         </div>
-        <p className="mt-12 text-xs text-[var(--color-fg-subtle)]">
+        <p className="mt-12 font-[family-name:var(--font-mono)] text-xs text-[var(--color-fg-subtle)]">
           © {new Date().getFullYear()} {site.name}
         </p>
       </div>
