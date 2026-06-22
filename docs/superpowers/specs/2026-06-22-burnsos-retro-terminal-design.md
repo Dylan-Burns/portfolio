@@ -61,15 +61,44 @@ green phosphor on the CRT, and the particle field on project pages.*
 
 ### `WarpOverlay` + transition (new, client) — `src/components/retro/WarpOverlay.tsx` + `TransitionLink.tsx`
 - **WarpOverlay:** a fixed, full-viewport `<canvas>` mounted once in the root layout, `aria-hidden`,
-  `pointer-events-none` except while animating. Exposes a way to "play(href)". Implements the
-  star-streak warp (ramp-in → accelerate → fly-into) and, on completion, the destination mount
-  animation. Performance: DPR clamped ≤2, star count scaled to viewport & capped, single rAF loop
-  that only runs during a transition.
+  `pointer-events-none` except while animating. Implements the star-streak warp (ramp-in →
+  accelerate → fly-into). Performance: DPR clamped ≤2, star count scaled to viewport & capped,
+  single rAF loop that only runs during a transition.
 - **TransitionLink:** wraps a normal `next/link`. On activate: if reduced-motion or no-JS →
-  behaves as a plain link (direct navigation). Otherwise `preventDefault`, trigger
-  `WarpOverlay.play()`, then `router.push(href)`; the new route's content scales/fades in.
+  behaves as a plain link (direct navigation). Otherwise it runs the handshake below.
 - **Interface:** `<TransitionLink href>` ; `WarpOverlay` is controlled via a small shared
-  controller (context or event bus) so any `TransitionLink` can start it.
+  controller (React context provider in the root layout exposing `play(href)`), so any
+  `TransitionLink` can start it.
+
+- **Timing contract (the hard part — specified):**
+  1. On activate, `TransitionLink` calls `router.prefetch(href)` early (or relies on Link prefetch),
+     `preventDefault`s, and calls `controller.play(href)`.
+  2. `WarpOverlay` fades in and runs the warp's **ramp+accelerate** phase to full opacity (canvas
+     fully covers the screen — this is the visual "cover" moment, ~60–70% of the timeline).
+  3. At the cover moment the controller calls `router.push(href)`. Because the overlay fully covers
+     the viewport, the destination can mount/suspend underneath without any visible flash.
+  4. The overlay then plays the **fly-into** phase and fades its canvas out, revealing the
+     destination, which runs its own **mount-in** (scale ~1.05→1 + fade). A max-timeout safety
+     (e.g. 2.5s) force-completes the handoff even if navigation is slow, so the user is never stuck
+     behind the overlay.
+  5. **Back/forward (popstate):** only `TransitionLink` triggers the warp; browser back/forward
+     navigate plainly (no warp). This is acceptable and intentional.
+- **Why a manual canvas overlay (not the View Transitions API):** a full-screen star-streak is not
+  a shared-element morph, so React/Next `<ViewTransition>` buys little here and the canvas warp
+  needs frame-level control. View Transitions considered and rejected for this effect.
+
+### Root layout restructure — `src/app/layout.tsx` (+ route groups)
+The current root layout globally mounts `ParticleField`, `Nav`, `Footer`, and `PageTransition` —
+all of which must NOT apply to the new landing. Restructure so the **root layout is minimal**:
+`<html><body>` + fonts + the single `WarpOverlay` (and its controller provider). Then:
+- **Landing `/`** renders only `RetroComputer` — no nav, footer, particle field.
+- **Project pages** get their chrome from the **`work` segment** — either a `src/app/work/layout.tsx`
+  or composed in the page: it mounts `ParticleField` (background), the `← work` top bar, and the
+  minimal footer. So the particle field and nav/footer live with the project pages, not globally.
+- **`PageTransition` is removed** — its per-route fade is superseded by the WarpOverlay + the
+  destination mount-in. (No more double-animation; `motion`'s `PageTransition.tsx` is deleted or
+  left unused.)
+- **Résumé/404** render their own minimal B&W mono chrome (no machine, no particle field).
 
 ### Project page template — `src/app/work/[slug]/page.tsx` (+ existing project components)
 - **What it does:** one template for all projects. Background = the existing **`ParticleField`**
@@ -86,7 +115,8 @@ green phosphor on the CRT, and the particle field on project pages.*
 ### Resume / 404 / chrome
 - **Résumé:** reachable as a `resume.pdf` file on the CRT → `/resume`, a plain B&W mono page
   (existing PDF embed + download/open buttons, restyled).
-- **404:** terminal-style B&W (`> file not found`), keeps heading text matching existing e2e.
+- **404:** terminal-style B&W. May add a `> file not found` mono flavor line, but the `<h1>` MUST
+  keep text matching the existing e2e (`/doesn.t exist/i`, i.e. "That page doesn't exist.").
 - **Contact:** a `contact.txt` file → mailto or a minimal section; socials as mono links.
 - **No global top nav on the landing** (the machine is the page). Project pages get the small
   `← work` bar; minimal mono footer on project pages only.
@@ -103,8 +133,14 @@ green phosphor on the CRT, and the particle field on project pages.*
 - **One required asset:** a high-resolution render/photo of a late-'70s/early-'80s micro with a
   clean, rectangular **CRT cutout** (ideally transparent or easily maskable screen area), saved
   under `public/retro/` (e.g. `machine.png` / `machine@2x.png`, plus WebP/AVIF).
-- **Cutout box** (top/left/width/height as % of the image) is captured as a constant the
-  `RetroComputer` uses to position `CrtScreen`. Documented alongside the asset.
+- **Cutout box** (top/left/width/height as % of the image) is captured as a single
+  source-of-truth constant in `src/components/retro/cutout.ts`, which both the placeholder and the
+  final asset use; `RetroComputer` positions `CrtScreen` from it.
+- **Responsive behavior:** above the mobile breakpoint, `CrtScreen` is absolutely positioned over
+  the chassis image using the % cutout box (the screen scales with the image). **Below the
+  breakpoint, the CRT screen detaches from the chassis image** — the machine renders as a smaller
+  decorative header (or is hidden) and the terminal becomes a full-width B&W mono panel, so the
+  fragile %-cutout alignment is never relied on at small sizes.
 - **Sourcing:** a properly-licensed render is sourced/generated (license recorded), or the owner
   supplies their own. Until the final asset lands, development uses a placeholder render of the
   same aspect ratio + cutout so layout is real. **Tracked as a `TODO(owner)`/asset task.**
@@ -135,22 +171,25 @@ green phosphor on the CRT, and the particle field on project pages.*
   (Playwright on port **3100**).
 - Unit: `FileItem` mapping (projects → files incl. resume/contact); a pure helper for the warp/star
   math if extracted (mirror the existing `particle-field.ts` pattern — keep DOM-free logic testable).
-- E2E (update `tests/e2e/smoke.spec.ts`): landing renders the machine + a focusable list with a link
-  per project (`a[href="/work/<slug>"]`); pressing ↓ then Enter (or click) lands on a project page;
-  each `/work/<slug>` renders its `<h1>` + a launch action; reduced-motion path navigates without the
-  overlay blocking; 404 + resume still pass. (Note: three smoke assertions were already updated on
-  `feat/ui-vectored-space` for the carousel/resume drift — keep them current.)
+- E2E (rewrite the home cases in `tests/e2e/smoke.spec.ts`): landing renders the machine + a
+  focusable list with a real link per project (`a[href="/work/<slug>"]`) PLUS a `resume.pdf` file
+  linking to `/resume` (the resume smoke selector must match this CRT file link, since the landing
+  no longer has a nav); pressing ↓ then Enter (or click) lands on a project page; each
+  `/work/<slug>` renders its `<h1>` + a launch action; reduced-motion path navigates without the
+  overlay blocking; 404 still matches `/doesn.t exist/i`. The resume/404 cases otherwise carry over.
 - Manual: warp feel on desktop; reduced-motion bypass; keyboard-only nav; mobile stacked layout;
   no console errors; no layout shift.
 
 ## Relationship to `feat/ui-vectored-space`
 
 This continues on the **same branch**. **Survives:** `ParticleField` (now used on project pages),
-darker tokens, `--font-mono`/Geist Mono, project-page component structure, the fixed e2e tests.
-**Replaced:** the gradient/particle *landing*, the gradient `text-gradient` accent usage on the
-landing, the spotlight carousel as the home work section, and gradient-on-headline styling
-(landing goes pure B&W; project pages go B&W + particle field). The old hero/carousel/about home
-composition is superseded by `RetroComputer`.
+darker tokens, `--font-mono`/Geist Mono, project-page component structure, and the **resume/404
+e2e cases**. **Replaced:** the gradient/particle *landing*, the gradient `text-gradient` accent
+usage on the landing, the spotlight carousel as the home work section, gradient-on-headline
+styling, the global `Nav`/`Footer`/`ParticleField`/`PageTransition` mounts, and **the home e2e
+assertions** (carousel tablist / "see my work" / `#work` / home particle canvas) — these are
+rewritten for the retro landing, NOT preserved. The old hero/carousel/about home composition and
+`PageTransition` are superseded by `RetroComputer` + `WarpOverlay`.
 
 ## Rollout Order (for the plan)
 
