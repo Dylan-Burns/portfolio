@@ -12,7 +12,7 @@ export function ProjectCardBody({ project, active }: { project: Project; active:
   return (
     <div
       className={cn(
-        "h-full overflow-hidden rounded-[var(--radius-card)] border bg-[var(--color-surface)] transition-colors duration-300",
+        "group relative h-full overflow-hidden rounded-[var(--radius-card)] border bg-[var(--color-surface)] backdrop-blur-sm transition-colors duration-300",
         active
           ? "border-[var(--color-border-strong)] shadow-[var(--shadow-glow)]"
           : "border-[var(--color-border)]",
@@ -37,7 +37,7 @@ export function ProjectCardBody({ project, active }: { project: Project; active:
           {project.links.live && <Tag tone="live">Launch ↗</Tag>}
           <span
             className={cn(
-              "transition-colors",
+              "font-[family-name:var(--font-mono)] text-[11px] transition-colors",
               active ? "text-[var(--color-fg)]" : "text-[var(--color-fg-subtle)]",
             )}
           >

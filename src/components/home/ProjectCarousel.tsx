@@ -161,7 +161,7 @@ export function ProjectCarousel({ projects }: { projects: Project[] }) {
               onClick={() => goTo(i)}
               className={cn(
                 "h-2 rounded-full transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]",
-                i === index ? "w-6 bg-[var(--color-accent)]" : "w-2 bg-[rgba(255,255,255,0.18)] hover:bg-[rgba(255,255,255,0.3)]",
+                i === index ? "w-6 bg-[linear-gradient(90deg,var(--color-accent),var(--color-accent-2),var(--color-accent-3))]" : "w-2 bg-[rgba(255,255,255,0.18)] hover:bg-[rgba(255,255,255,0.3)]",
               )}
             />
           ))}
