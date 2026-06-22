@@ -830,8 +830,8 @@ test("landing renders the machine and project files (no console errors)", async 
   const errors: string[] = [];
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   await page.goto("/");
-  // chassis image + CRT canvas-free terminal files exist as real links (SSR/crawlable)
-  await expect(page.locator('img[src*="/retro/machine.png"]')).toBeVisible();
+  // chassis image present (next/image encodes the src, so match by alt text, not path)
+  await expect(page.getByRole("img", { name: /micro-computer/i })).toBeVisible();
   for (const s of SLUGS) await expect(page.locator(`a[href="/work/${s}"]`)).toHaveCount(1);
   await expect(page.locator('a[href="/resume"]')).toHaveCount(1);
   expect(errors, errors.join("\n")).toEqual([]);
