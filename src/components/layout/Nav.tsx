@@ -41,7 +41,7 @@ export function Nav() {
 
         <button
           type="button"
-          className="rounded-md px-2 py-1 text-sm text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)] md:hidden"
+          className="rounded-md px-2 py-1 font-[family-name:var(--font-mono)] text-sm text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)] md:hidden"
           aria-expanded={open}
           aria-controls="mobile-nav"
           onClick={() => setOpen((v) => !v)}
@@ -49,18 +49,21 @@ export function Nav() {
           {open ? "Close" : "Menu"}
         </button>
 
-        <div className="hidden items-center gap-6 text-sm text-[var(--color-fg-muted)] md:flex">
+        <div className="hidden items-center gap-7 font-[family-name:var(--font-mono)] text-xs text-[var(--color-fg-muted)] md:flex">
           {links.map((l) => (
             <Link
               key={l.label}
               href={l.href}
               className={cn(
-                "transition-colors hover:text-[var(--color-fg)]",
-                l.label === "Contact" &&
-                  "rounded-md bg-[var(--color-surface)] px-3 py-1.5 text-[var(--color-fg)] hover:bg-[var(--color-surface-hover)]",
+                "group relative transition-colors hover:text-[var(--color-fg)]",
+                l.label === "Contact" && "text-[var(--color-fg)]",
               )}
             >
               {l.label}
+              <span
+                aria-hidden
+                className="absolute -bottom-1 left-0 h-px w-0 bg-[linear-gradient(90deg,var(--color-accent),var(--color-accent-2),var(--color-accent-3))] transition-all duration-300 group-hover:w-full"
+              />
             </Link>
           ))}
         </div>
@@ -69,7 +72,7 @@ export function Nav() {
       <div
         id="mobile-nav"
         hidden={!open}
-        className="flex flex-col gap-3 border-t border-[var(--color-border)] bg-[var(--color-bg-2)] px-6 py-4 text-sm md:hidden"
+        className="flex flex-col gap-3 border-t border-[var(--color-border)] bg-[var(--color-bg-2)] px-6 py-4 font-[family-name:var(--font-mono)] text-sm md:hidden"
       >
         {links.map((l) => (
           <Link
