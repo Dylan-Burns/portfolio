@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/Button";
-import { SectionLabel } from "@/components/ui/Section";
+import { MagneticButton } from "@/components/ui/MagneticButton";
 import { Reveal } from "@/components/motion/Reveal";
 import { site } from "@/content/site";
 
@@ -7,11 +7,15 @@ export function Hero() {
   return (
     <section className="mx-auto w-full max-w-5xl px-6 pb-24 pt-28 md:pb-28 md:pt-40">
       <Reveal>
-        <SectionLabel>{site.role}</SectionLabel>
+        <p className="label-mono inline-flex items-center gap-3 uppercase">
+          <span aria-hidden>01</span>
+          <span aria-hidden className="h-px w-8 bg-[var(--color-border-strong)]" />
+          {site.role}
+        </p>
       </Reveal>
       <Reveal delay={0.05}>
-        <h1 className="text-gradient mt-5 max-w-3xl font-[family-name:var(--font-display)] text-4xl font-bold leading-[1.05] tracking-tight md:text-6xl">
-          Software products that people actually use.
+        <h1 className="mt-6 max-w-3xl font-[family-name:var(--font-display)] text-4xl font-bold leading-[1.04] tracking-tight md:text-6xl">
+          Software products that people <span className="text-gradient">actually use.</span>
         </h1>
       </Reveal>
       <Reveal delay={0.1}>
@@ -22,7 +26,9 @@ export function Hero() {
       </Reveal>
       <Reveal delay={0.15}>
         <div className="mt-9 flex flex-wrap gap-3">
-          <Button href="/#work">See my work →</Button>
+          <MagneticButton>
+            <Button href="/#work">See my work →</Button>
+          </MagneticButton>
           <Button href="/#about" variant="secondary">
             About me
           </Button>
