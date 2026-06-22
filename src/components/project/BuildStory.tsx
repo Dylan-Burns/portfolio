@@ -44,7 +44,7 @@ export function BuildStory({ project }: { project: Project }) {
           <ul className="mt-3 space-y-2 text-[var(--color-fg-muted)]">
             {project.outcomes.map((o, i) => (
               <li key={i} className="flex gap-3">
-                <span aria-hidden className="text-[var(--color-accent)]">
+                <span aria-hidden className="text-[var(--color-fg-subtle)]">
                   —
                 </span>
                 <span>{o}</span>
