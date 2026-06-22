@@ -14,9 +14,9 @@ export function Tag({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
+        "inline-flex items-center rounded-full border px-2.5 py-1 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-wide",
         tone === "live"
-          ? "border-[color-mix(in_oklab,var(--color-live)_30%,transparent)] bg-[color-mix(in_oklab,var(--color-live)_12%,transparent)] text-[var(--color-live)]"
+          ? "border-[color-mix(in_oklab,var(--color-live)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-live)_12%,transparent)] text-[var(--color-live)]"
           : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-fg-muted)]",
         className,
       )}
