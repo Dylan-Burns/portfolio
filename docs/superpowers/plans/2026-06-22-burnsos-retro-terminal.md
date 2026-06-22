@@ -201,11 +201,11 @@ describe("toFileItems", () => {
     expect(resume.label).toMatch(/resume\.pdf/i);
     expect(resume.href).toBe("/resume");
   });
-  it("labels project files <slug>.tsx with a short category comment", () => {
+  it("labels project files <slug>.tsx with a short single-segment category comment", () => {
     const first = items[0];
     expect(first.label).toBe(`${projects[0].slug}.tsx`);
-    expect(typeof first.comment).toBe("string");
     expect(first.comment.length).toBeGreaterThan(0);
+    expect(first.comment).not.toMatch(/[·,/]/); // short tag, not the full category string
   });
   it("every item carries a name used for the warp destination label", () => {
     for (const it of items) expect(it.name.length).toBeGreaterThan(0);
@@ -229,10 +229,12 @@ export type FileItem = {
 
 /** Maps projects (+ resume) to the files shown on the CRT, in display order. */
 export function toFileItems(projects: Project[], site: SiteConfig): FileItem[] {
+  // short trailing-comment tag: first segment of the category (split on · , /)
+  const shortTag = (category: string) => category.split(/[·,/]/)[0].trim().toLowerCase();
   const projectFiles: FileItem[] = projects.map((p) => ({
     name: p.name,
     label: `${p.slug}.tsx`,
-    comment: p.category.toLowerCase(),
+    comment: shortTag(p.category),
     href: `/work/${p.slug}`,
   }));
   const resume: FileItem = { name: "Résumé", label: "resume.pdf", comment: "doc", href: "/resume" };
@@ -273,9 +275,15 @@ describe("seedStars / stepStar", () => {
     expect(stars).toHaveLength(20);
     const s = { ...stars[0] };
     const z0 = s.z;
-    stepStar(s, 50, 800, 600, () => 0.5);
+    expect(stepStar(s, 50, 800, 600, () => 0.5)).toBe(false); // not respawned
     expect(s.z).toBeLessThan(z0);       // moves closer
     expect(Number.isFinite(s.x)).toBe(true);
+  });
+  it("reports respawn and stays finite when a star passes the viewer", () => {
+    const s = { x: 10, y: 10, z: 5, pz: 0, b: 0.5 };
+    expect(stepStar(s, 9999, 800, 600, () => 0.5)).toBe(true); // crossed the near plane → respawn
+    expect(Number.isFinite(s.z)).toBe(true);
+    expect(s.z).toBeGreaterThanOrEqual(1);
   });
 });
 ```
@@ -305,11 +313,14 @@ export function seedStars(n: number, w: number, h: number, rand: () => number = 
   for (let i = 0; i < n; i++) out.push(makeStar(w, h, true, rand));
   return out;
 }
-/** Advance one star by `speed`; respawn at far plane if it passes the viewer. */
-export function stepStar(s: Star, speed: number, w: number, h: number, rand: () => number = Math.random): void {
+/** Advance one star by `speed`; respawn at the far plane if it passes the viewer.
+ * Returns true if it respawned this frame — the caller must SKIP drawing it that
+ * frame (a fresh star has pz=0, which would make the streak projection divide by 0). */
+export function stepStar(s: Star, speed: number, w: number, h: number, rand: () => number = Math.random): boolean {
   s.pz = s.z;
   s.z -= speed;
-  if (s.z < 1) Object.assign(s, makeStar(w, h, false, rand));
+  if (s.z < 1) { Object.assign(s, makeStar(w, h, false, rand)); return true; }
+  return false;
 }
 ```
 
@@ -543,7 +554,7 @@ export function WarpProvider({ children }: { children: ReactNode }) {
       ctx.fillStyle = `rgba(0,0,0,${0.34 - e * 0.28})`; ctx.fillRect(0, 0, W, H);
       ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round";
       for (const s of stars) {
-        stepStar(s, speed, W, H);
+        if (stepStar(s, speed, W, H)) continue; // respawned this frame → skip drawing (pz=0)
         const sx = cx + (s.x / s.z) * W * fov, sy = cy + (s.y / s.z) * H * fov;
         const px = cx + (s.x / s.pz) * W * fov, py = cy + (s.y / s.pz) * H * fov;
         const k = 1 - s.z / W;
@@ -835,7 +846,8 @@ test("a project file navigates to its page", async ({ page }) => {
 });
 ```
 
-> Note: Playwright runs with `prefers-reduced-motion: reduce` by default in this project? If not, set it in the test via `test.use({ reducedMotion: "reduce" })` at top of file so the warp bypasses and clicks navigate deterministically. Add that line.
+> Note: Playwright does NOT default to reduced motion here, so adding `test.use({ reducedMotion: "reduce" })` (Step 2) is REQUIRED — it makes `TransitionLink`/`WarpOverlay` bypass the warp and navigate directly, so clicks are deterministic.
+> Note: the retained resume test passes because the CRT resume file is a real `<a href="/resume">` with `aria-label="Open Résumé"` (from `aria-label={`Open ${it.name}`}`), which matches `getByRole("link", { name: /résumé|resume/i })`. Keep that aria-label so the test keeps matching.
 
 - [ ] **Step 2: Add** `test.use({ reducedMotion: "reduce" });` near the top of `smoke.spec.ts` so transitions don't flake the suite.
 
