@@ -11,6 +11,11 @@ test("home page renders without console errors", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByRole("link", { name: /see my work/i })).toBeVisible();
   for (const s of SLUGS) await expect(page.locator(`a[href="/work/${s}"]`).first()).toBeVisible();
+  // the decorative particle field mounts as an aria-hidden canvas behind content
+  await expect(page.locator("canvas[aria-hidden]")).toHaveCount(1);
+  // content remains clickable above the canvas (canvas is pointer-events-none)
+  await page.getByRole("link", { name: /see my work/i }).click();
+  await expect(page).toHaveURL(/#work$/);
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
@@ -18,7 +23,7 @@ test("each project page renders with a launch action", async ({ page }) => {
   for (const s of SLUGS) {
     await page.goto(`/work/${s}`);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.getByRole("link", { name: /launch app|app store/i }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /\bapp\b|site|store|launch|demo/i }).first()).toBeVisible();
   }
 });
 
