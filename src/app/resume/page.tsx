@@ -14,7 +14,7 @@ export default function ResumePage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <SectionLabel>Résumé</SectionLabel>
-          <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight md:text-5xl">
+          <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight text-gradient md:text-5xl">
             {site.name}
           </h1>
         </div>
@@ -35,7 +35,7 @@ export default function ResumePage() {
           className="block h-[85vh] w-full"
         />
       </div>
-      <p className="mt-3 text-sm text-[var(--color-fg-subtle)]">
+      <p className="mt-3 font-[family-name:var(--font-mono)] text-xs text-[var(--color-fg-subtle)]">
         If the résumé doesn&apos;t load above,{" "}
         <a href={site.resumePath} download className="underline underline-offset-4 hover:text-[var(--color-fg)]">
           download the PDF
