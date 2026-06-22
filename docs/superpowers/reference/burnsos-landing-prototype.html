@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retro real — embedded UI + zoom</title>
+<style>
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; }
+  /* gradient matches the photo's vertical lighting so any letterbox blends seamlessly */
+  body{ background:linear-gradient(180deg,#c2beba 0%,#cecac7 38%,#ddd9d6 68%,#ece9e6 100%);
+        overflow:hidden; font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
+        display:flex; align-items:center; justify-content:center; }
+
+  /* fill the viewport width; only the empty wall/floor margins crop, computer stays fully visible */
+  .scene{ position:relative; width:max(100vw, calc(100vh * 1536 / 1024)); aspect-ratio:1536/1024; transform-origin:50% 46%;
+          transition:transform 1.15s cubic-bezier(.7,0,.18,1); will-change:transform; }
+  /* zoom centered lower on the machine so the WHOLE computer (incl. keyboard) stays in frame */
+  .scene.zoom{ transform:translate(0%,4%) scale(1.80); }
+  .scene img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; user-select:none; -webkit-user-drag:none; }
+
+  /* CRT cutout (measured from the photo) */
+  .crt{ position:absolute; left:41.40%; top:35.0%; width:12.5%; height:14.5%; overflow:hidden;
+        border-radius:14px/11px; background:#020402; cursor:pointer; }
+  .term{ position:absolute; top:0; left:0; width:600px; transform-origin:top left; color:#7bf0a6;
+         text-shadow:0 0 5px rgba(100,240,160,.5); padding:26px 26px 18px; font-size:15px; }
+  .term .hd{ display:flex; color:#3f8f5e; font-size:13px; padding-bottom:14px; border-bottom:1px solid rgba(100,240,160,.18); }
+  .term .hd .r{ margin-left:auto; }
+  .term .row{ display:flex; padding-top:16px; }
+  .gutter{ text-align:right; color:#2c6b45; border-right:1px solid rgba(100,240,160,.14); min-width:42px; }
+  .gutter div{ padding:0 12px; line-height:2.0; }
+  .code{ padding:0 16px; line-height:2.0; flex:1; }
+  .caret{ display:inline-block; width:9px; height:1em; background:#7bf0a6; transform:translateY(2px); box-shadow:0 0 6px rgba(100,240,160,.7); animation:blink 1s steps(1) infinite; }
+  @keyframes blink{ 50%{opacity:0;} }
+  .files{ margin-top:12px; }
+  .file{ display:flex; gap:14px; padding:8px 12px; margin:2px -12px; border-radius:6px; color:#5fcf86; }
+  .file .pre{ width:1ch; color:#2c6b45; } .file .nm{ color:#a6ffcb; } .file .cmt{ margin-left:auto; color:#3f8f5e; }
+  .file.sel{ background:rgba(100,240,160,.14); color:#c9ffe0; } .file.sel .pre{ color:#a6ffcb; }
+  .st{ display:flex; gap:16px; color:#3f8f5e; font-size:12px; padding-top:14px; margin-top:6px; border-top:1px solid rgba(100,240,160,.18); }
+  .st .r{ margin-left:auto; }
+  /* CRT glass treatment */
+  .crt::before{ content:''; position:absolute; inset:0; z-index:5; pointer-events:none; background:repeating-linear-gradient(rgba(0,0,0,0) 0 2px, rgba(0,0,0,.22) 2px 3px); }
+  .crt::after{ content:''; position:absolute; inset:0; z-index:6; pointer-events:none; background:radial-gradient(130% 130% at 50% 50%, transparent 60%, rgba(0,0,0,.6) 100%); }
+
+  #top{ display:contents; }
+  .hcaret{ display:inline-block; width:9px; height:1em; background:#1a1a1a; transform:translateY(2px); margin-left:2px; animation:blink 1s steps(1) infinite; }
+
+  /* command legend — frameless retro; sits on the plinth at rest, moves to the left when zoomed in */
+  #legend{ position:fixed; left:50%; bottom:19vh; transform:translateX(-50%); z-index:40; pointer-events:none;
+           display:flex; flex-direction:column; align-items:center; gap:9px;
+           font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:#6f6655; }
+  #legend .item{ white-space:nowrap; }
+  #legend b{ color:#3a3128; font-weight:600; }
+  /* zoomed out: only the "press enter to zoom" hint; zoomed in: the full action list */
+  #legend .only-zoom{ display:none; }
+  #legend.zoomed .only-rest{ display:none; }
+  /* zoomed-in list fades in gradually (staggered), no slide */
+  #legend.zoomed .only-zoom{ display:block; opacity:0; animation:legendfade .5s ease forwards; }
+  #legend.zoomed .item:nth-child(2){ animation-delay:.10s; }
+  #legend.zoomed .item:nth-child(3){ animation-delay:.24s; }
+  #legend.zoomed .item:nth-child(4){ animation-delay:.38s; }
+  @keyframes legendfade{ from{ opacity:0; transform:translateY(4px);} to{ opacity:1; transform:translateY(0);} }
+  /* zoomed-in: actions stacked on the left of the screen */
+  #legend.zoomed{ left:15vw; bottom:auto; top:50%; transform:translateY(-50%); align-items:flex-start; gap:13px; }
+
+  /* intro screen: greeting + enter button, flashes into the computer page */
+  #intro{ position:fixed; inset:0; z-index:90; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:34px;
+          background:linear-gradient(180deg,#c2beba 0%,#d6d2cf 55%,#ece9e6 100%); transition:opacity 1s ease; text-align:center; padding:24px; cursor:pointer; }
+  #intro.gone{ opacity:0; pointer-events:none; }
+  #intro .greet{ color:#1a1a1a; font-size:clamp(20px,4vw,42px); letter-spacing:-.015em; line-height:1.3; }
+  #intro .greet .gl{ white-space:nowrap; min-height:1.3em; }
+  /* simple enter button */
+  #enterBtn{ font-family:inherit; font-size:14px; letter-spacing:.04em; color:#fff; cursor:pointer;
+             background:#1a1a1a; border:1px solid #1a1a1a; border-radius:8px; padding:12px 26px;
+             transition:opacity .15s ease, transform .05s ease; }
+  #enterBtn:hover{ opacity:.85; }
+  #enterBtn:active{ transform:translateY(1px); }
+  #flash{ position:fixed; inset:0; z-index:120; background:#fff; opacity:0; pointer-events:none; }
+
+  .backout{ position:fixed; top:18px; left:18px; z-index:40; font-size:12px; color:#234; background:rgba(255,255,255,.8); border:1px solid #aaa; border-radius:6px; padding:7px 12px; cursor:pointer; opacity:0; pointer-events:none; transition:opacity .4s; }
+  .backout.show{ opacity:1; pointer-events:auto; }
+
+  #warp{ position:fixed; inset:0; z-index:100; pointer-events:none; opacity:0; }
+  #dest{ position:fixed; inset:0; z-index:102; opacity:0; pointer-events:none; background:#040509; transform:scale(1.3); filter:blur(16px); }
+  #dest .inner{ max-width:760px; margin:0 auto; padding:90px 24px; font-family:'SF Mono',monospace; }
+  #dest .crumb{ font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#888; }
+  #dest .t{ font-weight:700; font-size:48px; letter-spacing:-.02em; margin:14px 0 10px; color:#fff; }
+  #dest .sub{ color:#aaa; line-height:1.7; } #dest .shot{ margin-top:30px; height:280px; border:1px solid #222; border-radius:14px; background:linear-gradient(135deg,#16182a,#0a0b14); }
+  #dest button{ margin-top:24px; pointer-events:auto; font-family:inherit; font-size:12px; color:#fff; background:transparent; border:1px solid #333; padding:9px 16px; border-radius:6px; cursor:pointer; }
+  .note{ position:fixed; bottom:12px; left:0; right:0; text-align:center; font-size:11px; color:#6b6b6b; z-index:60; }
+</style>
+</head>
+<body>
+  <div id="intro">
+    <div class="greet">
+      <div class="gl"><span id="t1"></span><span class="hcaret" id="c1"></span></div>
+      <div class="gl"><span id="t2"></span><span class="hcaret" id="c2" style="visibility:hidden"></span></div>
+    </div>
+  </div>
+
+  <div id="top">
+    <div id="legend">
+      <span class="item only-rest"><b>Press Enter</b> to zoom</span>
+      <span class="item only-zoom"><b>Arrow keys</b> — navigate</span>
+      <span class="item only-zoom"><b>Enter</b> — open</span>
+      <span class="item only-zoom"><b>Esc</b> — back</span>
+    </div>
+  </div>
+  <div class="scene" id="scene">
+    <img src="/retro/machine.png" alt="">
+    <div class="crt" id="crt">
+      <div class="term" id="term">
+        <div class="hd"><span>burnsOS v1.0 — work.ts</span><span class="r">READY</span></div>
+        <div class="row">
+          <div class="gutter" id="gutter"></div>
+          <div class="code">
+            <div class="cmt" style="color:#3f8f5e">&gt; ls ./work</div>
+            <div class="files" id="files">
+              <div class="file" data-name="Parahealth" data-sub="Prior authorization from a multi-day slog into minutes."><span class="pre">&gt;</span><span class="nm">parahealth.ai</span><span class="cmt">healthcare</span></div>
+              <div class="file" data-name="Claruss" data-sub="A consumer iOS app, shipped to the App Store."><span class="pre">&gt;</span><span class="nm">claruss.app</span><span class="cmt">ios app</span></div>
+              <div class="file" data-name="Wedding" data-sub="A site for the big day."><span class="pre">&gt;</span><span class="nm">wedding.tsx</span><span class="cmt">web</span></div>
+              <div class="file" data-name="Grocery" data-sub="Track what you have, flag what's low."><span class="pre">&gt;</span><span class="nm">grocery.tsx</span><span class="cmt">web app</span></div>
+              <div class="file" data-name="Resume" data-sub="The PDF." ><span class="pre">&gt;</span><span class="nm">resume.pdf</span><span class="cmt">doc</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="st"><span>● MAIN</span><span>5 files</span><span class="r">↑↓ navigate · ⏎ run</span></div>
+      </div>
+    </div>
+  </div>
+  <button class="backout" id="backout">← back out</button>
+
+  <canvas id="warp"></canvas>
+  <div id="dest"><div class="inner"><div class="crumb" id="dCrumb">Work</div><div class="t" id="dName">—</div><div class="sub" id="dSub"></div><div class="shot"></div><button onclick="resetDemo()">↺ replay</button></div></div>
+
+<script>
+const scene=document.getElementById('scene'), crt=document.getElementById('crt'), term=document.getElementById('term');
+const backout=document.getElementById('backout'), legendEl=document.getElementById('legend');
+const intro=document.getElementById('intro');
+let introActive=true;
+// dissolve the intro overlay to reveal the computer behind it
+function enterSite(){ if(!introActive) return; introActive=false; intro.classList.add('gone'); }
+// let an impatient visitor skip the wait
+intro.addEventListener('click', enterSite);
+// scale the fixed-size terminal to fit the (unzoomed) CRT cutout
+function fitTerm(){ const w=crt.getBoundingClientRect().width; term.style.transform='scale('+(w/600)+')'; term.style.height=(term.scrollHeight)+'px'; }
+addEventListener('resize',()=>{ if(!zoomed) fitTerm(); });
+fitTerm();
+
+// gutter + typing
+const gutter=document.getElementById('gutter'); for(let i=1;i<=9;i++){ const d=document.createElement('div'); d.textContent=i; gutter.appendChild(d); }
+// two-line typewriter: type line 1, blink ~2s, then type line 2, blink
+const t1=document.getElementById('t1'), t2=document.getElementById('t2'), c1=document.getElementById('c1'), c2=document.getElementById('c2');
+function typeInto(el, text, done){ let i=0; (function step(){ if(i<=text.length){ el.textContent=text.slice(0,i++); setTimeout(step,30+Math.random()*45);} else if(done) setTimeout(done,2000); })(); }
+typeInto(t1, "Hi, I'm Dylan.", ()=>{
+  c1.style.visibility='hidden'; c2.style.visibility='visible';   // hand the caret to line 2 (keep widths so line 1 doesn't reflow)
+  typeInto(t2, "I like to build things", enterSite);   // after line 2 blinks ~2s, auto-dissolve in
+});
+
+// zoom
+let zoomed=false;
+function zoomIn(){ if(zoomed) return; zoomed=true; scene.classList.add('zoom'); backout.classList.add('show'); legendEl.classList.add('zoomed'); }
+function zoomOut(){ zoomed=false; scene.classList.remove('zoom');
+  scene.style.transition='transform 1.15s cubic-bezier(.7,0,.18,1)'; scene.style.transform=''; scene.style.opacity=''; scene.style.filter='';
+  backout.classList.remove('show'); legendEl.classList.remove('zoomed'); }
+crt.addEventListener('click',(e)=>{ if(!zoomed){ e.stopPropagation(); zoomIn(); } });
+backout.addEventListener('click',zoomOut);
+
+// selection + keyboard
+const files=[...document.querySelectorAll('.file')]; let sel=0, busy=false;
+function render(){ files.forEach((f,i)=>f.classList.toggle('sel',i===sel)); }
+render();
+files.forEach((f,i)=>{ f.addEventListener('mouseenter',()=>{ if(zoomed){ sel=i; render(); } }); f.addEventListener('click',(e)=>{ if(zoomed){ e.stopPropagation(); sel=i; jump(f);} }); });
+addEventListener('keydown',(e)=>{ if(busy) return;
+  if(introActive){ if(e.key==='Enter'){ e.preventDefault(); enterSite(); } return; }
+  if(e.key==='Escape'){ if(zoomed) zoomOut(); return; }
+  if(!zoomed){ if(e.key==='Enter'){ e.preventDefault(); zoomIn(); } return; }
+  if(e.key==='ArrowDown'){e.preventDefault(); sel=(sel+1)%files.length; render();}
+  else if(e.key==='ArrowUp'){e.preventDefault(); sel=(sel-1+files.length)%files.length; render();}
+  else if(e.key==='Enter'){e.preventDefault(); jump(files[sel]);} });
+
+// ===== lightspeed warp =====
+const cv=document.getElementById('warp'),ctx=cv.getContext('2d'),dest=document.getElementById('dest');
+let W,H,cx,cy,DPR,stars=[],raf=0;
+function size(){ DPR=Math.min(devicePixelRatio||1,2); W=cv.width=innerWidth*DPR; H=cv.height=innerHeight*DPR; cv.style.width=innerWidth+'px'; cv.style.height=innerHeight+'px'; cx=W/2; cy=H/2; }
+addEventListener('resize',size); size();
+function mk(s){ return {x:(Math.random()*2-1)*W,y:(Math.random()*2-1)*H,z:s?Math.random()*W:W,pz:0,b:.45+Math.random()*.55}; }
+function seed(){ const n=Math.min(3200,Math.round(W*H/(2400*DPR))); stars=[]; for(let i=0;i<n;i++) stars.push(mk(true)); }
+function ramp(t){ return t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2; }
+const DUR=2200;
+function jump(card){ if(busy) return; busy=true; seed();
+  cv.style.transition='opacity .3s'; cv.style.opacity='1';
+  scene.style.transition='transform .6s cubic-bezier(.5,0,.75,0), opacity .5s ease-in, filter .5s'; scene.style.transform='translate(0%,4%) scale(5.5)'; scene.style.opacity='0'; scene.style.filter='blur(8px)';
+  backout.classList.remove('show');
+  const t0=performance.now();
+  (function fr(now){ const t=Math.min(1,(now-t0)/DUR), e=ramp(t), sp=4+e*340, fov=1+e*1.15;
+    ctx.globalCompositeOperation='source-over'; ctx.fillStyle='rgba(0,0,0,'+(.34-e*.28)+')'; ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='lighter'; ctx.lineCap='round';
+    for(const s of stars){ s.pz=s.z; s.z-=sp; if(s.z<1){Object.assign(s,mk(false)); continue;}
+      const sx=cx+s.x/s.z*W*fov, sy=cy+s.y/s.z*H*fov, px=cx+s.x/s.pz*W*fov, py=cy+s.y/s.pz*H*fov, k=1-s.z/W;
+      ctx.strokeStyle='rgba(255,255,255,'+Math.min(1,(.12+k*.95)*s.b)+')'; ctx.lineWidth=Math.max(DPR*.5,k*k*3.4*DPR);
+      ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(sx,sy); ctx.stroke(); }
+    ctx.globalCompositeOperation='source-over';
+    if(t<1) raf=requestAnimationFrame(fr); else fly(card);
+  })(performance.now());
+}
+function fly(card){ document.getElementById('dName').textContent=card.dataset.name;
+  document.getElementById('dCrumb').textContent='work / '+card.dataset.name.toLowerCase();
+  document.getElementById('dSub').textContent=card.dataset.sub;
+  dest.style.transition='none'; dest.style.transform='scale(1.3)'; dest.style.filter='blur(16px)'; dest.style.opacity='0'; dest.style.pointerEvents='auto';
+  cv.style.transition='opacity .5s'; cv.style.opacity='0';
+  requestAnimationFrame(()=>{ dest.style.transition='transform .6s cubic-bezier(.16,1,.3,1),opacity .5s,filter .55s'; dest.style.transform='scale(1)'; dest.style.filter='blur(0)'; dest.style.opacity='1';
+    setTimeout(()=>{ cancelAnimationFrame(raf); ctx.clearRect(0,0,W,H);},520); });
+}
+function resetDemo(){ cancelAnimationFrame(raf); ctx.clearRect(0,0,W,H); cv.style.opacity='0';
+  dest.style.transition='opacity .25s'; dest.style.opacity='0'; dest.style.pointerEvents='none';
+  scene.style.transition='transform .5s, opacity .5s, filter .5s'; scene.style.transform=''; scene.style.opacity='1'; scene.style.filter='none'; busy=false; zoomed=false; scene.classList.remove('zoom'); render(); }
+</script>
+</body>
+</html>

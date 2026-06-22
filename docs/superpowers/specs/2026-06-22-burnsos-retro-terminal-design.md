@@ -141,11 +141,43 @@ all of which must NOT apply to the new landing. Restructure so the **root layout
   breakpoint, the CRT screen detaches from the chassis image** — the machine renders as a smaller
   decorative header (or is hidden) and the terminal becomes a full-width B&W mono panel, so the
   fragile %-cutout alignment is never relied on at small sizes.
-- **Sourcing:** a properly-licensed render is sourced/generated (license recorded), or the owner
-  supplies their own. Until the final asset lands, development uses a placeholder render of the
-  same aspect ratio + cutout so layout is real. **Tracked as a `TODO(owner)`/asset task.**
-- **Licensing note:** the chosen image must be cleared for commercial/portfolio use; record the
-  source + license in the repo (e.g. `public/retro/CREDIT.md`).
+- **Sourcing:** ✅ DONE — the owner supplied the final photo, committed at
+  `public/retro/machine.png` (1536×1024, a beige late-'70s micro on a white plinth in a
+  spotlit gallery). The CRT glass was flood-fill measured; cutout box recorded below.
+- **Licensing note:** confirm the supplied photo is cleared for commercial/portfolio use;
+  record the source + license in `public/retro/CREDIT.md`.
+
+## Finalized interaction (canonical reference: the prototype)
+
+The fully-iterated, owner-approved prototype is preserved at
+`docs/superpowers/reference/burnsos-landing-prototype.html` (self-contained; image path
+`/retro/machine.png`). **The implementation must match it.** Exact tuned values:
+
+- **Scene sizing (cover):** `.scene { width: max(100vw, calc(100vh * 1536/1024)); aspect-ratio: 1536/1024 }`,
+  centered; fills the viewport (only empty wall/floor margins crop). Page background is a vertical
+  gradient `linear-gradient(180deg,#c2beba,#cecac7 38%,#ddd9d6 68%,#ece9e6)` matching the photo's
+  lighting so any seam blends.
+- **CRT cutout** (% of image, in `cutout.ts`): `left 41.40% · top 35.0% · width 12.5% · height 14.5%`.
+  The terminal is authored at a fixed logical width (600px) and **scaled to fit** the cutout
+  (`scale = crtPx / 600`), so it's crisp at any size and readable when zoomed.
+- **Intro overlay:** full-screen, gradient bg, two-line **typewriter**: types "Hi, I'm Dylan",
+  cursor blinks ~2s, hands the cursor to line 2 (use `visibility:hidden` so line 1 doesn't reflow),
+  types "I like to build things", blinks ~2s, then **auto-dissolves** (opacity 1s) to reveal the
+  machine. Click anywhere skips. Each line reserves its height (`min-height`) so line 1 never shifts.
+- **Zoom:** click the screen / press Enter → `.scene` transforms to
+  `translate(0%,4%) scale(1.80)` with `transform-origin: 50% 46%` (centered low so the whole
+  computer incl. keyboard stays in frame). "← back out" button + Esc returns.
+- **Legend:** frameless retro (uppercase, letter-spaced, sepia `#6f6655`, bold `#3a3128`),
+  vertical list. Zoomed OUT: a single item **"Press Enter to zoom"** centered on the plinth
+  (`bottom: 19vh`). Zoomed IN: the full list (Arrow keys — navigate · Enter — open · Esc — back)
+  at `left: 15vw`, vertically centered, **fading in staggered** (no slide).
+- **Warp transition** (white lightspeed): on opening a project — page pushes back+blurs, a fixed
+  full-screen `<canvas>` runs the streak field: `DUR≈2200ms`, `speed = 4 + ramp(t)*340`,
+  `fov = 1 + ramp(t)*1.15`, smoothstep `ramp`, star count `min(3200, W*H/(2400*DPR))`, DPR≤2,
+  additive white streaks; then **flies into** the destination project page (scale 1.3→1, blur→0).
+  Reduced motion bypasses to a direct navigation.
+- **Files on the CRT:** `parahealth.tsx`, `claruss.tsx`, `wedding.tsx`, `grocery.tsx`, `resume.pdf`
+  (resume links to `/resume`); each is a real link under the hood; keyboard roving ↑/↓ + Enter.
 
 ## Accessibility
 
