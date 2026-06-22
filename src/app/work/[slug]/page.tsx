@@ -5,6 +5,7 @@ import { ProjectHero } from "@/components/project/ProjectHero";
 import { Gallery } from "@/components/project/Gallery";
 import { BuildStory } from "@/components/project/BuildStory";
 import { ProjectPager } from "@/components/project/ProjectPager";
+import { MountIn } from "@/components/project/MountIn";
 
 export function generateStaticParams() {
   return projects.map((p) => ({ slug: p.slug }));
@@ -29,10 +30,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   const adj = adjacentProjects(slug)!;
   return (
     <main>
-      <ProjectHero project={project} />
-      <Gallery project={project} />
-      <BuildStory project={project} />
-      <ProjectPager prev={adj.prev} next={adj.next} />
+      <MountIn>
+        <ProjectHero project={project} />
+        <Gallery project={project} />
+        <BuildStory project={project} />
+        <ProjectPager prev={adj.prev} next={adj.next} />
+      </MountIn>
     </main>
   );
 }
