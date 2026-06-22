@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Geist, Space_Grotesk } from "next/font/google";
+import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import { site } from "@/content/site";
 import { Nav } from "@/components/layout/Nav";
 import { Footer } from "@/components/layout/Footer";
@@ -9,6 +9,7 @@ import { PageTransition } from "@/components/motion/PageTransition";
 import "./globals.css";
 
 const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans", display: "swap" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-space-grotesk",
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${spaceGrotesk.variable}`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable}`}>
       <body className="min-h-dvh antialiased">
         <GlowBackdrop />
         <Nav />
