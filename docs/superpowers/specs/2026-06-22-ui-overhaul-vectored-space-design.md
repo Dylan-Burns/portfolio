@@ -30,8 +30,11 @@ appears only as a single gradient accent, sitting over a live cursor-reactive pa
 2. **Headlines:** bold **Space Grotesk** (already wired) — NOT monospace. Monospace is for
    labels, eyebrows, captions, and CTAs only.
 3. **Color:** the existing gradient (indigo `#8b93ff` → cyan `#22d3ee` → violet `#c084fc`)
-   is the single vivid element. Applied to: one key phrase per headline, the live-status
-   dot, primary-action accents, and the particle-field glow. Everything else is grayscale.
+   is the single vivid element. Applied to: one key phrase per headline, primary-action
+   accents, and the particle-field glow. Everything else is grayscale. The "now"/status
+   dot is the one exception — it uses the existing green `--color-live` (`#3ddc97`) since a
+   green active dot is the legible convention for "currently building"; gradient is NOT
+   used on it.
 4. **Background:** an interactive **particle field** (white dust nebula + gradient glow)
    that reacts to the cursor — replaces the current static `GlowBackdrop`.
 5. **Motion:** done with the already-installed `motion` package (Framer Motion). Keep
@@ -45,7 +48,9 @@ appears only as a single gradient accent, sitting over a live cursor-reactive pa
   `--color-border-strong` for hover/active).
 - **Type:** add a monospace font var `--font-mono` (Geist Mono via `next/font` in
   `layout.tsx`). Keep `--font-display` (Space Grotesk) and `--font-sans`.
-- **Utilities:** keep/extend `text-gradient` for the multi-stop accent gradient; add a
+- **Utilities:** **rewrite** the `text-gradient` utility — today it is only a two-stop
+  white→fg mix; change its stops to the locked multi-stop indigo→cyan→violet accent (the
+  multi-stop gradient currently lives in `GlowBackdrop`, which is being removed). Add a
   `.label-mono` pattern (uppercase/letter-spaced monospace eyebrow), and a hairline-rule
   helper. Add a reduced-motion-aware policy (already present) covering the field.
 
@@ -109,7 +114,7 @@ All page content continues to flow from `src/content/*` through the same compone
 ## Testing & Verification
 
 - Existing gates must stay green:
-  `npx tsc --noEmit && npm run lint && npm test && npm run build && npm run test:e2e`
+  `npm run typecheck && npm run lint && npm test && npm run build && npm run test:e2e`
   (Playwright runs on port **3100**).
 - Add a lightweight unit/DOM check that `ParticleField` renders an `aria-hidden` canvas and
   that, under a mocked `prefers-reduced-motion`, no animation loop is started.
