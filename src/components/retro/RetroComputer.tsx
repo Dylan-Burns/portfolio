@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CUTOUT, IMAGE_ASPECT, TERM_LOGICAL_WIDTH, ZOOM } from "./cutout";
+import { CUTOUT, IMAGE_ASPECT, ZOOM } from "./cutout";
 import { CrtScreen } from "./CrtScreen";
 import { IntroOverlay } from "./IntroOverlay";
 import { Legend } from "./Legend";
@@ -26,7 +26,9 @@ export function RetroComputer({ items }: { items: FileItem[] }) {
   const fitTerm = useCallback(() => {
     const crt = crtRef.current, term = termRef.current;
     if (!crt || !term) return;
-    term.style.transform = `scale(${crt.offsetWidth / TERM_LOGICAL_WIDTH})`;
+    // Divide by the term's own natural layout width (offsetWidth, transform-independent)
+    // so the fit stays correct no matter the terminal's width/padding.
+    term.style.transform = `scale(${crt.offsetWidth / term.offsetWidth})`;
   }, []);
   useEffect(() => { fitTerm(); addEventListener("resize", fitTerm); return () => removeEventListener("resize", fitTerm); }, [fitTerm]);
 
@@ -76,7 +78,7 @@ export function RetroComputer({ items }: { items: FileItem[] }) {
           style={{ left: `${CUTOUT.left}%`, top: `${CUTOUT.top}%`, width: `${CUTOUT.width}%`, height: `${CUTOUT.height}%` }}
           onClick={() => !zoomed && setZoomed(true)}
         >
-          <div ref={termRef} className="absolute left-0 top-0 origin-top-left p-[26px_26px_18px]">
+          <div ref={termRef} className="absolute left-0 top-0 origin-top-left p-[12px]">
             <CrtScreen
               items={items}
               selected={sel}
@@ -91,18 +93,6 @@ export function RetroComputer({ items }: { items: FileItem[] }) {
           </div>
         </div>
       </div>
-
-      {!intro && (
-        <>
-          <Legend zoomed={zoomed} />
-          {zoomed && (
-            <button onClick={() => setZoomed(false)}
-              className="fixed left-[18px] top-[18px] z-40 rounded-md border border-[#aaa] bg-white/80 px-3 py-[7px] font-[family-name:var(--font-mono)] text-xs text-[#234]">
-              ← back out
-            </button>
-          )}
-        </>
-      )}
     </main>
   );
 }

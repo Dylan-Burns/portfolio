@@ -91,7 +91,8 @@
 .crt-term { color:#7bf0a6; text-shadow:0 0 5px rgba(100,240,160,.5); font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
 .crt-glass::before { content:""; position:absolute; inset:0; z-index:5; pointer-events:none; background:repeating-linear-gradient(rgba(0,0,0,0) 0 2px, rgba(0,0,0,.22) 2px 3px); }
 .crt-glass::after  { content:""; position:absolute; inset:0; z-index:6; pointer-events:none; background:radial-gradient(130% 130% at 50% 50%, transparent 60%, rgba(0,0,0,.6) 100%); }
-.crt-file { display:flex; gap:14px; padding:8px 12px; margin:2px -12px; border-radius:6px; color:#5fcf86; text-decoration:none; }
+/* single-line height so each file aligns with its gutter number; horizontal bleed for the hover bg */
+.crt-file { display:flex; gap:14px; padding:0 12px; margin:0 -12px; border-radius:6px; color:#5fcf86; text-decoration:none; }
 .crt-file .nm { color:#a6ffcb; } .crt-file .cmt { margin-left:auto; color:#3f8f5e; }
 .crt-file.sel { background:rgba(100,240,160,.14); color:#c9ffe0; }
 .crt-file.sel .pre { color:#a6ffcb; } .crt-file .pre { width:1ch; color:#2c6b45; }
