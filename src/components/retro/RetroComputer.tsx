@@ -33,11 +33,22 @@ export function RetroComputer({ items }: { items: FileItem[] }) {
       if (!zoomed) { if (e.key === "Enter") { e.preventDefault(); setZoomed(true); } return; }
       if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => (s + 1) % items.length); }
       else if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => (s - 1 + items.length) % items.length); }
-      else if (e.key === "Enter") { e.preventDefault(); play(items[sel].href); }
+      else if (e.key === "Enter") {
+        // if a CRT file link is focused, its native activation already triggers the warp
+        if ((document.activeElement as HTMLElement | null)?.closest(".crt-file")) return;
+        e.preventDefault();
+        play(items[sel].href);
+      }
     };
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
   }, [intro, zoomed, sel, items, play]);
+
+  // when zooming in, move focus to the selected file so keyboard users land on the active list
+  useEffect(() => {
+    if (!zoomed) return;
+    (document.querySelector(`[data-crt-index="${sel}"]`) as HTMLElement | null)?.focus();
+  }, [zoomed, sel]);
 
   const zoomStyle = zoomed
     ? { transform: `translate(${ZOOM.translateX}%, ${ZOOM.translateY}%) scale(${ZOOM.scale})` }
@@ -67,7 +78,7 @@ export function RetroComputer({ items }: { items: FileItem[] }) {
               selected={sel}
               onHover={(i) => zoomed && setSel(i)}
               renderItem={(it, i, selected) => (
-                <TransitionLink href={it.href} tabIndex={zoomed ? 0 : -1}
+                <TransitionLink href={it.href} tabIndex={zoomed ? 0 : -1} data-crt-index={i}
                   className={`crt-file ${selected ? "sel" : ""}`} aria-label={`Open ${it.name}`}>
                   <span className="pre">&gt;</span><span className="nm">{it.label}</span><span className="cmt">{it.comment}</span>
                 </TransitionLink>
