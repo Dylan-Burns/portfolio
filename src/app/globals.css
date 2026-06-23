@@ -1,28 +1,28 @@
 @import "tailwindcss";
 
 @theme {
-  /* surfaces */
-  --color-bg: #07070d;
-  --color-bg-2: #0c0d1a;
-  --color-surface: rgba(255, 255, 255, 0.045);
-  --color-surface-hover: rgba(255, 255, 255, 0.07);
-  --color-border: rgba(255, 255, 255, 0.09);
-  --color-border-strong: rgba(255, 255, 255, 0.16);
+  /* surfaces — pushed toward pure black so the particle field reads */
+  --color-bg: #040509;
+  --color-bg-2: #0a0b14;
+  --color-surface: rgba(255, 255, 255, 0.03);
+  --color-surface-hover: rgba(255, 255, 255, 0.06);
+  --color-border: rgba(255, 255, 255, 0.10);
+  --color-border-strong: rgba(255, 255, 255, 0.20);
 
   /* text */
   --color-fg: #e7e9f5;
   --color-fg-muted: #a3a8cd;
   --color-fg-subtle: #7e85bd;
 
-  /* accents */
-  --color-accent: #8b93ff;       /* indigo-ish */
-  --color-accent-2: #22d3ee;     /* cyan */
-  --color-accent-3: #c084fc;     /* violet */
-  --color-live: #3ddc97;         /* "live" green for launch affordances */
+  /* accents — used by text-gradient (Footer heading) + focus ring / selection */
+  --color-accent: #8b93ff;
+  --color-accent-2: #22d3ee;
+  --color-accent-3: #c084fc;
 
-  /* type — composed from the next/font variables wired in layout.tsx */
+  /* type */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-space-grotesk), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
 
   /* radii / shadow */
   --radius-card: 14px;
@@ -51,10 +51,49 @@
   }
 }
 
-/* utility: gradient text */
+/* utility: multi-stop accent gradient text (the one vivid element) */
 @utility text-gradient {
-  background: linear-gradient(180deg, #ffffff, color-mix(in oklab, var(--color-fg) 70%, var(--color-accent)));
+  background: linear-gradient(
+    100deg,
+    var(--color-accent) 0%,
+    var(--color-accent-2) 50%,
+    var(--color-accent-3) 100%
+  );
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
+
+/* utility: monospace eyebrow / label */
+@utility label-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: var(--color-fg-subtle);
+}
+
+/* utility: a 1px divider rule */
+@utility hairline {
+  height: 1px;
+  width: 100%;
+  background: var(--color-border);
+}
+
+/* ===== burnsOS retro landing ===== */
+@keyframes legendfade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+.hcaret { display:inline-block; width:9px; height:1em; margin-left:2px; transform:translateY(2px); background:#1a1a1a; animation:blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* CRT uses the system monospace stack (matches the approved prototype's metrics;
+   Geist Mono is wider and overflows the fixed 600px terminal, clipping the right). */
+.crt-term { color:#7bf0a6; text-shadow:0 0 5px rgba(100,240,160,.5); font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
+.crt-glass::before { content:""; position:absolute; inset:0; z-index:5; pointer-events:none; background:repeating-linear-gradient(rgba(0,0,0,0) 0 2px, rgba(0,0,0,.22) 2px 3px); }
+.crt-glass::after  { content:""; position:absolute; inset:0; z-index:6; pointer-events:none; background:radial-gradient(130% 130% at 50% 50%, transparent 60%, rgba(0,0,0,.6) 100%); }
+/* single-line height so each file aligns with its gutter number; horizontal bleed for the hover bg */
+.crt-file { display:flex; gap:14px; padding:0 12px; margin:0 -12px; border-radius:6px; color:#5fcf86; text-decoration:none; }
+.crt-file .nm { color:#a6ffcb; } .crt-file .cmt { margin-left:auto; color:#3f8f5e; }
+/* the green .sel highlight is the focus indicator on the CRT — drop the accent focus ring */
+.crt-file:focus, .crt-file:focus-visible { outline: none; }
+.crt-file.sel { background:rgba(100,240,160,.14); color:#c9ffe0; }
+.crt-file.sel .pre { color:#a6ffcb; } .crt-file .pre { width:1ch; color:#2c6b45; }

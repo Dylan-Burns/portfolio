@@ -1,13 +1,7 @@
-import { Hero } from "@/components/home/Hero";
-import { ProjectGrid } from "@/components/home/ProjectGrid";
-import { AboutSection } from "@/components/home/AboutSection";
+import { RetroComputer } from "@/components/retro/RetroComputer";
+import { toFileItems } from "@/content/file-items";
+import { projects } from "@/content/projects";
 
 export default function HomePage() {
-  return (
-    <main>
-      <Hero />
-      <ProjectGrid />
-      <AboutSection />
-    </main>
-  );
+  return <RetroComputer items={toFileItems(projects)} />;
 }

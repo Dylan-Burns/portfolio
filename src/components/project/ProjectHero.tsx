@@ -10,7 +10,7 @@ export function ProjectHero({ project }: { project: Project }) {
         <SectionLabel>{`${project.category} · ${project.period} · ${project.role}`}</SectionLabel>
       </Reveal>
       <Reveal delay={0.05}>
-        <h1 className="mt-4 font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight md:text-6xl">
+        <h1 className="mt-4 font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight text-[var(--color-fg)] md:text-6xl">
           {project.name}
         </h1>
       </Reveal>

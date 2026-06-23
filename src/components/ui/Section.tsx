@@ -1,21 +1,13 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
-/** Small uppercase kicker above a section heading. */
+/** Small monospace kicker above a section heading. */
 export function SectionLabel({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <p className={cn("text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--color-fg-subtle)]", className)}>
+    <p className={cn("label-mono inline-flex items-center gap-3 uppercase", className)}>
+      <span aria-hidden className="h-px w-8 bg-[var(--color-border-strong)]" />
       {children}
     </p>
-  );
-}
-
-/** Display-font section heading (renders an `<h2>`). */
-export function SectionHeading({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <h2 className={cn("font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight md:text-4xl", className)}>
-      {children}
-    </h2>
   );
 }
 
