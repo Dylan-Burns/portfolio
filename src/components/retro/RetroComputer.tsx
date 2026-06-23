@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CUTOUT, IMAGE_ASPECT, ZOOM } from "./cutout";
 import { CrtScreen } from "./CrtScreen";
 import { IntroOverlay } from "./IntroOverlay";
-import { Legend } from "./Legend";
 import { TransitionLink } from "./TransitionLink";
 import { useWarp } from "./WarpOverlay";
 import type { FileItem } from "@/content/file-items";
