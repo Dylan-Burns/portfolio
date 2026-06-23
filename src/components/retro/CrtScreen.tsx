@@ -12,7 +12,7 @@ export function CrtScreen({
   renderItem: (item: FileItem, i: number, selected: boolean) => ReactNode; // parent wraps in TransitionLink
 }) {
   return (
-    <div className="crt-term relative font-[family-name:var(--font-mono)]" style={{ width: 600 }}>
+    <div className="crt-term relative" style={{ width: 600 }}>
       <div className="flex border-b border-[rgba(100,240,160,.18)] pb-[14px] text-[13px] text-[#3f8f5e]">
         <span>burnsOS v1.0 — work.ts</span><span className="ml-auto">READY</span>
       </div>

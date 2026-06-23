@@ -86,7 +86,9 @@
 .hcaret { display:inline-block; width:9px; height:1em; margin-left:2px; transform:translateY(2px); background:#1a1a1a; animation:blink 1s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
-.crt-term { color:#7bf0a6; text-shadow:0 0 5px rgba(100,240,160,.5); }
+/* CRT uses the system monospace stack (matches the approved prototype's metrics;
+   Geist Mono is wider and overflows the fixed 600px terminal, clipping the right). */
+.crt-term { color:#7bf0a6; text-shadow:0 0 5px rgba(100,240,160,.5); font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
 .crt-glass::before { content:""; position:absolute; inset:0; z-index:5; pointer-events:none; background:repeating-linear-gradient(rgba(0,0,0,0) 0 2px, rgba(0,0,0,.22) 2px 3px); }
 .crt-glass::after  { content:""; position:absolute; inset:0; z-index:6; pointer-events:none; background:radial-gradient(130% 130% at 50% 50%, transparent 60%, rgba(0,0,0,.6) 100%); }
 .crt-file { display:flex; gap:14px; padding:8px 12px; margin:2px -12px; border-radius:6px; color:#5fcf86; text-decoration:none; }
