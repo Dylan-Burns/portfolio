@@ -11,15 +11,6 @@ export function SectionLabel({ children, className }: { children: ReactNode; cla
   );
 }
 
-/** Display-font section heading (renders an `<h2>`). */
-export function SectionHeading({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <h2 className={cn("font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight md:text-4xl", className)}>
-      {children}
-    </h2>
-  );
-}
-
 /** A page section with consistent max-width, padding, and scroll-margin for anchor links. */
 export function Section({ id, children, className }: { id?: string; children: ReactNode; className?: string }) {
   return (

@@ -14,11 +14,10 @@
   --color-fg-muted: #a3a8cd;
   --color-fg-subtle: #7e85bd;
 
-  /* accents (unchanged) */
+  /* accents — used by text-gradient (Footer heading) + focus ring / selection */
   --color-accent: #8b93ff;
   --color-accent-2: #22d3ee;
   --color-accent-3: #c084fc;
-  --color-live: #3ddc97;
 
   /* type */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;

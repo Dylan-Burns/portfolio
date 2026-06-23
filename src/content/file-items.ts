@@ -1,4 +1,4 @@
-import type { Project, SiteConfig } from "./projects.types";
+import type { Project } from "./projects.types";
 
 export type FileItem = {
   name: string;     // e.g. "Parahealth" (destination/H1 label)
@@ -8,7 +8,7 @@ export type FileItem = {
 };
 
 /** Maps projects (+ resume) to the files shown on the CRT, in display order. */
-export function toFileItems(projects: Project[], site: SiteConfig): FileItem[] {
+export function toFileItems(projects: Project[]): FileItem[] {
   // short trailing-comment tag: first segment of the category (split on · , /)
   const shortTag = (category: string) => category.split(/[·,/]/)[0].trim().toLowerCase();
   const projectFiles: FileItem[] = projects.map((p) => ({

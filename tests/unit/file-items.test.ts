@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { toFileItems } from "@/content/file-items";
 import { projects } from "@/content/projects";
-import { site } from "@/content/site";
 
 describe("toFileItems", () => {
-  const items = toFileItems(projects, site);
+  const items = toFileItems(projects);
   it("emits one file per project plus a resume file, in order", () => {
     expect(items.slice(0, projects.length).map((i) => i.href)).toEqual(projects.map((p) => `/work/${p.slug}`));
     const resume = items[items.length - 1];
