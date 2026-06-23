@@ -94,5 +94,7 @@
 /* single-line height so each file aligns with its gutter number; horizontal bleed for the hover bg */
 .crt-file { display:flex; gap:14px; padding:0 12px; margin:0 -12px; border-radius:6px; color:#5fcf86; text-decoration:none; }
 .crt-file .nm { color:#a6ffcb; } .crt-file .cmt { margin-left:auto; color:#3f8f5e; }
+/* the green .sel highlight is the focus indicator on the CRT — drop the accent focus ring */
+.crt-file:focus, .crt-file:focus-visible { outline: none; }
 .crt-file.sel { background:rgba(100,240,160,.14); color:#c9ffe0; }
 .crt-file.sel .pre { color:#a6ffcb; } .crt-file .pre { width:1ch; color:#2c6b45; }
