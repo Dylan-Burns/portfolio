@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "motion/react";
 
-const L1 = "Hi, I'm Dylan";
-const L2 = "I like to build things";
+const L1 = "Hi, I'm Dylan.";
+const L2 = "I love to build things";
 
 /** Full-screen intro: types two lines, blinks ~2s each, then dissolves away.
  * Calls onDone when dissolved (parent can then enable the scene). */

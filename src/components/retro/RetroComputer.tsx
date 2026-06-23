@@ -17,6 +17,10 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
   const [intro, setIntro] = useState(!initialZoom);
   const [zoomed, setZoomed] = useState(initialZoom);
   const [sel, setSel] = useState(0);
+  // Don't animate the zoom on the first paint: when we land already-zoomed (deep-link from a work
+  // page) the mobile/desktop check resolves a beat after mount, nudging the transform — without this
+  // gate that nudge plays as a visible 1.15s re-zoom. Enable the transition one frame after mount.
+  const [animate, setAnimate] = useState(false);
   const crtRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
@@ -34,7 +38,11 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
     // so the fit stays correct no matter the terminal's width/padding.
     term.style.transform = `scale(${crt.offsetWidth / term.offsetWidth})`;
   }, []);
-  useEffect(() => { fitTerm(); addEventListener("resize", fitTerm); return () => removeEventListener("resize", fitTerm); }, [fitTerm]);
+  // re-fit on mount, on resize, and when the breakpoint flips (mobile uses a narrower terminal)
+  useEffect(() => { fitTerm(); addEventListener("resize", fitTerm); return () => removeEventListener("resize", fitTerm); }, [fitTerm, isMobile]);
+
+  // turn the zoom transition on after the first frame (see `animate` above)
+  useEffect(() => { const id = requestAnimationFrame(() => setAnimate(true)); return () => cancelAnimationFrame(id); }, []);
 
   // after a deep-link (/?view=files) lands us zoomed, strip the query so the URL is clean and a later
   // fresh visit / reload of "/" plays the intro again instead of being stuck skipping it
@@ -90,7 +98,7 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
 
       <div
         onClick={onTapMachine}
-        className="machine-frame relative shrink-0 transition-transform duration-1150 ease-[cubic-bezier(.7,0,.18,1)]"
+        className={`machine-frame relative shrink-0 ${animate ? "transition-transform duration-1150 ease-[cubic-bezier(.7,0,.18,1)]" : ""}`}
         style={{ width: "max(100vw, calc(100vh * 1672 / 941))", aspectRatio: IMAGE_ASPECT_LARGE, transformOrigin: `${zw.originX}% ${zw.originY}%`, ...zoomStyle }}
       >
         {/* wide room photo on desktop (whole room shown un-zoomed), portrait photo on phones — CSS picks one per breakpoint */}
@@ -106,6 +114,7 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
             <CrtScreen
               items={items}
               selected={sel}
+              width={isMobile ? 245 : 387}
               onHover={(i) => zoomed && setSel(i)}
               renderItem={(it, i, selected) => (
                 <TransitionLink href={it.href} tabIndex={zoomed ? 0 : -1} data-crt-index={i}

@@ -9,12 +9,15 @@ import type { ReactNode } from "react";
  * line up with their content. Lines: `> ls ./work`, a blank line, then one file per item.
  */
 export function CrtScreen({
-  items, selected, onHover, renderItem,
+  items, selected, onHover, renderItem, width = 387,
 }: {
   items: FileItem[];
   selected: number;
   onHover: (i: number) => void;
   renderItem: (item: FileItem, i: number, selected: boolean) => ReactNode; // parent wraps in TransitionLink
+  // authored terminal width the parent scales to fit the glass; narrower on mobile (comment column
+  // hidden) so the filenames fill the screen instead of leaving dead space on the right
+  width?: number;
 }) {
   const lines: { node: ReactNode; fileIndex: number }[] = [
     { node: <span className="text-[#3f8f5e]">&gt; ls ./work</span>, fileIndex: -1 },
@@ -23,7 +26,7 @@ export function CrtScreen({
   ];
 
   return (
-    <div className="crt-term relative" style={{ width: 387 }}>
+    <div className="crt-term relative" style={{ width }}>
       <div className="pt-4 text-[15px]">
         {lines.map((line, i) => (
           <div
