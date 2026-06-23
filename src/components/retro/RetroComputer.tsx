@@ -68,7 +68,7 @@ export function RetroComputer({ items }: { items: FileItem[] }) {
       {intro && <IntroOverlay onDone={() => setIntro(false)} />}
 
       <div
-        className="relative transition-transform duration-1150ms ease-[cubic-bezier(.7,0,.18,1)]"
+        className="relative transition-transform duration-1150 ease-[cubic-bezier(.7,0,.18,1)]"
         style={{ width: "max(100vw, calc(100vh * 1536 / 1024))", aspectRatio: IMAGE_ASPECT, transformOrigin: `${ZOOM.originX}% ${ZOOM.originY}%`, ...zoomStyle }}
       >
         <Image src="/retro/machine.png" alt="A vintage micro-computer on a plinth" fill priority sizes="100vw" className="object-cover select-none" />
