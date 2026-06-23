@@ -19,9 +19,11 @@ export function WarpProvider({ children }: { children: ReactNode }) {
   const rafRef = useRef(0);
 
   const play = useCallback((href: string) => {
-    if (reduce) { router.push(href); return; }
+    // external links can't be handled by the client router — full-page navigate instead
+    const go = /^https?:\/\//.test(href) ? () => { window.location.href = href; } : () => router.push(href);
+    if (reduce) { go(); return; }
     const canvas = canvasRef.current; const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) { router.push(href); return; }
+    if (!canvas || !ctx) { go(); return; }
     setActive(true);
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const W = (canvas.width = Math.floor(innerWidth * dpr));
@@ -47,7 +49,7 @@ export function WarpProvider({ children }: { children: ReactNode }) {
         ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(sx, sy); ctx.stroke();
       }
       ctx.globalCompositeOperation = "source-over";
-      if (!pushed && t > 0.62) { pushed = true; router.push(href); } // cover moment
+      if (!pushed && t > 0.62) { pushed = true; go(); } // cover moment
       if (t < 1) rafRef.current = requestAnimationFrame(frame);
       else { ctx.clearRect(0, 0, W, H); setActive(false); }
     };

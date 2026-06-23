@@ -18,7 +18,7 @@ const publicFileExists = (p: string) => existsSync(join(PUBLIC, p.replace(/^\//,
 describe("project data", () => {
   it("has at least the four expected projects", () => {
     const slugs = projects.map((p) => p.slug);
-    expect(slugs).toEqual(expect.arrayContaining(["parahealth", "claruss", "wedding", "grocery"]));
+    expect(slugs).toEqual(expect.arrayContaining(["parahealth", "claruss", "cartlords"]));
   });
 
   it("has unique slugs", () => {
@@ -39,7 +39,8 @@ describe("project data", () => {
       expect(p.outcomes.length).toBeGreaterThan(0);
       expect(p.problem.length).toBeGreaterThan(0);
       expect(p.whatIBuilt.length).toBeGreaterThan(0);
-      expect(p.screenshots.length).toBeGreaterThan(0);
+      // gallery needs at least one medium — screenshots, a video, or both
+      expect(p.screenshots.length > 0 || Boolean(p.video), `${p.slug}: no gallery media`).toBe(true);
     }
   });
 
@@ -52,7 +53,7 @@ describe("project data", () => {
   });
 
   it("every image has alt text, positive dimensions, and an existing file", () => {
-    const imgs = projects.flatMap((p) => [p.cover, ...p.screenshots]);
+    const imgs = projects.flatMap((p) => [p.cover, ...p.screenshots, ...(p.marketingSite ? [p.marketingSite.image] : [])]);
     imgs.push(site.about.portrait);
     for (const img of imgs) {
       expect(img.alt.trim(), JSON.stringify(img)).not.toBe("");
@@ -62,12 +63,13 @@ describe("project data", () => {
     }
   });
 
-  it("video sources (when present) point at existing files", () => {
+  it("video media (when present) has a self-hosted file or an embed URL", () => {
     for (const p of projects) {
-      if (p.video) {
-        expect(publicFileExists(p.video.src), `missing video: ${p.video.src}`).toBe(true);
-        if (p.video.poster) expect(publicFileExists(p.video.poster)).toBe(true);
-      }
+      if (!p.video) continue;
+      expect(p.video.src ?? p.video.embed, `${p.slug}: video needs src or embed`).toBeTruthy();
+      if (p.video.src) expect(publicFileExists(p.video.src), `missing video: ${p.video.src}`).toBe(true);
+      if (p.video.embed) expect(isAbsoluteUrl(p.video.embed), `bad embed: ${p.video.embed}`).toBe(true);
+      if (p.video.poster) expect(publicFileExists(p.video.poster)).toBe(true);
     }
   });
 });

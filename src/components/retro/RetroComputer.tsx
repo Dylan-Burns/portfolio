@@ -7,12 +7,14 @@ import { CrtScreen } from "./CrtScreen";
 import { IntroOverlay } from "./IntroOverlay";
 import { Legend } from "./Legend";
 import { TransitionLink } from "./TransitionLink";
+import { ScrambleText } from "./ScrambleText";
 import { useWarp } from "./WarpOverlay";
 import type { FileItem } from "@/content/file-items";
 
-export function RetroComputer({ items }: { items: FileItem[] }) {
-  const [intro, setIntro] = useState(true);
-  const [zoomed, setZoomed] = useState(false);
+export function RetroComputer({ items, initialZoom = false }: { items: FileItem[]; initialZoom?: boolean }) {
+  // deep-linked from a work page (/?view=files): skip the intro and land already zoomed into the file list
+  const [intro, setIntro] = useState(!initialZoom);
+  const [zoomed, setZoomed] = useState(initialZoom);
   const [sel, setSel] = useState(0);
   const crtRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<HTMLDivElement>(null);
@@ -32,15 +34,22 @@ export function RetroComputer({ items }: { items: FileItem[] }) {
   }, []);
   useEffect(() => { fitTerm(); addEventListener("resize", fitTerm); return () => removeEventListener("resize", fitTerm); }, [fitTerm]);
 
+  // after a deep-link (/?view=files) lands us zoomed, strip the query so the URL is clean and a later
+  // fresh visit / reload of "/" plays the intro again instead of being stuck skipping it
+  useEffect(() => {
+    if (initialZoom && window.location.search) window.history.replaceState(null, "", "/");
+  }, [initialZoom]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (intro) return; // intro handles its own Enter via overlay click/keyboard? keep simple: ignore
-      if (e.key === "Escape") { if (zoomed) setZoomed(false); return; }
-      if (!zoomed) { if (e.key === "Enter") { e.preventDefault(); setZoomed(true); } return; }
-      if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => (s + 1) % items.length); }
-      else if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => (s - 1 + items.length) % items.length); }
-      else if (e.key === "Enter") {
-        // if a CRT file link is focused, its native activation already triggers the warp
+      if (intro) return;
+      if (e.key === " ") { e.preventDefault(); setZoomed((z) => !z); return; } // Space toggles zoom in/out
+      // arrows navigate the file list whether zoomed in or not
+      if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => (s + 1) % items.length); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => (s - 1 + items.length) % items.length); return; }
+      if (!zoomed) return; // unzoomed: nothing else to do
+      if (e.key === "Enter") {
+        // zoomed: Enter opens the selected file. If a CRT link is focused, its native activation triggers the warp.
         if ((document.activeElement as HTMLElement | null)?.closest(".crt-file")) return;
         e.preventDefault();
         play(items[sel].href);
@@ -86,7 +95,10 @@ export function RetroComputer({ items }: { items: FileItem[] }) {
               renderItem={(it, i, selected) => (
                 <TransitionLink href={it.href} tabIndex={zoomed ? 0 : -1} data-crt-index={i}
                   className={`crt-file ${selected ? "sel" : ""}`} aria-label={`Open ${it.name}`}>
-                  <span className="pre">&gt;</span><span className="nm">{it.label}</span><span className="cmt">{it.comment}</span>
+                  {/* on each up/down the line you land on stays put while the others lottery-spin */}
+                  <span className="pre">&gt;</span>
+                  <span className="nm"><ScrambleText text={it.label} trigger={sel} active={!selected} /></span>
+                  <span className="cmt"><ScrambleText text={it.comment} trigger={sel} active={!selected} /></span>
                 </TransitionLink>
               )}
             />

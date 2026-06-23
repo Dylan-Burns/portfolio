@@ -34,7 +34,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         <ProjectHero project={project} />
         <Gallery project={project} />
         <BuildStory project={project} />
-        <ProjectPager prev={adj.prev} next={adj.next} />
       </MountIn>
     </main>
   );
