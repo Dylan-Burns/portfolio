@@ -76,7 +76,7 @@ export function RetroComputer({ items }: { items: FileItem[] }) {
           style={{ left: `${CUTOUT.left}%`, top: `${CUTOUT.top}%`, width: `${CUTOUT.width}%`, height: `${CUTOUT.height}%` }}
           onClick={() => !zoomed && setZoomed(true)}
         >
-          <div ref={termRef} className="absolute left-0 top-0 origin-top-left pl-[22px] pr-[46px] pt-[24px] pb-[16px]">
+          <div ref={termRef} className="absolute left-0 top-0 origin-top-left pl-[22px] pr-[80px] pt-[24px] pb-[16px]">
             <CrtScreen
               items={items}
               selected={sel}
