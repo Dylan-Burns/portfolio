@@ -94,7 +94,9 @@ export function RetroComputer({ items }: { items: FileItem[] }) {
         </div>
       </div>
 
-      {!intro && <Legend zoomed={zoomed} />}
+      {/* always mounted (hidden behind the intro overlay) so it's revealed in sync with the
+          machine as the intro dissolves, instead of popping in after */}
+      <Legend zoomed={zoomed} />
     </main>
   );
 }
