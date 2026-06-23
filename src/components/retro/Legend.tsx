@@ -25,7 +25,8 @@ export function Legend({ zoomed }: { zoomed: boolean }) {
         <span
           key={it.label}
           className="inline-flex items-center gap-2"
-          style={zoomed ? { animation: `legendfade .5s ease ${0.1 + i * 0.14}s both` } : undefined}
+          // zoomed: stagger in; un-zoomed: wait ~0.5s so it doesn't overlap the machine mid zoom-out
+          style={{ animation: zoomed ? `legendfade .5s ease ${0.1 + i * 0.14}s both` : "legendfade .45s ease .5s both" }}
         >
           {it.keys.map((k, j) => (
             <Fragment key={k}>
