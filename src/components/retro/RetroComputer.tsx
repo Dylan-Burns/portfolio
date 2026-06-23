@@ -18,12 +18,16 @@ export function RetroComputer({ items }: { items: FileItem[] }) {
   const termRef = useRef<HTMLDivElement>(null);
   const { play } = useWarp();
 
-  // scale the fixed-width terminal to fit the cutout (unzoomed)
+  // Scale the fixed-width terminal to fit the cutout. Use offsetWidth (layout width),
+  // NOT getBoundingClientRect (which includes the live zoom transform) — otherwise a
+  // measurement taken mid zoom-out locks in a too-big scale and the screen never resets.
+  // The term is a child of the zoom wrapper, so it scales with the wrapper automatically;
+  // this scale is the constant unzoomed fit and is correct at every zoom level.
   const fitTerm = useCallback(() => {
     const crt = crtRef.current, term = termRef.current;
     if (!crt || !term) return;
-    if (!zoomed) term.style.transform = `scale(${crt.getBoundingClientRect().width / TERM_LOGICAL_WIDTH})`;
-  }, [zoomed]);
+    term.style.transform = `scale(${crt.offsetWidth / TERM_LOGICAL_WIDTH})`;
+  }, []);
   useEffect(() => { fitTerm(); addEventListener("resize", fitTerm); return () => removeEventListener("resize", fitTerm); }, [fitTerm]);
 
   useEffect(() => {
@@ -72,7 +76,7 @@ export function RetroComputer({ items }: { items: FileItem[] }) {
           style={{ left: `${CUTOUT.left}%`, top: `${CUTOUT.top}%`, width: `${CUTOUT.width}%`, height: `${CUTOUT.height}%` }}
           onClick={() => !zoomed && setZoomed(true)}
         >
-          <div ref={termRef} className="absolute left-0 top-0 origin-top-left p-[26px_26px_18px]">
+          <div ref={termRef} className="absolute left-0 top-0 origin-top-left pl-[22px] pr-[46px] pt-[24px] pb-[16px]">
             <CrtScreen
               items={items}
               selected={sel}
