@@ -23,7 +23,7 @@ export function CrtScreen({
   ];
 
   return (
-    <div className="crt-term relative" style={{ width: 580 }}>
+    <div className="crt-term relative" style={{ width: 387 }}>
       <div className="pt-4 text-[15px]">
         {lines.map((line, i) => (
           <div

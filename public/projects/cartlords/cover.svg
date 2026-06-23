@@ -3,6 +3,6 @@
     <stop offset="0" stop-color="#0d1a14"/><stop offset="1" stop-color="#07070d"/>
   </linearGradient></defs>
   <rect width="1600" height="1000" fill="url(#g)"/>
-  <text x="800" y="500" fill="#9aa0c8" font-family="sans-serif" font-size="53" text-anchor="middle">Grocery tracker — cover</text>
+  <text x="800" y="500" fill="#9aa0c8" font-family="sans-serif" font-size="53" text-anchor="middle">Cartlords — cover</text>
   <text x="800" y="566" fill="#5a6093" font-family="sans-serif" font-size="33" text-anchor="middle">placeholder — replace before launch</text>
 </svg>

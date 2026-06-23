@@ -12,7 +12,12 @@ export function ActionButtons({ links }: { links: ProjectLinks }) {
       )}
       {links.live && (
         <Button href={links.live} external variant={links.app ? "secondary" : "primary"}>
-          {links.app ? "Marketing site" : "App Site"}
+          {links.app || links.docs ? "Marketing site" : "App Site"}
+        </Button>
+      )}
+      {links.docs && (
+        <Button href={links.docs} external variant="secondary">
+          Read the docs
         </Button>
       )}
       {links.demo && (

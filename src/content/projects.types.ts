@@ -1,6 +1,7 @@
 export type ProjectCategory =
   | "Healthcare · AI"
   | "iOS · Consumer"
+  | "Web · Consumer"
   | "Web · Personal"
   | "Web · Side project";
 
@@ -13,6 +14,8 @@ export interface ProjectLinks {
   appStore?: string;
   /** Public source repository, if any. */
   source?: string;
+  /** Technical docs / "learn more" page, rendered as a "Read the docs" button. */
+  docs?: string;
   /** Optional interactive/sandbox demo (e.g. Parahealth, added later). */
   demo?: string;
 }
@@ -29,9 +32,11 @@ export interface ProjectImage {
 }
 
 export interface ProjectVideo {
-  /** Path under /public (mp4/webm). */
-  src: string;
-  /** Path under /public. */
+  /** Path under /public (mp4/webm) for a self-hosted clip. Mutually exclusive with `embed`. */
+  src?: string;
+  /** Embed URL (e.g. a Loom share) — rendered as an iframe instead of a self-hosted <video>. */
+  embed?: string;
+  /** Path under /public — poster frame for a self-hosted `src` clip (ignored for embeds). */
   poster?: string;
 }
 
@@ -57,10 +62,14 @@ export interface Project {
   screenshots: ProjectImage[];
   /** Optional looping muted clip. */
   video?: ProjectVideo;
+  /** Optional clickable marketing-site preview, shown in a browser window above/below the lead video. */
+  marketingSite?: { image: ProjectImage; href: string };
   /** Paragraphs, plain text. */
   problem: string[];
   /** Paragraphs, plain text. */
   whatIBuilt: string[];
+  /** Optional high-level architecture / "how it works" paragraphs. Section hidden when omitted. */
+  architecture?: string[];
   /** Tech chips (>= 1). */
   stack: string[];
   /** Bullets (>= 1). */

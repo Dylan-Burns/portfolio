@@ -6,7 +6,15 @@ import { test, expect } from "@playwright/test";
 // test option), so it must be set via contextOptions to stay type-safe.
 test.use({ contextOptions: { reducedMotion: "reduce" } });
 
-const SLUGS = ["parahealth", "claruss", "wedding", "grocery"];
+// Project pages that exist under /work (every project still renders a detail page,
+// even when its CRT file links straight off-site).
+const WORK_SLUGS = ["parahealth", "claruss", "cartlords"];
+// What each CRT file actually links to on the landing: some go off-site, some to /work.
+const LANDING_HREFS = [
+  "/work/parahealth",
+  "https://claruss.app",
+  "/work/cartlords",
+];
 
 test("landing renders the machine and project files (no console errors)", async ({ page }) => {
   const errors: string[] = [];
@@ -16,21 +24,22 @@ test("landing renders the machine and project files (no console errors)", async 
   await page.goto("/");
   // chassis image present (next/image encodes the src, so match by alt text, not path)
   await expect(page.getByRole("img", { name: /micro-computer/i })).toBeVisible();
-  for (const s of SLUGS) await expect(page.locator(`a[href="/work/${s}"]`)).toHaveCount(1);
+  for (const href of LANDING_HREFS) await expect(page.locator(`a[href="${href}"]`)).toHaveCount(1);
   await expect(page.locator('a[href="/resume"]')).toHaveCount(1);
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
 test("a project file navigates to its page", async ({ page }) => {
   await page.goto("/");
-  // reduced-motion → TransitionLink falls back to direct nav
-  await page.locator('a[href="/work/parahealth"]').click();
-  await expect(page).toHaveURL(/\/work\/parahealth$/);
+  // reduced-motion → TransitionLink falls back to direct nav. Use an internal file
+  // (cartlords) — parahealth/claruss now link off-site.
+  await page.locator('a[href="/work/cartlords"]').click();
+  await expect(page).toHaveURL(/\/work\/cartlords$/);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 });
 
 test("each project page renders with a launch action", async ({ page }) => {
-  for (const s of SLUGS) {
+  for (const s of WORK_SLUGS) {
     await page.goto(`/work/${s}`);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByRole("link", { name: /\bapp\b|site|store|launch|demo/i }).first()).toBeVisible();
