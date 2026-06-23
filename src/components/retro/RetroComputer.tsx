@@ -2,12 +2,13 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CUTOUT, IMAGE_ASPECT, ZOOM } from "./cutout";
+import { CUTOUT_LARGE, IMAGE_ASPECT_LARGE, ZOOM_LARGE, ZOOM_MOBILE } from "./cutout";
 import { CrtScreen } from "./CrtScreen";
 import { IntroOverlay } from "./IntroOverlay";
 import { Legend } from "./Legend";
 import { TransitionLink } from "./TransitionLink";
 import { ScrambleText } from "./ScrambleText";
+import { useIsMobile } from "./useIsMobile";
 import { useWarp } from "./WarpOverlay";
 import type { FileItem } from "@/content/file-items";
 
@@ -18,6 +19,7 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
   const [sel, setSel] = useState(0);
   const crtRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
   const { play } = useWarp();
 
   // Scale the fixed-width terminal to fit the cutout. Use offsetWidth (layout width),
@@ -47,9 +49,9 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
       // arrows navigate the file list whether zoomed in or not
       if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => (s + 1) % items.length); return; }
       if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => (s - 1 + items.length) % items.length); return; }
-      if (!zoomed) return; // unzoomed: nothing else to do
       if (e.key === "Enter") {
-        // zoomed: Enter opens the selected file. If a CRT link is focused, its native activation triggers the warp.
+        // Enter opens the selected file whether zoomed in or out. When zoomed and a CRT
+        // link is focused, let its native activation trigger the warp instead.
         if ((document.activeElement as HTMLElement | null)?.closest(".crt-file")) return;
         e.preventDefault();
         play(items[sel].href);
@@ -65,9 +67,19 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
     (document.querySelector(`[data-crt-index="${sel}"]`) as HTMLElement | null)?.focus();
   }, [zoomed, sel]);
 
+  // Phones show the full portrait photo, then tap to dive into the computer; desktop uses space.
+  const zw = isMobile ? ZOOM_MOBILE : ZOOM_LARGE;
   const zoomStyle = zoomed
-    ? { transform: `translate(${ZOOM.translateX}%, ${ZOOM.translateY}%) scale(${ZOOM.scale})` }
+    ? { transform: `translate(${zw.translateX}%, ${zw.translateY}%) scale(${zw.scale})` }
     : undefined;
+
+  // Touch: tap the machine to zoom in; when zoomed, tap a file to open or tap elsewhere to back out.
+  const onTapMachine = (e: React.MouseEvent) => {
+    if (!isMobile) return;
+    if (!zoomed) { setZoomed(true); return; }
+    if ((e.target as HTMLElement).closest(".crt-file")) return; // file tap → let the link open
+    setZoomed(false);
+  };
 
   return (
     <main
@@ -77,15 +89,18 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
       {intro && <IntroOverlay onDone={() => setIntro(false)} />}
 
       <div
-        className="relative transition-transform duration-1150 ease-[cubic-bezier(.7,0,.18,1)]"
-        style={{ width: "max(100vw, calc(100vh * 1536 / 1024))", aspectRatio: IMAGE_ASPECT, transformOrigin: `${ZOOM.originX}% ${ZOOM.originY}%`, ...zoomStyle }}
+        onClick={onTapMachine}
+        className="machine-frame relative shrink-0 transition-transform duration-1150 ease-[cubic-bezier(.7,0,.18,1)]"
+        style={{ width: "max(100vw, calc(100vh * 1672 / 941))", aspectRatio: IMAGE_ASPECT_LARGE, transformOrigin: `${zw.originX}% ${zw.originY}%`, ...zoomStyle }}
       >
-        <Image src="/retro/machine.png" alt="A vintage micro-computer on a plinth" fill priority sizes="100vw" className="object-cover select-none" />
+        {/* wide room photo on desktop (whole room shown un-zoomed), portrait photo on phones — CSS picks one per breakpoint */}
+        <Image src="/retro/machineLarge.png" alt="A vintage micro-computer alone in a gallery room" fill priority sizes="100vw" className="hidden object-cover select-none md:block" />
+        <Image src="/retro/machineMobile.png" alt="A vintage micro-computer on a plinth" fill priority sizes="100vw" className="object-cover select-none md:hidden" />
         <div
           ref={crtRef}
-          className="crt-glass absolute cursor-pointer overflow-hidden rounded-[14px/11px] bg-[#020402]"
-          style={{ left: `${CUTOUT.left}%`, top: `${CUTOUT.top}%`, width: `${CUTOUT.width}%`, height: `${CUTOUT.height}%` }}
-          onClick={() => !zoomed && setZoomed(true)}
+          className="crt-glass absolute cursor-pointer overflow-hidden rounded-[4px/4px] bg-[#020402]"
+          style={{ left: `${CUTOUT_LARGE.left}%`, top: `${CUTOUT_LARGE.top}%`, width: `${CUTOUT_LARGE.width}%`, height: `${CUTOUT_LARGE.height}%` }}
+          onClick={() => { if (!isMobile && !zoomed) setZoomed(true); }}
         >
           <div ref={termRef} className="absolute left-0 top-0 origin-top-left p-[12px]">
             <CrtScreen
@@ -94,7 +109,7 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
               onHover={(i) => zoomed && setSel(i)}
               renderItem={(it, i, selected) => (
                 <TransitionLink href={it.href} tabIndex={zoomed ? 0 : -1} data-crt-index={i}
-                  className={`crt-file ${selected ? "sel" : ""}`} aria-label={`Open ${it.name}`}>
+                  className={`crt-file ${selected ? "sel" : ""} ${zoomed ? "" : "pointer-events-none"}`} aria-label={`Open ${it.name}`}>
                   {/* on each up/down the line you land on stays put while the others lottery-spin */}
                   <span className="pre">&gt;</span>
                   <span className="nm"><ScrambleText text={it.label} trigger={sel} active={!selected} /></span>
@@ -108,7 +123,7 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
 
       {/* always mounted (hidden behind the intro overlay) so it's revealed in sync with the
           machine as the intro dissolves, instead of popping in after */}
-      <Legend zoomed={zoomed} />
+      <Legend zoomed={zoomed} mobile={isMobile} />
     </main>
   );
 }

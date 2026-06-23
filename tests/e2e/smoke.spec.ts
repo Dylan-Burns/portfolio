@@ -6,15 +6,10 @@ import { test, expect } from "@playwright/test";
 // test option), so it must be set via contextOptions to stay type-safe.
 test.use({ contextOptions: { reducedMotion: "reduce" } });
 
-// Project pages that exist under /work (every project still renders a detail page,
-// even when its CRT file links straight off-site).
+// Project pages that exist under /work — every project renders a detail page.
 const WORK_SLUGS = ["parahealth", "claruss", "cartlords"];
-// What each CRT file actually links to on the landing: some go off-site, some to /work.
-const LANDING_HREFS = [
-  "/work/parahealth",
-  "https://claruss.app",
-  "/work/cartlords",
-];
+// Every CRT project file links to its own /work case study (label is the bare domain).
+const LANDING_HREFS = WORK_SLUGS.map((s) => `/work/${s}`);
 
 test("landing renders the machine and project files (no console errors)", async ({ page }) => {
   const errors: string[] = [];
@@ -31,8 +26,7 @@ test("landing renders the machine and project files (no console errors)", async 
 
 test("a project file navigates to its page", async ({ page }) => {
   await page.goto("/");
-  // reduced-motion → TransitionLink falls back to direct nav. Use an internal file
-  // (cartlords) — parahealth/claruss now link off-site.
+  // reduced-motion → TransitionLink falls back to direct nav.
   await page.locator('a[href="/work/cartlords"]').click();
   await expect(page).toHaveURL(/\/work\/cartlords$/);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

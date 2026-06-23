@@ -8,8 +8,13 @@ export type FileItem = {
 };
 
 /** Slugs whose CRT line item links straight to an external site instead of /work/<slug>. */
-const EXTERNAL_HREFS: Record<string, string> = {
-  claruss: "https://claruss.app",
+const EXTERNAL_HREFS: Record<string, string> = {};
+
+/** Override the filename shown on the CRT for an internal project (default is `<slug>.tsx`). */
+const LABEL_OVERRIDES: Record<string, string> = {
+  parahealth: "parahealth.ai",
+  claruss: "claruss.app",
+  cartlords: "cartlords.com",
 };
 
 /** Build a CRT line item that links straight to an external site (label = its domain). */
@@ -37,7 +42,7 @@ export function toFileItems(projects: Project[]): FileItem[] {
     projectFiles.push(
       external
         ? externalItem(p.name, external, shortTag(p.category))
-        : { name: p.name, label: `${p.slug}.tsx`, comment: shortTag(p.category), href: `/work/${p.slug}` },
+        : { name: p.name, label: LABEL_OVERRIDES[p.slug] ?? `${p.slug}.tsx`, comment: shortTag(p.category), href: `/work/${p.slug}` },
     );
     // drop in any standalone external links that sit after this project
     for (const s of STANDALONE_EXTERNAL) if (s.afterSlug === p.slug) projectFiles.push(s.item);

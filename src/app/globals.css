@@ -104,6 +104,25 @@
 /* ===== burnsOS retro landing ===== */
 @keyframes legendfade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
+/* Phones use the portrait photo (machineMobile.png): size the wrapper to cover the portrait
+   viewport (full image shown un-zoomed), and place the live terminal over its CRT. The tap-to-zoom
+   framing itself is applied from JS so it animates on tap. */
+@media (max-width: 767px) {
+  .machine-frame {
+    width: auto !important;
+    height: max(100vh, calc(100vw * 1672 / 941)) !important;
+    aspect-ratio: 941 / 1672 !important;
+  }
+  .machine-frame .crt-glass {
+    left: 42.7% !important;
+    top: 46.9% !important;
+    width: 10.5% !important;
+    height: 5% !important;
+  }
+  /* the narrow portrait CRT can't fit the trailing comment tag — hide it so the filename isn't clipped */
+  .crt-file .cmt { display: none !important; }
+}
+
 .hcaret { display:inline-block; width:9px; height:1em; margin-left:2px; transform:translateY(2px); background:#1a1a1a; animation:blink 1s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 

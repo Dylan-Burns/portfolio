@@ -84,14 +84,13 @@ export const projects: Project[] = [
       "And most blockers are trivially defeated — one tap to “ignore for today” and the willpower tax lands right back on you.",
     ],
     whatIBuilt: [
-      "A native app for iPhone — with Apple Silicon Mac and Vision Pro support — built on Apple's Screen Time / Family Controls APIs: pick the apps and Safari sites to block, set a recurring schedule, and let the system enforce it.",
+      "A native iPhone app built on Apple's Screen Time / Family Controls APIs: pick the apps and Safari sites to block, set a recurring schedule, and let the system enforce it.",
       "Designed the friction to be adjustable rather than absolute — Hardcore mode locks rules in place during a cooldown window, Lockdown mode flips to an allow-list, and an accountability partner can sign off on early unlocks. When you truly need out, a one-time passcode is delivered by email or SMS.",
       "Shipped to the App Store solo — product, design, and engineering — with a 14-day Pro trial that doesn't ask for a card, and iterated from real usage. The app collects no user data.",
     ],
-    stack: ["Swift", "SwiftUI", "Screen Time API (Family Controls)", "iOS / macOS / visionOS"],
+    stack: ["Swift", "SwiftUI", "Screen Time API (Family Controls)", "iOS", "Railway", "Postgres", "Redis", "Resend"],
     outcomes: [
       "Live on the App Store — free, with a Claruss Pro subscription ($4.99/mo or $29.99/yr).",
-      "Runs on iPhone, plus Apple Silicon Macs and Apple Vision Pro.",
       "Designed, built, and shipped solo.",
     ],
   },

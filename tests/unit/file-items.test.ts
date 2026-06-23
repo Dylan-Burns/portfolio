@@ -20,16 +20,17 @@ describe("toFileItems", () => {
     expect(Math.max(...indices)).toBeLessThan(items.length - 1); // all sit before the resume
   });
 
-  it("internal projects link to /work/<slug> and show <slug>.tsx", () => {
-    const para = items.find((i) => i.name === "Parahealth")!;
-    expect(para.href).toBe("/work/parahealth");
-    expect(para.label).toBe("parahealth.tsx");
-  });
-
-  it("external projects link off-site and show their bare domain as the label", () => {
-    const claruss = items.find((i) => i.name === "Claruss")!;
-    expect(claruss.href).toBe("https://claruss.app");
-    expect(claruss.label).toBe("claruss.app");
+  it("applies domain filename overrides while keeping every project linked to its /work page", () => {
+    const cases = [
+      { name: "Parahealth", href: "/work/parahealth", label: "parahealth.ai" },
+      { name: "Claruss", href: "/work/claruss", label: "claruss.app" },
+      { name: "Cartlords", href: "/work/cartlords", label: "cartlords.com" },
+    ];
+    for (const c of cases) {
+      const item = items.find((i) => i.name === c.name)!;
+      expect(item.href).toBe(c.href);
+      expect(item.label).toBe(c.label);
+    }
   });
 
   it("uses a short single-segment category comment", () => {

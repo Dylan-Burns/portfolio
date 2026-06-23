@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { BackHome } from "@/components/project/BackHome";
 
 export default function NotFound() {
   return (
@@ -16,12 +16,7 @@ export default function NotFound() {
       <p className="mt-4 text-[var(--color-fg-muted)]">Maybe the project moved, or the link was mistyped.</p>
       <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
         <Button href="/">See the work →</Button>
-        <Link
-          href="/"
-          className="font-[family-name:var(--font-mono)] text-xs text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)]"
-        >
-          ← work
-        </Link>
+        <BackHome />
       </div>
     </main>
   );
