@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import { BrowserFrame } from "./BrowserFrame";
 import { PhoneFrame } from "./PhoneFrame";
+import { ProjectFeatureTour } from "./FeatureTour";
 import { Reveal } from "@/components/motion/Reveal";
 import { Section } from "@/components/ui/Section";
 import type { Project } from "@/content/projects.types";
@@ -96,13 +97,19 @@ export function Gallery({ project }: { project: Project }) {
             </figure>
           </Reveal>
         )}
-        {project.screenshots.map((s) => (
-          <Reveal key={s.src}>
-            <Framed frame={project.frame} url={url}>
-              <Image src={s.src} alt={s.alt} width={s.width} height={s.height} className="block h-auto w-full" />
-            </Framed>
+        {project.tour?.length ? (
+          <Reveal>
+            <ProjectFeatureTour project={project} url={url} />
           </Reveal>
-        ))}
+        ) : (
+          project.screenshots.map((s) => (
+            <Reveal key={s.src}>
+              <Framed frame={project.frame} url={url}>
+                <Image src={s.src} alt={s.alt} width={s.width} height={s.height} className="block h-auto w-full" />
+              </Framed>
+            </Reveal>
+          ))
+        )}
       </div>
     </Section>
   );

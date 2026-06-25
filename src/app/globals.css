@@ -133,8 +133,103 @@
 .crt-glass::after  { content:""; position:absolute; inset:0; z-index:6; pointer-events:none; background:radial-gradient(130% 130% at 50% 50%, transparent 60%, rgba(0,0,0,.6) 100%); }
 /* single-line height so each file aligns with its gutter number; horizontal bleed for the hover bg */
 .crt-file { display:flex; gap:14px; padding:0 12px; margin:0 -12px; border-radius:6px; color:#5fcf86; text-decoration:none; }
+/* trailing // comments flush to the right edge, so the tags align as a right-hand column */
 .crt-file .nm { color:#a6ffcb; } .crt-file .cmt { margin-left:auto; color:#3f8f5e; }
 /* the green .sel highlight is the focus indicator on the CRT — drop the accent focus ring */
 .crt-file:focus, .crt-file:focus-visible { outline: none; }
 .crt-file.sel { background:rgba(100,240,160,.14); color:#c9ffe0; }
 .crt-file.sel .pre { color:#a6ffcb; } .crt-file .pre { width:1ch; color:#2c6b45; }
+/* folder / game / back rows are <button>s — strip native chrome so they match the link rows.
+   Anchors auto-stretch to absorb .crt-file's `margin:0 -12px`; buttons don't, so size to
+   100% + that 24px of bleed — otherwise the right-aligned // comment lands 24px short. */
+button.crt-file { -webkit-appearance:none; appearance:none; border:0; background:none; font:inherit; cursor:pointer; width:calc(100% + 24px); text-align:left; }
+
+/* CRT power: the terminal content is dark while the screen is "off" (zoomed out),
+   then turns on with a classic tube power-on once fully zoomed in. */
+/* fades out fast so it vanishes under the shutdown flash (before the beam pinches to a
+   line and would otherwise reveal the half-faded text); fade-in is driven by crt-warmup */
+.crt-content { transition: opacity .05s linear; }
+.crt-content.off { opacity: 0; }
+.crt-content.on { opacity: 1; }
+/* As the flash clears, the phosphor ignites: a bright, slightly-soft surge that
+   sharpens and stutters down to its resting glow (not just a plain opacity flicker). */
+.crt-content.flicker { animation: crt-warmup .72s ease-out both; }
+@keyframes crt-warmup {
+  0%, 38% { opacity: 0; filter: brightness(2.6) blur(.6px); }
+  44% { opacity: 1; filter: brightness(2.3) blur(.5px); }   /* ignites bright + soft */
+  52% { opacity: .45; filter: brightness(1.7) blur(.2px); } /* stutter */
+  60% { opacity: 1; filter: brightness(1.6) blur(.1px); }
+  74% { opacity: .82; filter: brightness(1.25); }
+  100% { opacity: 1; filter: brightness(1) blur(0); }       /* settles to resting glow */
+}
+
+/* The electron beam: a hot-centred bar that sparks in, snaps to a scanline, blooms
+   open with an overshoot, then fades — and on shutdown collapses to a lingering dot. */
+.crt-power {
+  position: absolute; inset: 0; z-index: 8; pointer-events: none;
+  transform-origin: center center; will-change: transform, opacity;
+  /* radial so the collapsed line/dot glows hottest at the centre, dimmer at the edges */
+  background: radial-gradient(125% 75% at 50% 50%, #f6fffb 0%, #ddf7ea 42%, #c2ead7 100%);
+  box-shadow: 0 0 26px 7px rgba(190,255,222,.6);
+}
+.crt-power.on  { animation: crt-on .6s cubic-bezier(.2,.7,.2,1) both; }
+.crt-power.off { animation: crt-off .46s cubic-bezier(.5,0,.3,1) both; }
+/* power ON: spark → scanline snaps full width → warm-up stutter → bloom (overshoot) → fade */
+@keyframes crt-on {
+  0%   { opacity: 0;  transform: scaleX(.16) scaleY(.02); }
+  7%   { opacity: 1;  transform: scaleX(.55) scaleY(.02); }  /* spark */
+  16%  { opacity: .9; transform: scaleX(1)   scaleY(.02); }  /* line snaps across */
+  22%  { opacity: 1;  transform: scaleX(1)   scaleY(.02); }  /* warm-up flicker... */
+  28%  { opacity: .72;transform: scaleX(1)   scaleY(.02); }
+  34%  { opacity: 1;  transform: scaleX(1)   scaleY(.02); }
+  58%  { opacity: 1;  transform: scaleX(1)   scaleY(1.05); } /* bloom open + overshoot */
+  70%  { opacity: .92;transform: scaleX(1)   scaleY(.98); }  /* settle */
+  100% { opacity: 0;  transform: scaleX(1)   scaleY(1); }    /* flash fades → content */
+}
+/* power OFF: the picture implodes to a hot line, the line whips inward to a single
+   point, the point pops once (afterglow flare), then fades to black. */
+@keyframes crt-off {
+  0%   { opacity: 1; transform: scaleX(1)    scaleY(1); }
+  15%  { opacity: 1; transform: scaleX(1.01) scaleY(.014); } /* fast vertical implode → hot line */
+  42%  { opacity: 1; transform: scaleX(1)    scaleY(.014); } /* line streaks full-width */
+  75%  { opacity: 1; transform: scaleX(.025) scaleY(.03); }  /* whips inward to a single point */
+  85%  { opacity: 1; transform: scaleX(.14)  scaleY(.13); }  /* the point pops (afterglow flare) */
+  100% { opacity: 0; transform: scaleX(.02)  scaleY(.02); }  /* and fades to black */
+}
+
+/* A single bright band that rolls down once as the picture stabilises (vertical-hold settle). */
+.crt-roll {
+  position: absolute; left: 0; right: 0; height: 36%; z-index: 7; pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, rgba(176,255,214,.16) 50%, transparent 100%);
+  opacity: 0; will-change: transform, opacity;
+}
+.crt-roll.on { animation: crt-roll .85s ease-out .3s both; }
+@keyframes crt-roll {
+  0%   { opacity: 0;   transform: translateY(-130%); }
+  18%  { opacity: .9; }
+  100% { opacity: 0;   transform: translateY(320%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crt-content.flicker { animation: none; }
+  .crt-power.on, .crt-power.off, .crt-roll.on { animation: none; opacity: 0; }
+  .game-in { animation: none; }
+}
+
+/* Reusable CRT screen texture (scanlines + vignette) for surfaces other than the main
+   glass — e.g. the games overlay, which lives outside the machine's zoom transform. */
+.crt-screen-fx::before { content:""; position:absolute; inset:0; z-index:5; pointer-events:none; background:repeating-linear-gradient(rgba(0,0,0,0) 0 2px, rgba(0,0,0,.22) 2px 3px); }
+.crt-screen-fx::after  { content:""; position:absolute; inset:0; z-index:6; pointer-events:none; background:radial-gradient(130% 130% at 50% 50%, transparent 60%, rgba(0,0,0,.6) 100%); }
+
+/* Terminal-styled buttons used in the games chrome (status line + pause/over overlays). */
+.crt-btn {
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:12px; line-height:1;
+  color:#7bf0a6; background:transparent; border:1px solid rgba(100,240,160,.35);
+  border-radius:4px; padding:4px 9px; cursor:pointer; text-shadow:0 0 5px rgba(100,240,160,.5);
+  transition:background .12s, border-color .12s;
+}
+.crt-btn:hover, .crt-btn:focus-visible { background:rgba(100,240,160,.14); border-color:#7bf0a6; outline:none; }
+
+/* a game overlay fades in instead of hard-cutting over the terminal */
+.game-in { animation: gamein .22s ease-out both; }
+@keyframes gamein { from { opacity: 0; } to { opacity: 1; } }

@@ -1,28 +1,34 @@
 "use client";
 
-import type { FileItem } from "@/content/file-items";
 import type { ReactNode } from "react";
 
 /**
- * Green CRT terminal: a title bar, then line-numbered rows. Each row is one flex line
- * (number cell + content cell sharing the same line-height) so the gutter numbers always
- * line up with their content. Lines: `> ls ./work`, a blank line, then one file per item.
+ * Green CRT terminal: a title bar (`> ls <path>`), a blank line, then line-numbered rows.
+ * Each row is one flex line (number cell + content cell sharing the same line-height) so the
+ * gutter numbers always line up with their content. Generic over the row item type so it can
+ * render project links, folders, games, or a `../` entry — the parent supplies `renderItem`.
  */
-export function CrtScreen({
-  items, selected, onHover, renderItem, width = 387,
+export function CrtScreen<T>({
+  items,
+  selected,
+  onHover,
+  renderItem,
+  path = "./work",
+  width = 387,
 }: {
-  items: FileItem[];
+  items: T[];
   selected: number;
   onHover: (i: number) => void;
-  renderItem: (item: FileItem, i: number, selected: boolean) => ReactNode; // parent wraps in TransitionLink
+  renderItem: (item: T, i: number, selected: boolean) => ReactNode;
+  path?: string;
   // authored terminal width the parent scales to fit the glass; narrower on mobile (comment column
   // hidden) so the filenames fill the screen instead of leaving dead space on the right
   width?: number;
 }) {
-  const lines: { node: ReactNode; fileIndex: number }[] = [
-    { node: <span className="text-[#3f8f5e]">&gt; ls ./work</span>, fileIndex: -1 },
-    { node: <span>&nbsp;</span>, fileIndex: -1 },
-    ...items.map((it, i) => ({ node: renderItem(it, i, i === selected), fileIndex: i })),
+  const lines: { node: ReactNode; itemIndex: number }[] = [
+    { node: <span className="text-[#3f8f5e]">&gt; ls {path}</span>, itemIndex: -1 },
+    { node: <span>&nbsp;</span>, itemIndex: -1 },
+    ...items.map((it, i) => ({ node: renderItem(it, i, i === selected), itemIndex: i })),
   ];
 
   return (
@@ -32,7 +38,7 @@ export function CrtScreen({
           <div
             key={i}
             className="flex leading-loose"
-            onMouseEnter={line.fileIndex >= 0 ? () => onHover(line.fileIndex) : undefined}
+            onMouseEnter={line.itemIndex >= 0 ? () => onHover(line.itemIndex) : undefined}
           >
             <div className="w-[42px] shrink-0 border-r border-[rgba(100,240,160,.14)] px-3 text-right text-[#2c6b45]">
               {i + 1}

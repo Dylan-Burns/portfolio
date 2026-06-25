@@ -39,8 +39,17 @@ describe("project data", () => {
       expect(p.outcomes.length).toBeGreaterThan(0);
       expect(p.problem.length).toBeGreaterThan(0);
       expect(p.whatIBuilt.length).toBeGreaterThan(0);
-      // gallery needs at least one medium — screenshots, a video, or both
-      expect(p.screenshots.length > 0 || Boolean(p.video), `${p.slug}: no gallery media`).toBe(true);
+      // gallery needs at least one medium — screenshots, a feature tour, or a video
+      expect(
+        p.screenshots.length > 0 || Boolean(p.tour?.length) || Boolean(p.video),
+        `${p.slug}: no gallery media`,
+      ).toBe(true);
+      // a tour's tabs each need a title, a blurb, and at least one view
+      for (const f of p.tour ?? []) {
+        expect(f.title.trim(), `${p.slug}: tour tab missing title`).not.toBe("");
+        expect(f.blurb.trim(), `${p.slug}: ${f.title} missing blurb`).not.toBe("");
+        expect(f.views.length, `${p.slug}: ${f.title} has no views`).toBeGreaterThan(0);
+      }
     }
   });
 
@@ -53,7 +62,12 @@ describe("project data", () => {
   });
 
   it("every image has alt text, positive dimensions, and an existing file", () => {
-    const imgs = projects.flatMap((p) => [p.cover, ...p.screenshots, ...(p.marketingSite ? [p.marketingSite.image] : [])]);
+    const imgs = projects.flatMap((p) => [
+      p.cover,
+      ...p.screenshots,
+      ...(p.tour?.flatMap((f) => f.views) ?? []),
+      ...(p.marketingSite ? [p.marketingSite.image] : []),
+    ]);
     imgs.push(site.about.portrait);
     for (const img of imgs) {
       expect(img.alt.trim(), JSON.stringify(img)).not.toBe("");

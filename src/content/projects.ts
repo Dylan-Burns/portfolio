@@ -62,7 +62,7 @@ export const projects: Project[] = [
     tagline: "Clarity without compromise — a screen-time blocker that actually holds the line.",
     summary:
       "Claruss blocks the apps and websites you choose on a schedule you set — with real, system-level enforcement, not a polite suggestion. Hardcore and Lockdown modes raise the stakes, an accountability partner can approve early unlocks, and a one-time passcode arrives by email or SMS when you genuinely need out. Built around intention and gentle friction, not another guilt-trip chart.",
-    category: "iOS · Consumer",
+    category: "Wellness · iOS",
     role: "Developer",
     period: "2026 – now",
     frame: "phone",
@@ -71,13 +71,45 @@ export const projects: Project[] = [
       appStore: "https://apps.apple.com/us/app/claruss/id6756468602",
     },
     cover: { src: "/projects/claruss/cover.jpg", alt: "Claruss website", width: 1600, height: 1000 },
-    screenshots: [
-      { src: "/projects/claruss/shot-focus.png", alt: "Claruss — an active focus session counting down, with blocked apps and an Unlock button", width: 770, height: 1666 },
-      { src: "/projects/claruss/shot-rules.png", alt: "Claruss — active blocking rules (Deep Work, Bedtime) with schedules and blocked apps", width: 770, height: 1666 },
-      { src: "/projects/claruss/shot-templates.png", alt: "Claruss — starter rule templates: Bedtime, Deep Work, Morning Routine, School Hours", width: 770, height: 1666 },
-      { src: "/projects/claruss/shot-activity.png", alt: "Claruss — weekly screen-time breakdown by category and most-used apps", width: 770, height: 1666 },
-      { src: "/projects/claruss/shot-partner.png", alt: "Claruss — add an accountability partner who approves unlock requests", width: 770, height: 1666 },
-      { src: "/projects/claruss/shot-settings.png", alt: "Claruss — settings: subscription, unlock-code delivery, Hardcore and Lockdown modes", width: 770, height: 1666 },
+    screenshots: [],
+    // One iPhone you switch screens in — each tab is a screen of the app.
+    tour: [
+      {
+        title: "Focus",
+        blurb:
+          "An active focus session counting down, with the apps it's blocking and an Unlock button — real, system-level enforcement, not a polite nudge.",
+        views: [{ src: "/projects/claruss/shot-focus.png", alt: "Claruss — an active focus session counting down, with blocked apps and an Unlock button", width: 770, height: 1666 }],
+      },
+      {
+        title: "Rules",
+        blurb:
+          "Your blocking rules — Deep Work, Bedtime — each with its own recurring schedule and set of blocked apps, enforced automatically on its window.",
+        views: [{ src: "/projects/claruss/shot-rules.png", alt: "Claruss — active blocking rules (Deep Work, Bedtime) with schedules and blocked apps", width: 770, height: 1666 }],
+      },
+      {
+        title: "Templates",
+        blurb:
+          "One-tap starter rules — Bedtime, Deep Work, Morning Routine, School Hours — so a useful block is two taps away instead of a setup chore.",
+        views: [{ src: "/projects/claruss/shot-templates.png", alt: "Claruss — starter rule templates: Bedtime, Deep Work, Morning Routine, School Hours", width: 770, height: 1666 }],
+      },
+      {
+        title: "Activity",
+        blurb:
+          "A weekly screen-time breakdown by category and most-used apps — the insight a dashboard gives, without turning into another guilt-trip.",
+        views: [{ src: "/projects/claruss/shot-activity.png", alt: "Claruss — weekly screen-time breakdown by category and most-used apps", width: 770, height: 1666 }],
+      },
+      {
+        title: "Partner",
+        blurb:
+          "Add an accountability partner who has to approve early-unlock requests — turning willpower into a shared commitment.",
+        views: [{ src: "/projects/claruss/shot-partner.png", alt: "Claruss — add an accountability partner who approves unlock requests", width: 770, height: 1666 }],
+      },
+      {
+        title: "Settings",
+        blurb:
+          "Subscription, one-time-code delivery by email or SMS, and the stricter Hardcore and Lockdown enforcement modes.",
+        views: [{ src: "/projects/claruss/shot-settings.png", alt: "Claruss — settings: subscription, unlock-code delivery, Hardcore and Lockdown modes", width: 770, height: 1666 }],
+      },
     ],
     problem: [
       "Screen-time dashboards are guilt machines: lots of data, no behavior change. People want to use their phones more deliberately, not just feel bad about a number.",
@@ -124,7 +156,7 @@ export const projects: Project[] = [
     tagline: "Compare an entire grocery cart across every nearby store — and find the cheapest way to buy it.",
     summary:
       "Cartlords compares a whole grocery list across the stores near you using real, scraped prices, then finds the cheapest way to buy it, including splitting the cart across two or three stores. It shows the one thing grocery shopping never does: the full cross-store price picture for your actual list, normalized to a true per-unit cost so the comparison is honest. The live app is gated behind sign-in, so this case study leads with a walkthrough of the product.",
-    category: "Web · Consumer",
+    category: "Commerce · Web",
     role: "Full-stack",
     period: "2025 – now",
     frame: "browser",
@@ -165,6 +197,106 @@ export const projects: Project[] = [
       "Sidesteps per-retailer scraping by collecting from DoorDash's uniform store pages: one extraction path instead of a brittle scraper per chain.",
       "Normalizes inconsistent pricing (per-pound, estimated-weight, per-each, flat) to a true price-per-ounce, so savings reflect real product equivalents — backed by pricing-type classification, a ~500-item average-weight table, and token-plus-LLM product matching.",
       "Private beta, built by a small team over roughly eight months — currently gated behind sign-in with Southern California coverage.",
+    ],
+  },
+  {
+    slug: "steamhouse",
+    name: "Steamhouse",
+    tagline: "Precision cultivation management — design a nutrient feed program, then track every crop day-by-day against the plan.",
+    summary:
+      "Steamhouse is a multi-tenant platform for commercial growing operations — the system of record that replaces the spreadsheets, paper logs, and tribal knowledge most grows still run on. Teams author reusable week-by-week feed schedules (nutrient doses and target water chemistry per growth stage), attach them to a crop, then log a rich daily journal — actual pH/EC/PPM readings, feedings, climate, deviations, and photos — so the whole team works a successful grow off one source of truth. A chemistry engine even reverse-engineers a fertilizer's compound makeup from its label. It runs as a live, one-click demo seeded with a full operation's worth of data, so you can explore the whole app with zero setup.",
+    category: "AgTech · Platform",
+    role: "Full-stack",
+    period: "2025 – now",
+    frame: "browser",
+    links: {
+      live: "https://steamhouse.vercel.app/",
+    },
+    cover: { src: "/projects/steamhouse/cover.jpg", alt: "Steamhouse — precision cultivation management platform landing page", width: 1600, height: 1000 },
+    screenshots: [],
+    tour: [
+      {
+        title: "Crops",
+        blurb:
+          "Every active crop on one board — strain, growth stage, and start date — each opening a day-by-day journal of the readings, feedings, and climate logged against its prescribed plan.",
+        views: [
+          { src: "/projects/steamhouse/tour/crops-1-board.png", alt: "Steamhouse — My Crops board: active crops with growth-stage tags and a Journal button on each", width: 2000, height: 1117, caption: "Crop board" },
+          { src: "/projects/steamhouse/tour/crops-2-journal.png", alt: "Steamhouse — a crop's daily journal: per-day water source, climate, and pH/EC/PPM target-vs-recorded entries", width: 2000, height: 1116, caption: "Daily journal" },
+          { src: "/projects/steamhouse/tour/crops-3-new.png", alt: "Steamhouse — Start New Crop: name it, attach a feed schedule, set a start date, water source, and calendar color", width: 2000, height: 1117, caption: "Start a crop" },
+        ],
+      },
+      {
+        title: "Feed Schedules",
+        blurb:
+          "Reusable week-by-week feed programs: nutrient products and doses with target pH/EC/PPM per growth stage, charted across the grow — built in a guided multi-step editor, with commercial brand schedules to pull from.",
+        views: [
+          { src: "/projects/steamhouse/tour/sched-1-list.png", alt: "Steamhouse — Feeding Schedules list, each a reusable feed program for a crop type", width: 2000, height: 1115, caption: "My schedules" },
+          { src: "/projects/steamhouse/tour/sched-2-recipe.png", alt: "Steamhouse — a schedule's week-by-week recipe: products and doses per growth stage, target pH/EC/PPM, and a nutrient-curve chart", width: 2000, height: 1038, caption: "Week-by-week recipe" },
+          { src: "/projects/steamhouse/tour/sched-3-builder.png", alt: "Steamhouse — the multi-step schedule builder: pick products, set per-week amounts, and review across stages", width: 2000, height: 934, caption: "Schedule builder" },
+        ],
+      },
+      {
+        title: "Calendar",
+        blurb:
+          "Every crop's recurring cultivation tasks on one team calendar, color-coded by growth stage — switch between month and week views, assign and complete tasks, and track what's due, overdue, and done.",
+        views: [
+          { src: "/projects/steamhouse/tour/cal-1-month.png", alt: "Steamhouse — team calendar (month view): recurring tasks across every crop, color-coded by stage, beside a My Tasks panel", width: 2000, height: 1118, caption: "Month view" },
+          { src: "/projects/steamhouse/tour/cal-2-week.png", alt: "Steamhouse — calendar week view with per-day task lists and completion checkmarks", width: 2000, height: 1003, caption: "Week view" },
+          { src: "/projects/steamhouse/tour/cal-3-task.png", alt: "Steamhouse — Add Task: tie a task to a crop, set a date, recurrence, and assignee", width: 2000, height: 1116, caption: "Add a task" },
+        ],
+      },
+      {
+        title: "Products",
+        blurb:
+          "A searchable nutrient catalog; each product's guaranteed-analysis breakdown feeds the linear-algebra chemistry engine — and any two products can be compared side-by-side by nutrient mass percent.",
+        views: [
+          { src: "/projects/steamhouse/tour/prod-1-catalog.png", alt: "Steamhouse — product and nutrient catalog filterable by company and category", width: 2000, height: 1000, caption: "Catalog" },
+          { src: "/projects/steamhouse/tour/prod-2-compare.png", alt: "Steamhouse — Compare Products: two products' nutrient mass-percent breakdowns charted side by side", width: 2000, height: 997, caption: "Compare products" },
+        ],
+      },
+      {
+        title: "Profile & Admin",
+        blurb:
+          "Account and team administration: personal details and saved water sources, role-based team membership (owner / team-lead / worker), a full team activity audit log, billing — plus an admin panel for managing teams across the operation.",
+        views: [
+          { src: "/projects/steamhouse/tour/admin-1-account.png", alt: "Steamhouse — My Account: personal details and saved water sources with per-source pH/PPM", width: 2000, height: 1117, caption: "Account" },
+          { src: "/projects/steamhouse/tour/admin-2-team.png", alt: "Steamhouse — My Team: team members with role-based permissions (owner, team-lead, worker)", width: 2000, height: 1113, caption: "Team & roles" },
+          { src: "/projects/steamhouse/tour/admin-3-activity.png", alt: "Steamhouse — Team Activity: an audit log of who did what across crops, tasks, posts, and files", width: 2000, height: 1116, caption: "Activity log" },
+          { src: "/projects/steamhouse/tour/admin-4-billing.png", alt: "Steamhouse — Billing: current plan, subscription summary, and saved payment method", width: 2000, height: 1116, caption: "Billing" },
+          { src: "/projects/steamhouse/tour/admin-5-teams.png", alt: "Steamhouse — Admin panel: manage teams across the operation, toggle active state, and seed data", width: 2000, height: 1115, caption: "Admin panel" },
+        ],
+      },
+    ],
+    problem: [
+      "Serious indoor and hydroponic cultivation is a data-heavy discipline. Growers dose precise nutrient mixes that change every week as a plant moves through its stages, hit exact water-chemistry targets (pH, EC, PPM), log climate and feeding data daily, and coordinate a team across recurring tasks.",
+      "In practice this lives in fragmented spreadsheets, paper logs, and tribal knowledge — which makes it error-prone, hard to repeat a grow that actually worked, and impossible to audit. There was no single place to design a feed program, run a crop against it, and see the whole team's work in one timeline.",
+    ],
+    whatIBuilt: [
+      "A full-stack, multi-tenant web app that centralizes the entire crop lifecycle. Teams (with role-based permissions) build reusable feed-schedule templates — week-by-week recipes specifying nutrient products, doses, water volume, and target pH/EC/PPM per growth stage — or pull in commercial schedules published by nutrient companies.",
+      "Each crop follows a schedule from a start date, and growers keep a rich daily journal: actual readings, whether plants were fed, deviations from the plan, climate data, and photo/document posts. A FullCalendar-based task system with recurrence rules keeps the team coordinated, and an activity feed tracks who did what.",
+      "The standout feature is a chemistry engine that reverse-engineers a fertilizer's makeup from its label — given the guaranteed nutrient percentages and derived compounds, it solves a linear system (Ax = b) for the underlying compound fractions, turning a bag label into actionable per-compound chemistry growers can dose against.",
+    ],
+    architecture: [
+      "It's a Next.js full-stack monolith — a React/MUI single-page app over serverless API routes backed by MongoDB on Vercel. Authorization is enforced at the route level: every API handler is wrapped by an authorizePrivate / authorizeAdmin higher-order function that validates the NextAuth session, lazily provisions the user, and checks team membership plus role-based permissions on every write.",
+      "Multi-tenancy runs through Teams: nearly every record is an OwnedObject scoped to a teamId (indexed on teamId), and the teamId on each request is verified against the caller's actual team to prevent cross-tenant access. Mongoose schemas and TypeScript interfaces are defined together per collection, guarded around mongoose.models[...] to survive serverless re-instantiation.",
+      "The chemistry solver uses mathjs's lusolve over a per-compound element-composition matrix, and even handles under-determined labels by intelligently injecting ammonium nitrate. Crop photos and documents upload to AWS S3 via presigned URLs, and a Vercel cron refreshes the demo dataset daily so reviewers always land on a populated operation.",
+    ],
+    stack: [
+      "TypeScript",
+      "Next.js",
+      "React",
+      "MUI",
+      "MongoDB",
+      "Mongoose",
+      "NextAuth",
+      "AWS S3",
+      "mathjs",
+      "FullCalendar",
+    ],
+    outcomes: [
+      "Designed a secure multi-tenant data model with route-level RBAC enforced on every mutation, so each growing operation's data is cleanly isolated yet shareable within its team.",
+      "Built a genuinely novel domain feature — a linear-algebra fertilizer-composition solver — that goes well beyond CRUD and encodes real agronomy and chemistry.",
+      "Shipped 10+ cohesive feature areas (crops, schedules, products, calendar, teams, journal, admin) and a zero-setup portfolio demo: Dockerized MongoDB, a guarded daily-refreshed seed, one-click demo sign-in, and an onboarding modal.",
     ],
   },
 ];

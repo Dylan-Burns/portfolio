@@ -1,7 +1,8 @@
 export type ProjectCategory =
   | "Healthcare · AI"
-  | "iOS · Consumer"
-  | "Web · Consumer"
+  | "AgTech · Platform"
+  | "Wellness · iOS"
+  | "Commerce · Web"
   | "Web · Personal"
   | "Web · Side project";
 
@@ -29,6 +30,18 @@ export interface ProjectImage {
   width: number;
   /** Intrinsic height in px (> 0). */
   height: number;
+  /** Optional short label for a single view inside a feature tour (e.g. "Journal"). */
+  caption?: string;
+}
+
+/** One tab in a feature tour — a core feature, plus the views you swipe through for it. */
+export interface TourFeature {
+  /** Tab label, e.g. "Crops". */
+  title: string;
+  /** One–two sentence overview of the feature, shown under the window. */
+  blurb: string;
+  /** The views shown in the single window for this feature (>= 1). */
+  views: ProjectImage[];
 }
 
 export interface ProjectVideo {
@@ -60,6 +73,12 @@ export interface Project {
   cover: ProjectImage;
   /** Gallery (>= 1). */
   screenshots: ProjectImage[];
+  /**
+   * Optional feature tour — a single browser window with one tab per core feature;
+   * each tab swaps a set of views through that window. When present, it replaces the
+   * stacked `screenshots` list on the detail page.
+   */
+  tour?: TourFeature[];
   /** Optional looping muted clip. */
   video?: ProjectVideo;
   /** Optional clickable marketing-site preview, shown in a browser window above/below the lead video. */

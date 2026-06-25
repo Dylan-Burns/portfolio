@@ -6,17 +6,17 @@ import { useReducedMotion } from "motion/react";
 const L1 = "Hi, I'm Dylan.";
 const L2 = "I love to build things";
 
-/** Full-screen intro: types two lines, blinks ~2s each, then dissolves away.
- * Calls onDone when dissolved (parent can then enable the scene). */
+/** Full-screen intro: types two lines, blinks ~2s each, then signals done.
+ * Stays fully opaque until the parent hides it (the parent flashes white over the
+ * swap, so a self-fade here would only re-introduce crossfade ghosting). */
 export function IntroOverlay({ onDone }: { onDone?: () => void }) {
   const reduce = useReducedMotion();
   const [t1, setT1] = useState(() => (reduce ? L1 : ""));
   const [t2, setT2] = useState(() => (reduce ? L2 : ""));
   const [active2, setActive2] = useState(() => Boolean(reduce));
-  const [gone, setGone] = useState(false);
   const doneRef = useRef(false);
 
-  const finish = () => { if (doneRef.current) return; doneRef.current = true; setGone(true); setTimeout(() => onDone?.(), 1000); };
+  const finish = () => { if (doneRef.current) return; doneRef.current = true; onDone?.(); };
 
   useEffect(() => {
     if (reduce) { const id = setTimeout(finish, 1200); return () => clearTimeout(id); }
@@ -34,7 +34,7 @@ export function IntroOverlay({ onDone }: { onDone?: () => void }) {
   return (
     <div
       onClick={finish}
-      className={`fixed inset-0 z-[90] flex cursor-pointer flex-col items-center justify-center gap-8 px-6 text-center transition-opacity duration-1000 ${gone ? "pointer-events-none opacity-0" : ""}`}
+      className="fixed inset-0 z-[90] flex cursor-pointer flex-col items-center justify-center gap-8 px-6 text-center"
       style={{ background: "linear-gradient(180deg,#c2beba 0%,#d6d2cf 55%,#ece9e6 100%)" }}
     >
       <div className="text-[clamp(20px,4vw,42px)] leading-[1.3] tracking-tight text-[#1a1a1a]">

@@ -15,6 +15,7 @@ const LABEL_OVERRIDES: Record<string, string> = {
   parahealth: "parahealth.ai",
   claruss: "claruss.app",
   cartlords: "cartlords.com",
+  steamhouse: "steamhouse.app",
 };
 
 /** Build a CRT line item that links straight to an external site (label = its domain). */
