@@ -64,7 +64,7 @@ export const projects: Project[] = [
       "Claruss blocks the apps and websites you choose on a schedule you set — with real, system-level enforcement, not a polite suggestion. Hardcore and Lockdown modes raise the stakes, an accountability partner can approve early unlocks, and a one-time passcode arrives by email or SMS when you genuinely need out. Built around intention and gentle friction, not another guilt-trip chart.",
     category: "Wellness · iOS",
     role: "Developer",
-    period: "2026 – now",
+    period: "Released 2026",
     frame: "phone",
     links: {
       live: "https://www.claruss.app/",
@@ -158,7 +158,7 @@ export const projects: Project[] = [
       "Cartlords compares a whole grocery list across the stores near you using real, scraped prices, then finds the cheapest way to buy it, including splitting the cart across two or three stores. It shows the one thing grocery shopping never does: the full cross-store price picture for your actual list, normalized to a true per-unit cost so the comparison is honest. The live app is gated behind sign-in, so this case study leads with a walkthrough of the product.",
     category: "Commerce · Web",
     role: "Full-stack",
-    period: "2025 – now",
+    period: "2025 – 2026",
     frame: "browser",
     // Gated behind sign-in, so the case study is the destination — no off-site button.
     links: {},
