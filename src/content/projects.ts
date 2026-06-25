@@ -207,7 +207,7 @@ export const projects: Project[] = [
       "Steamhouse is a multi-tenant platform for commercial growing operations — the system of record that replaces the spreadsheets, paper logs, and tribal knowledge most grows still run on. Teams author reusable week-by-week feed schedules (nutrient doses and target water chemistry per growth stage), attach them to a crop, then log a rich daily journal — actual pH/EC/PPM readings, feedings, climate, deviations, and photos — so the whole team works a successful grow off one source of truth. A chemistry engine even reverse-engineers a fertilizer's compound makeup from its label. It runs as a live, one-click demo seeded with a full operation's worth of data, so you can explore the whole app with zero setup.",
     category: "AgTech · Platform",
     role: "Full-stack",
-    period: "2025 – now",
+    period: "2022 – 2023",
     frame: "browser",
     links: {
       live: "https://steamhouse.vercel.app/",
