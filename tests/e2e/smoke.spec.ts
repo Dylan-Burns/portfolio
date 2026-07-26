@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { projects } from "../../src/content/projects";
 
 // reduced-motion makes TransitionLink/WarpOverlay bypass the warp and navigate
 // directly, so file clicks are deterministic (no async transition to await).
@@ -25,7 +26,10 @@ test("landing renders the machine and project files (no console errors)", async 
 });
 
 test("a project file navigates to its page", async ({ page }) => {
-  await page.goto("/");
+  // /?view=files is the deep-link a work page's "← home" uses: intro skipped, CRT
+  // already zoomed with the screen on, so file links receive pointer events. On a
+  // plain "/" they stay pointer-events-none until the user zooms in.
+  await page.goto("/?view=files");
   // reduced-motion → TransitionLink falls back to direct nav.
   await page.locator('a[href="/work/cartlords"]').click();
   await expect(page).toHaveURL(/\/work\/cartlords$/);
@@ -36,7 +40,12 @@ test("each project page renders with a launch action", async ({ page }) => {
   for (const s of WORK_SLUGS) {
     await page.goto(`/work/${s}`);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.getByRole("link", { name: /\bapp\b|site|store|launch|demo/i }).first()).toBeVisible();
+    // Gated projects with `links: {}` (cartlords) render no launch button by design —
+    // their case study leads with an embedded walkthrough instead.
+    const links = projects.find((p) => p.slug === s)?.links ?? {};
+    if (Object.keys(links).length > 0) {
+      await expect(page.getByRole("link", { name: /\bapp\b|site|store|launch|demo/i }).first()).toBeVisible();
+    }
   }
 });
 

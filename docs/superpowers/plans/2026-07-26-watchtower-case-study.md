@@ -1,5 +1,13 @@
 # Watchtower Case Study Implementation Plan
 
+> **Status (2026-07-26): COMPLETE** — shipped to `main`. Task 1 executed at the descoped
+> 4/9 (see descope note); Task 2 landed in `f561d72`; Task 3 verified (typecheck, lint,
+> unit, build, e2e 5/5, visual check). The two long-standing e2e smoke failures (intro
+> overlay intercepting the file click; cartlords' intentionally empty `links`) were fixed
+> alongside: navigation now goes through the `/?view=files` deep-link, and the
+> launch-action assertion is data-driven off each project's `links`. Still open: the
+> five deferred incident/report tour shots (see `TODO(owner)` in `src/content/projects.ts`).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add the Watchtower project (AI incident investigator on Cloudflare Workers, repo `Dylan-Burns/polylane`) as a full case study at `/work/watchtower`, second in the project list.
