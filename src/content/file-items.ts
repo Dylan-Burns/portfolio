@@ -13,6 +13,7 @@ const EXTERNAL_HREFS: Record<string, string> = {};
 /** Override the filename shown on the CRT for an internal project (default is `<slug>.tsx`). */
 const LABEL_OVERRIDES: Record<string, string> = {
   parahealth: "parahealth.ai",
+  watchtower: "watchtower.workers.dev",
   claruss: "claruss.app",
   cartlords: "cartlords.com",
   steamhouse: "steamhouse.app",

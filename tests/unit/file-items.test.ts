@@ -23,6 +23,7 @@ describe("toFileItems", () => {
   it("applies domain filename overrides while keeping every project linked to its /work page", () => {
     const cases = [
       { name: "Parahealth", href: "/work/parahealth", label: "parahealth.ai" },
+      { name: "Watchtower", href: "/work/watchtower", label: "watchtower.workers.dev" },
       { name: "Claruss", href: "/work/claruss", label: "claruss.app" },
       { name: "Cartlords", href: "/work/cartlords", label: "cartlords.com" },
     ];

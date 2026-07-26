@@ -57,6 +57,78 @@ export const projects: Project[] = [
     ],
   },
   {
+    slug: "watchtower",
+    name: "Watchtower",
+    tagline:
+      "An AI incident investigator that runs 24/7 on Cloudflare Workers — statistical detection hands incidents to a Claude agent that root-causes them.",
+    summary:
+      "Watchtower is a self-demoing production watchdog: a simulated six-service world it watches, breaks on demand, and heals. A chaos panel injects faults; a statistical detector catches the anomaly within a couple of minutes and escalates to a Claude tool-use agent that investigates the telemetry — metrics, logs, traces, deploys — and writes a root-cause report with evidence you can click. The agent only ever suggests: the one mutating action, rolling back the fault, sits behind a human approval gate.",
+    category: "AI · Infrastructure",
+    role: "Builder",
+    period: "2026",
+    frame: "browser",
+    links: {
+      live: "https://watchtower.dylanburns.workers.dev",
+      source: "https://github.com/Dylan-Burns/polylane",
+    },
+    cover: { src: "/projects/watchtower/cover.png", alt: "Watchtower — live dashboard: six-service particle topology over incident analytics", width: 2000, height: 1250 },
+    screenshots: [],
+    // TODO(owner): add Incident + Report tour tabs (evidence tiles, live investigation
+    // timeline, root-cause report, Dig deeper chat) once the live detector is verified
+    // healthy — see docs/superpowers/plans/2026-07-26-watchtower-case-study.md Task 1.
+    tour: [
+      {
+        title: "System",
+        blurb:
+          "The live world at a glance — six services in a particle galaxy where cluster size tracks request rate and errors circulate as red particles, over an analytics row of incident volume, time-to-diagnose, and live traffic.",
+        views: [
+          { src: "/projects/watchtower/tour/system-1-galaxy.png", alt: "Watchtower — System panel, galaxy view: six service clusters sized by request rate, with incident analytics above", width: 2000, height: 1250, caption: "Galaxy view" },
+          { src: "/projects/watchtower/tour/system-2-grid.png", alt: "Watchtower — System panel, grid view of the six services with rate, error, and p95 sparklines", width: 2000, height: 1250, caption: "Grid view" },
+        ],
+      },
+      {
+        title: "Chaos",
+        blurb:
+          "Four one-click fault scenarios — bad Worker deploy, dependency outage, latency creep, traffic spike — each propagating causally through the topology alongside red-herring deploys the agent has to rule out.",
+        views: [
+          { src: "/projects/watchtower/tour/chaos-1-panel.png", alt: "Watchtower — Chaos panel: four injectable fault scenarios with per-scenario Trigger buttons", width: 2000, height: 1250, caption: "Chaos panel" },
+        ],
+      },
+    ],
+    problem: [
+      "When production breaks, the first thirty minutes are the worst: someone gets paged, pulls up five dashboards, greps logs under pressure, and tries to guess which of today's deploys did it. Root-causing an incident is exactly the kind of evidence-gathering loop — query metrics, follow traces, rule out red herrings — that an LLM with tools can genuinely run on its own.",
+      "But you can't demo an incident agent without an incident. Real production access is off the table for a showcase, and canned screenshots prove nothing. Watchtower's answer is to ship its own breakable world: a simulated microservice environment honest enough that the agent has to actually investigate — error logs never name the injected fault — and a chaos panel so anyone can trigger a real end-to-end run.",
+    ],
+    whatIBuilt: [
+      "A simulated six-service e-commerce world (“Acme Shop”) owned by a Durable Object: a deterministic, seeded generator ticks every 20 seconds, writing spans, logs, and per-minute rollups into D1, with a 24-hour backfill so charts and baselines are populated from the first visit. Four injectable fault scenarios — bad deploy, dependency outage, latency creep, traffic spike — propagate errors causally through the topology, alongside red-herring deploys the agent has to rule out.",
+      "A detection pipeline driven by a one-minute cron: median + MAD baselines per service, operation, and metric over the trailing 24 hours, with hard-trip and sustained rule families, each paired with an evidence gate to hold down false positives. Measured cold-start on the deployed world: 107 seconds from fault injection to an open incident.",
+      "The investigator: a Claude tool-use loop holding seven read-only tools — metrics with baseline overlay, log search, trace trees, deploys, prior incidents. The UI streams the investigation live, each tool call landing on the incident timeline, and the finished report renders root cause, blast radius, confidence, and a suggested action with clickable evidence chips. Remediation is human-gated: the agent suggests a rollback; only an operator's Approve executes it. A “Dig deeper” chat, scoped to the incident's evidence, answers follow-ups.",
+    ],
+    architecture: [
+      "The whole system is one Cloudflare Worker: a Hono API, two Durable Objects — a simulator that owns the world and an investigator that runs the agent — a one-minute cron for detection, and a React/Vite SPA served from Workers assets. D1 (SQLite) is the single source of truth for spans, logs, rollups, deploys, and the incident lifecycle. That's deliberate: the agent's tools are fundamentally SQL questions, so KV, R2, and Queues would add moving parts without adding capability.",
+      "Detection pairs every ratio threshold with an evidence gate: a hard-trip rule needs one extreme minute plus a minimum error count; a sustained rule needs two consecutive breaching minutes. Latency rules additionally require a p50 distribution-shift confirmation — a single downstream-timeout span can lift a thin minute's p95 ten to thirty times over while leaving the median untouched, so requiring the median to move kills the dominant false-positive mode. And detection anchors on the newest minute actually present in the rollups, never wall-clock arithmetic — the simulator writes a closed minute up to ~20 seconds after the boundary, so wall-clock anchoring would evaluate an empty minute every tick (a real bug found at go-live).",
+      "The investigation loop is domain-agnostic: it knows an LLM seam, a list of tools, and a budget. Prompt caching is measured, not assumed — a cache breakpoint on the byte-stable system prompt and the newest message means every step past the first reads the entire prior conversation from cache, leaving roughly two uncached input tokens per step, so a full investigation costs $0.10–0.40. Budgets (15 steps, a 4-minute wall clock, token caps) are tracked cumulatively across resumes, and every step persists to D1 plus Durable Object storage, so an investigation survives eviction and resumes mid-thought.",
+      "The simulation is honest by construction: error logs are symptom-only — message templates never name the injected cause — and faults propagate causally through the service graph, so the agent reasons from evidence rather than reading the answer off a log line. Safety is structural too: every tool the agent holds is a read; the single mutating endpoint re-validates at click time so a stale approval can't kill a newer fault, and the incident chat loads its context server-side from D1, so a crafted request can't smuggle in fabricated history for the model to role-play against.",
+    ],
+    stack: [
+      "TypeScript",
+      "Cloudflare Workers",
+      "Durable Objects",
+      "D1 (SQLite)",
+      "Hono",
+      "React",
+      "Vite",
+      "Anthropic Claude",
+      "Vitest",
+    ],
+    outcomes: [
+      "4/4 fault scenarios correctly root-caused in the final production eval (gate: ≥3/4) — 5–7 tool calls and 45–78 seconds of investigation wall clock per incident, graded by an exoneration-aware rubric that catches false blame: naming the red herring to rule it out counts for the agent, blaming it counts against.",
+      "Verified prompt caching brings a full multi-step investigation to roughly $0.10–0.40 of API spend, with per-step uncached input measured at ~2 tokens.",
+      "An injected fault surfaces as an incident in about two minutes (107 seconds measured), from a 24/7 simulated world whose write budget sits comfortably inside D1's daily allowance.",
+      "Designed, built, evaluated, and shipped solo in under a week — including the four-scenario eval harness that gates release.",
+    ],
+  },
+  {
     slug: "claruss",
     name: "Claruss",
     tagline: "Clarity without compromise — a screen-time blocker that actually holds the line.",

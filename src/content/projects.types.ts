@@ -1,5 +1,6 @@
 export type ProjectCategory =
   | "Healthcare · AI"
+  | "AI · Infrastructure"
   | "AgTech · Platform"
   | "Wellness · iOS"
   | "Commerce · Web"
