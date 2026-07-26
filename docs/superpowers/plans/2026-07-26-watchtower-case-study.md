@@ -24,6 +24,14 @@
 
 ### Task 1: Capture screenshots from the live site
 
+> **Descope note (2026-07-26, user-approved):** executed with a 4/9 outcome. The four
+> healthy-world shots (cover, system-1-galaxy, system-2-grid, chaos-1-panel, all
+> 2000×1250) are captured and committed (`b9271c9`). The five incident/report shots are
+> **deferred**: the live detector never opened an incident after the approved injection
+> (suspected baseline contamination from a stale long-running fault; `/api/deploys` also
+> returned empty — possible site regression). Task 2 ships a two-tab tour (System, Chaos)
+> accordingly; the Incident/Report tabs return once the live site is verified healthy.
+
 Interactive/judgment-heavy — best executed inline (main session), not by a fire-and-forget subagent. Triggering **one** Bad-deploy scenario is user-approved (~$0.10–0.40 of the owner's Anthropic API credit). Restore the world afterwards via the report's **Approve** button.
 
 **Files:**
@@ -151,7 +159,7 @@ git commit -m "feat: watchtower case-study screenshots"
 - Test: `tests/unit/file-items.test.ts:23-34`
 
 **Interfaces:**
-- Consumes: the nine PNGs from Task 1 and their measured dimensions.
+- Consumes: the four PNGs from Task 1 (cover, tour/system-1-galaxy, tour/system-2-grid, tour/chaos-1-panel), all measured at exactly 2000×1250.
 - Produces: `projects` array exporting a `watchtower` entry (slug `"watchtower"`) at index 1; `LABEL_OVERRIDES.watchtower === "watchtower.workers.dev"`; `ProjectCategory` includes `"AI · Infrastructure"`.
 
 - [ ] **Step 1: Extend the tests to expect watchtower (failing first)**
@@ -232,6 +240,9 @@ In `src/content/projects.ts`, immediately after the closing `},` of the `parahea
     },
     cover: { src: "/projects/watchtower/cover.png", alt: "Watchtower — live dashboard: six-service particle topology over incident analytics", width: 2000, height: 1250 },
     screenshots: [],
+    // TODO(owner): add Incident + Report tour tabs (evidence tiles, live investigation
+    // timeline, root-cause report, Dig deeper chat) once the live detector is verified
+    // healthy — see docs/superpowers/plans/2026-07-26-watchtower-case-study.md Task 1.
     tour: [
       {
         title: "System",
@@ -239,34 +250,15 @@ In `src/content/projects.ts`, immediately after the closing `},` of the `parahea
           "The live world at a glance — six services in a particle galaxy where cluster size tracks request rate and errors circulate as red particles, over an analytics row of incident volume, time-to-diagnose, and live traffic.",
         views: [
           { src: "/projects/watchtower/tour/system-1-galaxy.png", alt: "Watchtower — System panel, galaxy view: six service clusters sized by request rate, with incident analytics above", width: 2000, height: 1250, caption: "Galaxy view" },
-          { src: "/projects/watchtower/tour/system-2-grid.png", alt: "Watchtower — System panel, grid view of the six services with per-service health", width: 2000, height: 1250, caption: "Grid view" },
+          { src: "/projects/watchtower/tour/system-2-grid.png", alt: "Watchtower — System panel, grid view of the six services with rate, error, and p95 sparklines", width: 2000, height: 1250, caption: "Grid view" },
         ],
       },
       {
         title: "Chaos",
         blurb:
-          "Four one-click fault scenarios — bad deploy, dependency outage, latency creep, traffic spike — plus a deploys rail that lands the culprit alongside a red herring the agent has to rule out.",
+          "Four one-click fault scenarios — bad Worker deploy, dependency outage, latency creep, traffic spike — each propagating causally through the topology alongside red-herring deploys the agent has to rule out.",
         views: [
-          { src: "/projects/watchtower/tour/chaos-1-panel.png", alt: "Watchtower — Chaos panel with four injectable fault scenarios", width: 2000, height: 1250, caption: "Chaos panel" },
-          { src: "/projects/watchtower/tour/chaos-2-deploys.png", alt: "Watchtower — Deploys rail: the culprit deploy flagged as suspected cause beside a red-herring deploy", width: 2000, height: 1250, caption: "Deploys rail" },
-        ],
-      },
-      {
-        title: "Incident",
-        blurb:
-          "A critical incident opening live: metric evidence tiles chart each triggering anomaly against its baseline — the detection math made visible — and the timeline advances as the agent calls its read-only tools.",
-        views: [
-          { src: "/projects/watchtower/tour/incident-1-evidence.png", alt: "Watchtower — incident page: metric evidence tiles charting each anomaly against its baseline", width: 2000, height: 1250, caption: "Metric evidence" },
-          { src: "/projects/watchtower/tour/incident-2-timeline.png", alt: "Watchtower — investigation timeline advancing as the agent calls tools like query_metrics and find_traces", width: 2000, height: 1250, caption: "Live investigation" },
-        ],
-      },
-      {
-        title: "Report",
-        blurb:
-          "The verdict — summary, root cause, blast radius, confidence, and a suggested action behind a human Approve — with clickable evidence chips and a “Dig deeper” chat scoped to this incident's evidence.",
-        views: [
-          { src: "/projects/watchtower/tour/report-1-verdict.png", alt: "Watchtower — root-cause report: summary, root cause, blast radius, confidence, suggested action, evidence chips", width: 2000, height: 1250, caption: "Root-cause report" },
-          { src: "/projects/watchtower/tour/report-2-chat.png", alt: "Watchtower — Dig deeper: a follow-up chat scoped to the incident's evidence", width: 2000, height: 1250, caption: "Dig deeper" },
+          { src: "/projects/watchtower/tour/chaos-1-panel.png", alt: "Watchtower — Chaos panel: four injectable fault scenarios with per-scenario Trigger buttons", width: 2000, height: 1250, caption: "Chaos panel" },
         ],
       },
     ],
@@ -345,7 +337,7 @@ Expected: PASS. (The smoke suite covers the landing CRT list and project pages g
 
 - [ ] **Step 3: Visual check**
 
-Run: `npm run dev`, then load `http://localhost:3000/work/watchtower` and the landing page. Verify: the CRT list shows `watchtower.workers.dev  // ai` second in the list; the case-study page renders the tour tabs (System / Chaos / Incident / Report), the App Site + View source buttons, and the architecture section. Screenshot the page for the user. Stop the dev server.
+Run: `npm run dev`, then load `http://localhost:3000/work/watchtower` and the landing page. Verify: the CRT list shows `watchtower.workers.dev  // ai` second in the list; the case-study page renders the tour tabs (System / Chaos), the App Site + View source buttons, and the architecture section. Screenshot the page for the user. Stop the dev server.
 
 - [ ] **Step 4: Final commit (only if fixes were needed)**
 
