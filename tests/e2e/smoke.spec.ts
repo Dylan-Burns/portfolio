@@ -7,7 +7,7 @@ import { test, expect } from "@playwright/test";
 test.use({ contextOptions: { reducedMotion: "reduce" } });
 
 // Project pages that exist under /work — every project renders a detail page.
-const WORK_SLUGS = ["parahealth", "claruss", "cartlords"];
+const WORK_SLUGS = ["parahealth", "watchtower", "claruss", "cartlords", "steamhouse"];
 // Every CRT project file links to its own /work case study (label is the bare domain).
 const LANDING_HREFS = WORK_SLUGS.map((s) => `/work/${s}`);
 
