@@ -129,6 +129,69 @@ export const projects: Project[] = [
     ],
   },
   {
+    slug: "remoteretros",
+    name: "Remote Retro",
+    tagline: "Free, real-time agile retrospectives — anonymous while it matters, named when it counts.",
+    summary:
+      "Remote Retro is a free web app for running agile retrospectives with a distributed team: one link is the whole invite, everyone writes at once, notes land on a shared board anonymously, the team groups and labels them live, votes stay blind until the reveal, and every action item leaves the call with a named owner and an email in everyone's inbox. It's a ground-up rebuild of Stride Consulting's open-source Remote Retro — the Elixir/Phoenix original used at Spotify, Warby Parker, Casper, and Squarespace — on a modern Next.js stack, shipped free and open source at remoteretros.org.",
+    category: "Collaboration · Web",
+    // TODO(owner): confirm role/period and add `links.source` if the rebuild's repo is public.
+    role: "Builder",
+    period: "2026",
+    frame: "browser",
+    links: { live: "https://remoteretros.org" },
+    cover: { src: "/projects/remoteretros/cover.png", alt: "Remote Retro landing page — a live demo board of anonymous sticky notes under the headline “Free. World-class. Live feedback.”", width: 1600, height: 1000 },
+    screenshots: [],
+    tour: [
+      {
+        title: "Landing",
+        blurb:
+          "The marketing site leads with a playable demo board — drag a note, type an idea — plus a light/dark theme and passwordless sign-in (emailed 6-digit code or Google).",
+        views: [
+          { src: "/projects/remoteretros/tour/landing-1-hero.png", alt: "Remote Retro landing page (light): hero headline, Start a retro button, and an interactive demo board of colored sticky notes with the stage tabs Lobby / Write / Group / Vote / Commit / Send", width: 2000, height: 1250, caption: "Hero + demo board" },
+          { src: "/projects/remoteretros/tour/landing-4-dark.png", alt: "Remote Retro landing page in dark theme: the same hero and demo board over a dark glyph-field background", width: 2000, height: 1250, caption: "Dark theme" },
+          { src: "/projects/remoteretros/tour/signin-1.png", alt: "Remote Retro sign-in: enter a work email for a 6-digit code, or continue with Google", width: 2000, height: 1250, caption: "Passwordless sign-in" },
+        ],
+      },
+      {
+        title: "Eight stages",
+        blurb:
+          "A retro is a fixed sequence the facilitator advances through — Lobby, Prime Directive, Ideas, Grouping, Labeling, Voting, Action Items, Closed — each stage explained on the landing page as a stacked card.",
+        views: [
+          { src: "/projects/remoteretros/tour/landing-3-stages-b.png", alt: "Remote Retro — “Eight stages, dealt one on top of the other”: Lobby (one URL is the whole invite), Prime Directive (everyone did the best job they could), Ideas (notes land anonymous)", width: 2000, height: 1250, caption: "Lobby → Ideas" },
+          { src: "/projects/remoteretros/tour/landing-5-stages-c.png", alt: "Remote Retro — stage cards for Labeling, Voting (votes stay hidden until the reveal), Action Items (every item needs a named owner), and Closed", width: 2000, height: 1250, caption: "Labeling → Closed" },
+          { src: "/projects/remoteretros/tour/landing-6-close.png", alt: "Remote Retro — the stacked stage cards settle under the line “Anonymous while it matters. Named when it counts.” with a Start a retro button", width: 2000, height: 1250, caption: "Closing line" },
+        ],
+      },
+      {
+        title: "FAQ",
+        blurb:
+          "The FAQ doubles as the product's privacy contract: ideas are anonymous and the author is never sent to anyone else's browser; votes are blind even to the facilitator; the one deliberate exception is an action item, which carries its owner's name.",
+        views: [
+          { src: "/projects/remoteretros/tour/faq-1.png", alt: "Remote Retro FAQ — “Questions, answered”: what a retro is, that every feature is free, who can use it, and a highlighted “What stays private” section on anonymous ideas and blind voting", width: 2000, height: 1250, caption: "Questions, answered" },
+        ],
+      },
+    ],
+    problem: [
+      "Retrospectives are the one agile ritual that's supposed to change how a team works, and they're the easiest to run badly. In a video call the loudest voice sets the agenda, early opinions anchor the room, the quiet people stay quiet, and the action items evaporate the moment the call ends because nobody wrote down who owns them.",
+      "Stride's original Remote Retro solved this nearly a decade ago (the repo dates to 2016) and earned real adoption — it's been used at Spotify, Warby Parker, Casper, Squarespace, The Weather Channel, and Flatiron School — but it's an Elixir/Phoenix app with a React 16 frontend over Phoenix channels. Keeping it free, fast, and modern meant rebuilding it, not patching it.",
+    ],
+    whatIBuilt: [
+      "A full rebuild of the product on Next.js: a marketing site with a playable demo board, passwordless sign-in (a 6-digit emailed code or Google), and the retro itself — a real-time, multiplayer board that walks a team through the eight stages in order, with the facilitator advancing the room and every participant seeing the same state at once.",
+      "The rules that make a retro honest are enforced by the app, not by etiquette: ideas are anonymous and the author is never sent to other clients; grouping is live drag-and-drop with everyone's cursors visible; votes are hidden from everyone, facilitator included, until the stage closes; and an action item can't be saved without a named owner. Closing the retro emails the full list of owned action items to every participant and freezes the board as a permanent, read-only record at its original link.",
+    ],
+    architecture: [
+      "The app is a Next.js App Router site on Vercel, with the live retro board driven over WebSockets so every stage change, note, drag, and vote fans out to the whole room immediately. Anonymity is a server-side guarantee rather than a UI convention — the author of an idea is simply never included in what's broadcast — and vote tallies are only revealed when the facilitator moves the stage forward.",
+      "The marketing surface is built with Tailwind CSS v4 and Motion: the hero's demo board is the real board component running on sample data, the eight stage cards stack as you scroll, and a persisted light/dark theme is resolved before first paint to avoid a flash. The site ships a strict Content-Security-Policy, HSTS, and frame-ancestors none out of the box.",
+    ],
+    stack: ["TypeScript", "Next.js", "React", "Tailwind CSS", "Motion", "WebSockets", "Vercel"],
+    outcomes: [
+      "A modern, free, open-source replacement for a tool with real adoption at well-known engineering orgs — same eight-stage method, rebuilt on a stack that's cheap to run and easy to contribute to.",
+      "Psychological safety encoded in the product: anonymous ideas, blind voting, and owner-required action items are rules the software enforces, not asks the facilitator has to make.",
+      "A landing page that demos the product instead of describing it — the hero board is interactive, and the whole session is explained stage by stage before anyone has to sign in.",
+    ],
+  },
+  {
     slug: "claruss",
     name: "Claruss",
     tagline: "Clarity without compromise — a screen-time blocker that actually holds the line.",

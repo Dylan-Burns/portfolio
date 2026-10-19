@@ -1,6 +1,7 @@
 export type ProjectCategory =
   | "Healthcare · AI"
   | "AI · Infrastructure"
+  | "Collaboration · Web"
   | "AgTech · Platform"
   | "Wellness · iOS"
   | "Commerce · Web"
@@ -103,8 +104,6 @@ export interface SiteConfig {
   /** Canonical site URL. */
   url: string;
   email: string;
-  /** Path under /public, e.g. "/dylan-burns-resume.pdf". */
-  resumePath: string;
   socials: { label: string; href: string }[];
   /** About-section content. */
   about: { portrait: ProjectImage; bio: string[]; tools: string[]; now: string };

@@ -5,7 +5,6 @@ export const site: SiteConfig = {
   role: "Builder & Founder",
   url: "https://www.burnsdylan.com",
   email: "dylanburns1524@gmail.com",
-  resumePath: "/dylan-burns-resume.pdf",
   socials: [
     { label: "GitHub", href: "https://github.com/Dylan-Burns" },
     { label: "LinkedIn", href: "https://www.linkedin.com/in/dylan-burns-" },

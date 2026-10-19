@@ -95,14 +95,14 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
     | { kind: "folder"; name: string; label: string; comment: string }
     | { kind: "game"; name: string; label: string; comment: string; game: "pong" | "snake" }
     | { kind: "back"; name: string; label: string; comment: string };
-  // project links + the résumé (always the last of `items`, per toFileItems)
+  // one link per project file, in `toFileItems` order
   const linkEntries: Entry[] = items.map((it): Entry => ({ kind: "link", name: it.name, label: it.label, comment: it.comment, href: it.href }));
   // games are desktop-only — the arcade chrome is too cramped in the small mobile CRT
   const gamesFolder: Entry = { kind: "folder", name: "games", label: "games/", comment: "arcade" };
   const rootEntries: Entry[] = isMobile
     ? linkEntries
-    : // games/ sits just above the résumé (the last item)
-      [...linkEntries.slice(0, -1), gamesFolder, ...linkEntries.slice(-1)];
+    : // games/ sits at the bottom of the list, after every project file
+      [...linkEntries, gamesFolder];
   const entries: Entry[] =
     dir === "root"
       ? rootEntries

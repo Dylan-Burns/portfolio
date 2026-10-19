@@ -5,25 +5,23 @@ import { projects } from "@/content/projects";
 describe("toFileItems", () => {
   const items = toFileItems(projects);
 
-  it("ends with a resume file", () => {
-    const resume = items[items.length - 1];
-    expect(resume.label).toMatch(/resume\.pdf/i);
-    expect(resume.href).toBe("/resume");
+  it("has no resume file — the resume was removed from the site", () => {
+    expect(items.some((i) => i.href === "/resume" || /resume/i.test(i.label))).toBe(false);
   });
 
-  it("emits a file for every project, in project order, ahead of the resume", () => {
+  it("emits a file for every project, in project order", () => {
     // standalone external links (e.g. parkli) may be interleaved, but every project
-    // still appears, in order, before the trailing resume.
+    // still appears, in order.
     const indices = projects.map((p) => items.findIndex((i) => i.name === p.name));
     expect(indices.every((n) => n >= 0)).toBe(true);
     expect(indices).toEqual([...indices].sort((a, b) => a - b)); // ascending → same order as `projects`
-    expect(Math.max(...indices)).toBeLessThan(items.length - 1); // all sit before the resume
   });
 
   it("applies domain filename overrides while keeping every project linked to its /work page", () => {
     const cases = [
       { name: "Parahealth", href: "/work/parahealth", label: "parahealth.ai" },
       { name: "Watchtower", href: "/work/watchtower", label: "watchtower" },
+      { name: "Remote Retro", href: "/work/remoteretros", label: "remoteretros.org" },
       { name: "Claruss", href: "/work/claruss", label: "claruss.app" },
       { name: "Cartlords", href: "/work/cartlords", label: "cartlords.com" },
     ];

@@ -14,6 +14,7 @@ const EXTERNAL_HREFS: Record<string, string> = {};
 const LABEL_OVERRIDES: Record<string, string> = {
   parahealth: "parahealth.ai",
   watchtower: "watchtower",
+  remoteretros: "remoteretros.org",
   claruss: "claruss.app",
   cartlords: "cartlords.com",
   steamhouse: "steamhouse.app",
@@ -33,7 +34,7 @@ const STANDALONE_EXTERNAL: { afterSlug: string; item: FileItem }[] = [
   // { afterSlug: "claruss", item: externalItem("Parkli", "https://parkli.io", "ios") },
 ];
 
-/** Maps projects (+ resume) to the files shown on the CRT, in display order. */
+/** Maps projects to the files shown on the CRT, in display order. */
 export function toFileItems(projects: Project[]): FileItem[] {
   // short trailing-comment tag: first segment of the category (split on · , /)
   const shortTag = (category: string) => category.split(/[·,/]/)[0].trim().toLowerCase();
@@ -49,6 +50,5 @@ export function toFileItems(projects: Project[]): FileItem[] {
     // drop in any standalone external links that sit after this project
     for (const s of STANDALONE_EXTERNAL) if (s.afterSlug === p.slug) projectFiles.push(s.item);
   }
-  const resume: FileItem = { name: "Résumé", label: "resume.pdf", comment: "doc", href: "/resume" };
-  return [...projectFiles, resume];
+  return projectFiles;
 }

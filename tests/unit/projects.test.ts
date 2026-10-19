@@ -16,9 +16,9 @@ const isAbsoluteUrl = (s: string) => {
 const publicFileExists = (p: string) => existsSync(join(PUBLIC, p.replace(/^\//, "")));
 
 describe("project data", () => {
-  it("has at least the four expected projects", () => {
+  it("has at least the expected projects", () => {
     const slugs = projects.map((p) => p.slug);
-    expect(slugs).toEqual(expect.arrayContaining(["parahealth", "watchtower", "claruss", "cartlords"]));
+    expect(slugs).toEqual(expect.arrayContaining(["parahealth", "watchtower", "remoteretros", "claruss", "cartlords"]));
   });
 
   it("has unique slugs", () => {
@@ -61,6 +61,11 @@ describe("project data", () => {
     }
   });
 
+  it("ships no resume — no resumePath and no PDF under /public", () => {
+    expect("resumePath" in site).toBe(false);
+    expect(publicFileExists("/dylan-burns-resume.pdf")).toBe(false);
+  });
+
   it("every image has alt text, positive dimensions, and an existing file", () => {
     const imgs = projects.flatMap((p) => [
       p.cover,
@@ -89,10 +94,9 @@ describe("project data", () => {
 });
 
 describe("site config", () => {
-  it("has a valid url, an email, an existing resume, and at least one social", () => {
+  it("has a valid url, an email, and at least one social", () => {
     expect(isAbsoluteUrl(site.url)).toBe(true);
     expect(site.email).toMatch(/.+@.+\..+/);
-    expect(publicFileExists(site.resumePath), `missing resume: ${site.resumePath}`).toBe(true);
     expect(site.socials.length).toBeGreaterThan(0);
     for (const s of site.socials) expect(isAbsoluteUrl(s.href)).toBe(true);
   });

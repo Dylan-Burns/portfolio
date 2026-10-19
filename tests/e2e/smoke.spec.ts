@@ -8,7 +8,7 @@ import { projects } from "../../src/content/projects";
 test.use({ contextOptions: { reducedMotion: "reduce" } });
 
 // Project pages that exist under /work — every project renders a detail page.
-const WORK_SLUGS = ["parahealth", "watchtower", "claruss", "cartlords", "steamhouse"];
+const WORK_SLUGS = ["parahealth", "watchtower", "remoteretros", "claruss", "cartlords", "steamhouse"];
 // Every CRT project file links to its own /work case study (label is the bare domain).
 const LANDING_HREFS = WORK_SLUGS.map((s) => `/work/${s}`);
 
@@ -21,7 +21,8 @@ test("landing renders the machine and project files (no console errors)", async 
   // chassis image present (next/image encodes the src, so match by alt text, not path)
   await expect(page.getByRole("img", { name: /micro-computer/i })).toBeVisible();
   for (const href of LANDING_HREFS) await expect(page.locator(`a[href="${href}"]`)).toHaveCount(1);
-  await expect(page.locator('a[href="/resume"]')).toHaveCount(1);
+  // the resume was removed from the site entirely — no CRT file, no route
+  await expect(page.locator('a[href="/resume"]')).toHaveCount(0);
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
@@ -55,11 +56,9 @@ test("unknown project slug shows the 404", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /doesn.t exist/i })).toBeVisible();
 });
 
-test("resume page surfaces the PDF", async ({ page }) => {
-  // The CRT "Résumé" file is a real <a href="/resume"> that opens the viewer page.
-  await page.goto("/");
-  await expect(page.getByRole("link", { name: /résumé|resume/i }).first()).toHaveAttribute("href", "/resume");
-  await page.goto("/resume");
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.getByRole("link", { name: /download pdf/i })).toHaveAttribute("href", /\.pdf$/);
+test("the old resume route and PDF are gone", async ({ page }) => {
+  const res = await page.goto("/resume");
+  expect(res?.status()).toBe(404);
+  const pdf = await page.goto("/dylan-burns-resume.pdf");
+  expect(pdf?.status()).toBe(404);
 });
