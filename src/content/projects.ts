@@ -133,9 +133,9 @@ export const projects: Project[] = [
     name: "Remote Retro",
     tagline: "Free, real-time agile retrospectives — anonymous while it matters, named when it counts.",
     summary:
-      "Remote Retro is a free web app for running agile retrospectives with a distributed team: one link is the whole invite, everyone writes at once, notes land on a shared board anonymously, the team groups and labels them live, votes stay blind until the reveal, and every action item leaves the call with a named owner and an email in everyone's inbox. It's a ground-up rebuild of Stride Consulting's open-source Remote Retro — the Elixir/Phoenix original used at Spotify, Warby Parker, Casper, and Squarespace — on a modern Next.js stack, shipped free and open source at remoteretros.org.",
+      "Remote Retro is a free web app for running agile retrospectives with a distributed team: one link is the whole invite, everyone writes at once, notes land on a shared board anonymously, the team groups and labels them live, votes stay blind until the reveal, and every action item leaves the call with a named owner and an email in everyone's inbox. It's free and open source, built on Next.js, and in use at Spotify, Warby Parker, Casper, Squarespace, The Weather Channel, and Flatiron School.",
     category: "Collaboration · Web",
-    // TODO(owner): confirm role/period and add `links.source` if the rebuild's repo is public.
+    // TODO(owner): confirm role/period and add `links.source` if the repo is public.
     role: "Builder",
     period: "2026",
     frame: "browser",
@@ -174,10 +174,10 @@ export const projects: Project[] = [
     ],
     problem: [
       "Retrospectives are the one agile ritual that's supposed to change how a team works, and they're the easiest to run badly. In a video call the loudest voice sets the agenda, early opinions anchor the room, the quiet people stay quiet, and the action items evaporate the moment the call ends because nobody wrote down who owns them.",
-      "Stride's original Remote Retro solved this nearly a decade ago (the repo dates to 2016) and earned real adoption — it's been used at Spotify, Warby Parker, Casper, Squarespace, The Weather Channel, and Flatiron School — but it's an Elixir/Phoenix app with a React 16 frontend over Phoenix channels. Keeping it free, fast, and modern meant rebuilding it, not patching it.",
+      "Most retro tools fix this with paid tiers and process. Remote Retro fixes it with product rules — anonymity, blind voting, owner-required action items — and stays free for every feature. It's used by teams at Spotify, Warby Parker, Casper, Squarespace, The Weather Channel, and Flatiron School.",
     ],
     whatIBuilt: [
-      "A full rebuild of the product on Next.js: a marketing site with a playable demo board, passwordless sign-in (a 6-digit emailed code or Google), and the retro itself — a real-time, multiplayer board that walks a team through the eight stages in order, with the facilitator advancing the room and every participant seeing the same state at once.",
+      "The whole product on Next.js: a marketing site with a playable demo board, passwordless sign-in (a 6-digit emailed code or Google), and the retro itself — a real-time, multiplayer board that walks a team through the eight stages in order, with the facilitator advancing the room and every participant seeing the same state at once.",
       "The rules that make a retro honest are enforced by the app, not by etiquette: ideas are anonymous and the author is never sent to other clients; grouping is live drag-and-drop with everyone's cursors visible; votes are hidden from everyone, facilitator included, until the stage closes; and an action item can't be saved without a named owner. Closing the retro emails the full list of owned action items to every participant and freezes the board as a permanent, read-only record at its original link.",
     ],
     architecture: [
@@ -186,7 +186,7 @@ export const projects: Project[] = [
     ],
     stack: ["TypeScript", "Next.js", "React", "Tailwind CSS", "Motion", "WebSockets", "Vercel"],
     outcomes: [
-      "A modern, free, open-source replacement for a tool with real adoption at well-known engineering orgs — same eight-stage method, rebuilt on a stack that's cheap to run and easy to contribute to.",
+      "A free, open-source retro tool with real adoption at well-known engineering orgs — Spotify, Warby Parker, Casper, Squarespace, The Weather Channel, Flatiron School — on a stack that's cheap to run and easy to contribute to.",
       "Psychological safety encoded in the product: anonymous ideas, blind voting, and owner-required action items are rules the software enforces, not asks the facilitator has to make.",
       "A landing page that demos the product instead of describing it — the hero board is interactive, and the whole session is explained stage by stage before anyone has to sign in.",
     ],
