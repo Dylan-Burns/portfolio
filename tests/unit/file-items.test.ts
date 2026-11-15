@@ -22,6 +22,9 @@ describe("toFileItems", () => {
       { name: "Parahealth", href: "/work/parahealth", label: "parahealth.ai" },
       { name: "Watchtower", href: "/work/watchtower", label: "watchtower" },
       { name: "Remote Retro", href: "/work/remoteretros", label: "remoteretros.org" },
+      { name: "Outpost", href: "/work/outpost", label: "projectoutpost.org" },
+      { name: "Syene", href: "/work/syene", label: "syene.ai" },
+      { name: "Keel", href: "/work/keel", label: "keel" },
       { name: "Claruss", href: "/work/claruss", label: "claruss.app" },
       { name: "Cartlords", href: "/work/cartlords", label: "cartlords.com" },
     ];

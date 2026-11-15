@@ -18,7 +18,7 @@ const publicFileExists = (p: string) => existsSync(join(PUBLIC, p.replace(/^\//,
 describe("project data", () => {
   it("has at least the expected projects", () => {
     const slugs = projects.map((p) => p.slug);
-    expect(slugs).toEqual(expect.arrayContaining(["parahealth", "watchtower", "remoteretros", "claruss", "cartlords"]));
+    expect(slugs).toEqual(expect.arrayContaining(["parahealth", "watchtower", "remoteretros", "outpost", "syene", "keel", "claruss", "cartlords"]));
   });
 
   it("has unique slugs", () => {

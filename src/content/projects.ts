@@ -192,6 +192,222 @@ export const projects: Project[] = [
     ],
   },
   {
+    slug: "outpost",
+    name: "Outpost",
+    tagline: "An offline knowledge server for hardware you own — Wikipedia, medical guides, maps, and a local AI, with no internet required.",
+    summary:
+      "Outpost turns a spare Mac or Linux computer into an offline library that every phone and laptop on the network can read: Wikipedia, medical and survival references, repair guides, courses and books, street maps of the regions you pick, and an optional local AI assistant that answers from the library and cites it. One pasted line installs it; a setup wizard and a curated, signed content catalog do the rest. Free, open source, no account, no tracking.",
+    category: "Offline · Self-hosted",
+    role: "Builder",
+    period: "2026",
+    frame: "browser",
+    links: {
+      live: "https://projectoutpost.org",
+      source: "https://github.com/Dylan-Burns/outpost",
+    },
+    cover: { src: "/projects/outpost/cover.png", alt: "Outpost landing page — “When the world goes dark, information is power.” over a dotted globe, with the one-line install command", width: 2000, height: 1250 },
+    screenshots: [],
+    tour: [
+      {
+        title: "Install & setup",
+        blurb:
+          "One line in Terminal installs a signed release on macOS or 64-bit Linux, then opens a wizard: claim the node with the setup code the installer printed, choose a password, and pick how much of each subject to keep.",
+        views: [
+          { src: "/projects/outpost/tour/setup-1-install.png", alt: "Outpost landing page hero with the one-line curl install command and the stats Free, Mac + Linux, 90 titles, no sign-ups", width: 2000, height: 1250, caption: "One-line install" },
+          { src: "/projects/outpost/tour/setup-2-claim.png", alt: "Outpost setup wizard — “Welcome to Outpost”: setup code filled in by the installer, choose and repeat a password, Start setup", width: 2000, height: 1250, caption: "Claim the node" },
+          { src: "/projects/outpost/tour/setup-3-subjects.png", alt: "Outpost setup wizard — Choose your subjects: Medicine & First Aid, Survival, Repair, Food & Farming, Education, Science, each in None / Essential / Standard / Comprehensive sizes", width: 2000, height: 1250, caption: "Choose subjects" },
+        ],
+      },
+      {
+        title: "Library",
+        blurb:
+          "Every subject comes in sizes that stack, so the planner shows exactly what fits on the drive before anything downloads. Downloads run on their own, resume after a dropped connection, and are checked against the publisher's fingerprint before use.",
+        views: [
+          { src: "/projects/outpost/tour/library-1-plan.png", alt: "Outpost — Plan your library: per-subject size choices with a running total of 13.4 GB against 128 GB free", width: 2000, height: 1250, caption: "Plan the library" },
+          { src: "/projects/outpost/tour/library-2-downloads.png", alt: "Outpost dashboard — Downloads: 3 of 10 ready, speed and time left, with per-title progress bars for A Library of Knots and Water Treatment Library", width: 2000, height: 1250, caption: "Verified downloads" },
+          { src: "/projects/outpost/tour/library-3-network.png", alt: "Outpost — What you get: one computer serves the library, maps, and AI assistant to phones, laptops, and tablets on the home network", width: 2000, height: 1250, caption: "Shared on the network" },
+        ],
+      },
+      {
+        title: "Catalog",
+        blurb:
+          "A curated catalog of 90 titles, 312 map regions, and 7 local AI models, each pinned to an exact file size and checksum and published as a signed document the node refreshes from the website.",
+        views: [
+          { src: "/projects/outpost/tour/catalog-1-titles.png", alt: "Outpost content catalog: 90 titles, 312 map regions, 7 AI models, with Wikipedia editions listed by tier, licence, and size", width: 2000, height: 1250, caption: "Titles" },
+          { src: "/projects/outpost/tour/catalog-2-maps.png", alt: "Outpost content catalog — Map regions: US states and countries by continent, each with its download size", width: 2000, height: 1250, caption: "Map regions" },
+        ],
+      },
+      {
+        title: "Trust",
+        blurb:
+          "Releases are signed and reproducible — the same commit builds the same binary, byte for byte — and the node keeps no accounts, analytics, or tracking. Everything you search for and ask stays inside your home.",
+        views: [
+          { src: "/projects/outpost/tour/trust-1.png", alt: "Outpost — Built to be trusted: signed releases, every file checked, yours from the first minute, nothing reports back; a “What we hold on you” card reading No record", width: 2000, height: 1250, caption: "Built to be trusted" },
+        ],
+      },
+    ],
+    problem: [
+      "The things people look up in an emergency — first aid, how to fix the generator, the back road to the next town — live on servers that go dark exactly when they're needed: storms, power cuts, a cable dug up down the road. The same is true every day in cabins, boats, farms, and job sites far from a tower, and in classrooms and clinics where bandwidth is slow or costly.",
+      "Offline libraries exist, but they're either a box you have to buy or a pile of archives, servers, and map tools you have to assemble yourself. Outpost's bet is that a spare computer you already own, one pasted line, and an afternoon of downloads should be enough.",
+    ],
+    whatIBuilt: [
+      "The node: one Go program (outpost serve) with the dashboard API, a job queue, a resumable downloader, and integrations for kiwix-serve (ZIM archives), Protomaps vector maps cut to the regions you pick, and Ollama for an optional local AI assistant that answers from the library and cites its sources. The dashboard is Preact + TypeScript, bundled with esbuild and embedded in the binary.",
+      "The installer, setup wizard, and catalog: a single shell script for macOS 13+ and 64-bit Linux that verifies a signed release and pins every third-party tool by checksum; a wizard that claims the node with a one-time setup code and plans the library against the free disk space; and a Python build that resolves the curated selection against the Kiwix library, measures every map region, reads model sizes from the Ollama registry, and signs the result. Plus the Next.js website that hosts the catalog, map assets, and releases.",
+    ],
+    architecture: [
+      "The node listens on two ports: the dashboard on one, and the library — a proxy to a loopback kiwix-serve — on another, so archive pages run on a separate browser origin and can't reach the admin UI. Content jobs survive restarts, resume partial downloads with HTTP ranges, verify SHA-256 before use, and retry transient failures. The signed catalog carries a sequence number, and the node never accepts an older one.",
+      "Security is structural: one admin, claimed with a code printed on the machine; argon2id passwords; HttpOnly, SameSite=Strict sessions stored as hashes; CSRF plus same-origin and JSON checks on every write; sign-in rate limits; and a strict CSP. On Linux a systemd unit runs as an unprivileged user with a read-only system; on macOS a launchd job runs as a hidden account that owns only the data directory. Releases are reproducible, and a weekly CI job rebuilds the tagged commit and compares it byte for byte with what the website serves.",
+    ],
+    stack: ["Go", "TypeScript", "Preact", "esbuild", "Next.js", "Python", "Kiwix", "Protomaps", "Ollama", "Playwright"],
+    outcomes: [
+      "From spare computer to home library in an afternoon: one pasted line, a five-step wizard, and downloads that run by themselves on macOS (Intel and Apple Silicon) and 64-bit Linux (amd64 and arm64).",
+      "Reproducible, signed releases — anyone can run scripts/verify-release.sh to rebuild a tag and confirm the binaries and installer projectoutpost.org serves match the source, and CI checks the same thing every week.",
+      "An end-to-end test suite that drives a fresh node in a real browser (claim, wizard, downloads, offline map) and runs the real installer on Linux and Mac runners before a release goes live.",
+    ],
+  },
+  {
+    slug: "syene",
+    name: "Syene",
+    tagline: "A commodities intelligence terminal that measures the physical world from orbit and fuses it into signals you can check.",
+    summary:
+      "Syene is an energy-first commodities terminal that fuses satellite imagery, fundamentals, positioning, flows, and market structure into research signals. It reads storage-tank fill levels from shadow geometry in satellite scenes, scores that nowcast against the weekly EIA prints, and ships every signal with its public method and the moment each value became knowable — so no backtest can cheat. An LLM analyst layer writes the weekly brief and extracts market events from the news.",
+    category: "Fintech · Data",
+    // TODO(owner): confirm role/period; the repo is private, so no links.source.
+    role: "Builder",
+    period: "2026",
+    frame: "browser",
+    links: { live: "https://www.syene.ai" },
+    cover: { src: "/projects/syene/cover.png", alt: "Syene landing page — “We measure the physical world. From orbit.” over an aerial image of an oil tank farm", width: 2000, height: 1250 },
+    screenshots: [],
+    tour: [
+      {
+        title: "Site",
+        blurb:
+          "The public site at syene.ai: every barrel casts a shadow, and Syene reads that geometry from orbit, fuses it with the rest of the market's data, and proves each signal with a public method.",
+        views: [
+          { src: "/projects/syene/tour/site-1-hero.png", alt: "Syene landing page hero — “We measure the physical world. From orbit.” over an aerial tank farm, with a Join the waitlist button", width: 2000, height: 1250, caption: "Landing" },
+          { src: "/projects/syene/tour/site-2-product.png", alt: "Syene product page — “Evidence you can point at.” over an annotated satellite rendering of a storage terminal and tankers", width: 2000, height: 1250, caption: "Product" },
+          { src: "/projects/syene/tour/site-3-measure.png", alt: "Syene — “Own the measurement.” with three cards: Measure, Fuse, Prove", width: 2000, height: 1250, caption: "Measure · Fuse · Prove" },
+        ],
+      },
+      {
+        title: "Terminal",
+        blurb:
+          "A dense, keyboard-driven terminal organized into rooms: an overview of every live signal, the satellite room with per-tank fill gauges and a scene scrubber, CFTC positioning, and a crack and calendar spread matrix.",
+        views: [
+          { src: "/projects/syene/tour/terminal-1-overview.png", alt: "Syene terminal — Overview room: signal stat blocks, the storage divergence chart, and a calendar and events rail", width: 1440, height: 960, caption: "Overview" },
+          { src: "/projects/syene/tour/terminal-2-satellite.png", alt: "Syene terminal — Satellite room: Cushing tank farms with fill percentages, a scene log, and a per-tank scene scrubber", width: 1440, height: 960, caption: "Satellite" },
+          { src: "/projects/syene/tour/terminal-3-positioning.png", alt: "Syene terminal — Positioning room: managed-money net positioning over time with a table of recent reports", width: 1600, height: 1000, caption: "Positioning" },
+          { src: "/projects/syene/tour/terminal-4-spreads.png", alt: "Syene terminal — Spreads room: a matrix of crack and calendar spreads colored by curve structure", width: 1440, height: 960, caption: "Spreads" },
+        ],
+      },
+      {
+        title: "Research",
+        blurb:
+          "A point-in-time backtester and strategy library, with every tearsheet benchmarked against buy-and-hold and random baselines and its Sharpe deflated for the number of trials — including the strategies that lose.",
+        views: [
+          { src: "/projects/syene/tour/research-1-challenger.png", alt: "Syene terminal — strategy tearsheet: equity curve against baselines with Sharpe, deflated Sharpe, and monthly returns", width: 1440, height: 1800, caption: "Tearsheet" },
+          { src: "/projects/syene/tour/research-2-risk.png", alt: "Syene terminal — Risk room: exposure and drawdown charts for the paper book", width: 1440, height: 960, caption: "Risk" },
+        ],
+      },
+      {
+        title: "Analyst",
+        blurb:
+          "Claude extracts structured events from energy news (high-magnitude ones wait for operator review), writes a weekly brief grounded in the data, and threshold alerts fire on any signal.",
+        views: [
+          { src: "/projects/syene/tour/analyst-1-events.png", alt: "Syene terminal — Events room: LLM-extracted market events with magnitude, direction, and review status", width: 1440, height: 960, caption: "Events" },
+          { src: "/projects/syene/tour/analyst-2-brief.png", alt: "Syene terminal — the auto-written weekly brief, “Syene weekly: week ending July 23, 2026”", width: 1440, height: 960, caption: "Weekly brief" },
+          { src: "/projects/syene/tour/analyst-3-alerts.png", alt: "Syene terminal — Alerts: create a threshold alert on any signal and list active alerts", width: 1440, height: 960, caption: "Alerts" },
+        ],
+      },
+    ],
+    problem: [
+      "The physical commodity markets keep perfect books — a floating roof sinks as its tank drains, a laden ship rides low in the water — but the institutional alternative data that reads them comes in six-figure contracts. Everyone else trades the weekly government report and finds out what was physically true after it's priced.",
+      "And most alt-data is a black box: a number with no method, no error bar, and no record of when it became knowable, which makes every backtest built on it suspect. Syene's premise is to sell measurements, not predictions — each one with its method, its uncertainty, and its timestamp.",
+    ],
+    whatIBuilt: [
+      "The data platform: 15+ connectors (EIA, FRED, CFTC, Baker Hughes, exchange settles, weather, AIS shipping, IMF PortWatch chokepoint transits, news) writing into a bitemporal Parquet lake on R2, queried through DuckDB and orchestrated as a Dagster asset graph. A typed signal registry knows each series' cadence, units, confidence, visibility tier, and point-in-time availability. Every connector ships a fixture mode, so a fresh clone runs the whole UI with zero API keys.",
+      "The satellite measurement core: shadow trigonometry with real sun geometry from pvlib, and sub-pixel crescent estimation by linear unmixing against an analytic forward model — at 10 m resolution the shadow is one to three pixels wide. Fills aggregate to farm-level storage, calibrate against EIA prints using only data knowable at the time, and feed an EIA surprise forecast.",
+      "The product on top: a FastAPI service with a generated TypeScript client, a Next.js terminal with rooms for overview, curves, inventory, satellite, positioning, flows (a vessel globe on MapLibre), spreads, events, research, alerts, the weekly brief, and risk, plus a public site, pricing, API docs, an operator review queue, and a waitlist.",
+    ],
+    architecture: [
+      "Point-in-time correctness is the spine: every row carries both when it was true and when it became knowable, and a cached as-of reader lets the backtester make thousands of reads without ever seeing the future. Property tests mutate future data and assert that every past decision stays identical. Revisions become new rows stamped at the pull that saw them; they never rewrite history.",
+      "Everything commodity-specific lives in an energy pack the core discovers through a registry, so metals or ags can be added without core changes. A visibility field on every signal (public, customer, operator) keeps licensed exchange data off public surfaces by construction, and the LLM layer runs on strict Pydantic schemas with reject-and-retry parsing and a human review gate for high-magnitude events.",
+    ],
+    stack: ["Python", "TypeScript", "Next.js", "FastAPI", "Dagster", "DuckDB", "Polars", "Parquet", "Postgres", "MapLibre", "Anthropic Claude"],
+    outcomes: [
+      "The satellite storage nowcast, scored walk-forward against EIA prints in the fixture backfill, tracks the reported level at 0.79 correlation with a 1.14 million-barrel mean error. The weekly direction hit rate (0.55) is published beside it rather than hidden.",
+      "Twenty-five energy signals, each with a public method document and a fixture, and every value stamped with the moment it became knowable.",
+      "Research that reports its own failures: strategy tearsheets are deflated for the number of trials and benchmarked against buy-and-hold and random baselines, and the ones that lose after costs say so.",
+    ],
+  },
+  {
+    slug: "keel",
+    name: "Keel",
+    tagline: "Grounded, cited answers to business questions about SEC filings — from exactly one LLM call per question.",
+    summary:
+      "Keel answers research questions about public companies from their 10-K and 10-Q filings: a direct answer, findings per company with citation chips, a comparison table, a coverage statement, and the gaps. Question understanding, hybrid retrieval, reranking, and citation validation are deterministic code, so each answer costs exactly one model request — about nine cents — and every claim links back to the passage in the filing that supports it.",
+    category: "AI · Research",
+    // TODO(owner): confirm role/period and how to describe the PE-firm context; the
+    // CloudFront demo is offline, so the case study links to source only.
+    role: "Builder",
+    period: "2026",
+    frame: "browser",
+    links: { source: "https://github.com/Dylan-Burns/keel" },
+    cover: { src: "/projects/keel/cover.png", alt: "Keel answering “What are the primary risk factors facing Apple, Tesla, and JPMorgan, and how do they compare?” with a cited direct answer and a citations panel", width: 2000, height: 1250 },
+    screenshots: [],
+    tour: [
+      {
+        title: "Answer",
+        blurb:
+          "Ask a question or pick a template. The answer streams in as a direct answer, findings per company with citation chips, and a comparison table — every chip opens the cited section of the filing.",
+        views: [
+          { src: "/projects/keel/tour/answer-1-direct.png", alt: "Keel question page: a risk-factor comparison of Apple, Tesla, and JPMorgan with an inline-cited direct answer and a citations panel quoting each filing", width: 2000, height: 1250, caption: "Direct answer" },
+          { src: "/projects/keel/tour/answer-2-findings.png", alt: "Keel — findings per company for Apple, Tesla, and JPMorgan, each sentence carrying citation chips to the 10-K", width: 2000, height: 1250, caption: "Findings per company" },
+          { src: "/projects/keel/tour/answer-3-compare.png", alt: "Keel — comparison table of risk themes by company, the gaps list, and suggested next questions", width: 2000, height: 1250, caption: "Comparison + gaps" },
+        ],
+      },
+      {
+        title: "Trends & sectors",
+        blurb:
+          "Trend questions line up fiscal periods across filings and read reported numbers from XBRL rather than prose; sector questions spread a fixed context budget fairly across four to six companies.",
+        views: [
+          { src: "/projects/keel/tour/trend-1-nvda.png", alt: "Keel answering “How has NVIDIA's revenue and growth outlook changed over the last two years?” with XBRL-cited figures", width: 2000, height: 1250, caption: "NVIDIA trend" },
+          { src: "/projects/keel/tour/trend-2-table.png", alt: "Keel — NVIDIA revenue and year-over-year growth by fiscal period, each cell cited to its 10-K or 10-Q", width: 2000, height: 1250, caption: "Revenue by period" },
+          { src: "/projects/keel/tour/sector-1-pharma.png", alt: "Keel answering “What regulatory risks do the major pharmaceutical companies face?” across Pfizer, J&J, Merck, Lilly, and AbbVie", width: 2000, height: 1250, caption: "Pharma sector" },
+          { src: "/projects/keel/tour/sector-2-table.png", alt: "Keel — key regulatory risk themes and stated responses per pharmaceutical company, with gaps", width: 2000, height: 1250, caption: "Sector table" },
+        ],
+      },
+      {
+        title: "Audit",
+        blurb:
+          "Every answer carries its trace: the entities and question type Keel detected, the retrieved chunks with their scores, the prompt version and hash, tokens, cost, latency, and the model request count.",
+        views: [
+          { src: "/projects/keel/tour/audit-1-trace.png", alt: "Keel answer trace for the NVIDIA question — entities, question type, 48 chunks of context, prompt 1.5.1 with its hash, model, and model requests (0 here, served from the answer cache) — beside the scored retrieved chunks", width: 2000, height: 1250, caption: "Answer trace" },
+        ],
+      },
+    ],
+    problem: [
+      "A deal team doing diligence, comparables, or quarterly portfolio reviews spends hours per question in SEC filings: keyword search through PDFs and EDGAR, reading the same risk-factor sections across companies, and copying page references into the memo by hand. Terminals cover structured financials but not narrative comparisons, and a chat assistant without retrieval invents facts with no citations.",
+      "The bar for an AI answer in that setting is that a partner can check every sentence. That means grounded citations, honest gaps when the filings don't say, and a cost and audit trail predictable enough to run for a whole team.",
+    ],
+    whatIBuilt: [
+      "The indexing pipeline: parsers for 10-K and 10-Q filings that split them into their Items, fiscal-period-aware chunking, and an index that pairs SQLite FTS5 keyword search with dense embeddings, plus reported XBRL facts for numeric questions. Companies can be added from EDGAR, with a scheduled refresh.",
+      "The answer path: deterministic question understanding (companies and aliases, question type, time scope), hybrid retrieval with a cross-encoder reranker and per-company fairness, and a single Claude request that returns structured JSON. A server-side validator then drops any citation that doesn't support its claim. Out-of-scope questions are refused with zero model requests.",
+      "The product around it: a FastAPI server and a React front-end with streamed answers, a filing reader, history and shareable answer links, firm-wide comp sets, financial statements from XBRL, an eval report page, a debug view of retrieval, and a data-use page. Deployed to AWS with Terraform behind CloudFront.",
+    ],
+    architecture: [
+      "One model request per question is a rule, not a target: the mock provider counts requests and a test_single_request check guards it in CI. Everything that can be code is code, which keeps latency and cost predictable and makes every step testable and inspectable on the debug page.",
+      "Quality is measured, not asserted. A 28-question golden set covers single-company, comparison, trend, numeric, sector, out-of-corpus, ambiguous-entity, and adversarial questions, including a planted instruction inside a filing. A different model acts as judge for faithfulness and citation precision, and code checks numbers, schema, refusals, and coverage. Ten regression gates must pass, and every prompt version in the log records its hypothesis, its measured result, and the rules it changed.",
+    ],
+    stack: ["Python", "FastAPI", "SQLite FTS5", "sentence-transformers", "Anthropic Claude", "React", "TypeScript", "Vite", "Tailwind CSS", "Terraform", "AWS"],
+    outcomes: [
+      "All 10 eval gates pass on the 28-question golden set: faithfulness 0.94, citation precision 1.00, numeric accuracy 1.00 (9 of 9 gold values), recall at 25 of 0.86, and refusal correctness 4 of 4 at zero model requests.",
+      "About $0.09 per question with a 34-second p95, from exactly one model request per answer.",
+      "Hybrid search earns its place: recall at 25 is 0.86 with keywords and embeddings together, against 0.79 and 0.82 for each alone, and the reranker adds 5 points.",
+    ],
+  },
+  {
     slug: "claruss",
     name: "Claruss",
     tagline: "Clarity without compromise — a screen-time blocker that actually holds the line.",

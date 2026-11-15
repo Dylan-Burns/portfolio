@@ -8,7 +8,7 @@ import { projects } from "../../src/content/projects";
 test.use({ contextOptions: { reducedMotion: "reduce" } });
 
 // Project pages that exist under /work — every project renders a detail page.
-const WORK_SLUGS = ["parahealth", "watchtower", "remoteretros", "claruss", "cartlords", "steamhouse"];
+const WORK_SLUGS = ["parahealth", "watchtower", "remoteretros", "outpost", "syene", "keel", "claruss", "cartlords", "steamhouse"];
 // Every CRT project file links to its own /work case study (label is the bare domain).
 const LANDING_HREFS = WORK_SLUGS.map((s) => `/work/${s}`);
 
@@ -38,14 +38,19 @@ test("a project file navigates to its page", async ({ page }) => {
 });
 
 test("each project page renders with a launch action", async ({ page }) => {
+  test.setTimeout(120_000); // walks every /work page in one test
   for (const s of WORK_SLUGS) {
     await page.goto(`/work/${s}`);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     // Gated projects with `links: {}` (cartlords) render no launch button by design —
     // their case study leads with an embedded walkthrough instead.
     const links = projects.find((p) => p.slug === s)?.links ?? {};
-    if (Object.keys(links).length > 0) {
+    // Source-only projects (keel — its hosted demo is offline) lead with "View source".
+    const hasLaunch = Boolean(links.live || links.app || links.demo || links.appStore);
+    if (hasLaunch) {
       await expect(page.getByRole("link", { name: /\bapp\b|site|store|launch|demo/i }).first()).toBeVisible();
+    } else if (links.source) {
+      await expect(page.getByRole("link", { name: /view source/i }).first()).toBeVisible();
     }
   }
 });
