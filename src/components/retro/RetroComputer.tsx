@@ -128,6 +128,19 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
     [play],
   );
 
+  // Scrollable glass: `scrollRef` is the scroll container, `trackRef` the spacer sized to the scaled
+  // terminal. `more` drives the ▲/▼ hints shown while files sit above/below the visible window.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState({ up: false, down: false });
+  const updateMore = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const up = el.scrollTop > 2;
+    const down = el.scrollTop + el.clientHeight < el.scrollHeight - 2;
+    setMore((m) => (m.up === up && m.down === down ? m : { up, down }));
+  }, []);
+
   // Scale the fixed-width terminal to fit the cutout. Use offsetWidth (layout width),
   // NOT getBoundingClientRect (which includes the live zoom transform) — otherwise a
   // measurement taken mid zoom-out locks in a too-big scale and the screen never resets.
@@ -138,10 +151,26 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
     if (!crt || !term) return;
     // Divide by the term's own natural layout width (offsetWidth, transform-independent)
     // so the fit stays correct no matter the terminal's width/padding.
-    term.style.transform = `scale(${crt.offsetWidth / term.offsetWidth})`;
-  }, []);
+    const scale = crt.offsetWidth / term.offsetWidth;
+    term.style.transform = `scale(${scale})`;
+    crt.style.setProperty("--crt-fit", String(scale)); // lets glass overlays (▲/▼) match the text size
+    // The terminal is width-fit, so a long file list runs past the bottom of the glass. Size the
+    // scroll track to the scaled height so the glass scrolls natively (touch swipe / wheel).
+    if (trackRef.current) trackRef.current.style.height = `${term.offsetHeight * scale}px`;
+    updateMore();
+  }, [updateMore]);
   // re-fit on mount, on resize, and when the breakpoint flips (mobile uses a narrower terminal)
   useEffect(() => { fitTerm(); addEventListener("resize", fitTerm); return () => removeEventListener("resize", fitTerm); }, [fitTerm, isMobile]);
+  // the list's height changes with the directory (root ↔ games), so re-fit whenever the term resizes
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => fitTerm());
+    ro.observe(term);
+    return () => ro.disconnect();
+  }, [fitTerm]);
+  // a new directory starts at the top of the list
+  useEffect(() => { scrollRef.current?.scrollTo({ top: 0 }); }, [dir]);
 
   // turn the zoom transition on after the first frame (see `animate` above)
   useEffect(() => { const id = requestAnimationFrame(() => setAnimate(true)); return () => cancelAnimationFrame(id); }, []);
@@ -177,8 +206,23 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
   // on the active list (the links are inert/invisible until then, during the zoom + turn-on)
   useEffect(() => {
     if (!zoomed || screen !== "on" || game) return;
-    (document.querySelector(`[data-crt-index="${sel}"]`) as HTMLElement | null)?.focus();
+    (document.querySelector(`[data-crt-index="${sel}"]`) as HTMLElement | null)?.focus({ preventScroll: true });
   }, [zoomed, sel, screen, dir, game]);
+
+  // Keep the selected file inside the glass as arrow keys move through a list taller than the screen.
+  // Row offsets are in the term's unscaled layout space, so convert with the same fit scale.
+  useEffect(() => {
+    const el = scrollRef.current, term = termRef.current, crt = crtRef.current;
+    const row = document.querySelector(`[data-crt-index="${sel}"]`)?.closest<HTMLElement>("[data-crt-line]");
+    if (!el || !term || !crt || !row) return;
+    const scale = crt.offsetWidth / term.offsetWidth;
+    const top = row.offsetTop * scale, bottom = top + row.offsetHeight * scale;
+    const pad = row.offsetHeight * scale; // keep one line of context above/below
+    let next = el.scrollTop;
+    if (top - pad < el.scrollTop) next = Math.max(0, top - pad);
+    else if (bottom + pad > el.scrollTop + el.clientHeight) next = bottom + pad - el.clientHeight;
+    if (next !== el.scrollTop) el.scrollTo({ top: next, behavior: reduce ? "auto" : "smooth" });
+  }, [sel, dir, reduce]);
 
   // Phones show the full portrait photo, then tap to dive into the computer; desktop uses space.
   const zw = isMobile ? ZOOM_MOBILE : ZOOM_LARGE;
@@ -225,6 +269,12 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
           onClick={() => { if (!isMobile && !zoomed) setZoomed(true); }}
         >
           <div
+            ref={scrollRef}
+            onScroll={updateMore}
+            className={`crt-scroll absolute inset-0 overscroll-contain ${zoomed && screen === "on" ? "overflow-y-auto" : "overflow-hidden"}`}
+          >
+          <div ref={trackRef} className="relative w-full">
+          <div
             ref={termRef}
             className={`crt-content absolute left-0 top-0 origin-top-left p-[12px] ${screen} ${anim === "on" ? "flicker" : ""}`}
           >
@@ -265,6 +315,11 @@ export function RetroComputer({ items, initialZoom = false }: { items: FileItem[
               }}
             />
           </div>
+          </div>
+          </div>
+          {/* more files above/below the visible window — a swipe/scroll (or the arrow keys) reveals them */}
+          {screen === "on" && more.up && <span aria-hidden className="crt-more up">▲</span>}
+          {screen === "on" && more.down && <span aria-hidden className="crt-more down">▼</span>}
           {/* the bright tube beam: snaps to a scanline & blooms on zoom-in, collapses on zoom-out */}
           {anim && <span key={animKey} aria-hidden className={`crt-power ${anim}`} />}
           {/* a single scanline that rolls down once as the picture stabilises after turn-on */}

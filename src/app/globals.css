@@ -148,6 +148,14 @@ button.crt-file { -webkit-appearance:none; appearance:none; border:0; background
    then turns on with a classic tube power-on once fully zoomed in. */
 /* fades out fast so it vanishes under the shutdown flash (before the beam pinches to a
    line and would otherwise reveal the half-faded text); fade-in is driven by crt-warmup */
+/* the glass scrolls when the file list is taller than the screen; hide the scrollbar (the ▲/▼ hints stand in) */
+.crt-scroll { scrollbar-width:none; -webkit-overflow-scrolling:touch; touch-action:pan-y; }
+.crt-scroll::-webkit-scrollbar { display:none; }
+/* sized like the file names: --crt-fit is the terminal's fit scale (set in RetroComputer's fitTerm) */
+.crt-more { position:absolute; right:3%; z-index:7; pointer-events:none; font:calc(20px * var(--crt-fit, 1))/1 ui-monospace,"SF Mono",Menlo,monospace; color:#7bf0a6; text-shadow:0 0 5px rgba(100,240,160,.6); animation: crt-more-blink 1.2s steps(2,start) infinite; }
+.crt-more.up { top:3%; } .crt-more.down { bottom:3%; }
+@keyframes crt-more-blink { to { visibility:hidden; } }
+@media (prefers-reduced-motion: reduce) { .crt-more { animation:none; } }
 .crt-content { transition: opacity .05s linear; }
 .crt-content.off { opacity: 0; }
 .crt-content.on { opacity: 1; }

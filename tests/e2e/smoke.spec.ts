@@ -67,3 +67,17 @@ test("the old resume route and PDF are gone", async ({ page }) => {
   const pdf = await page.goto("/dylan-burns-resume.pdf");
   expect(pdf?.status()).toBe(404);
 });
+
+test("on a phone, every CRT file is reachable by scrolling the glass", async ({ browser }) => {
+  // The terminal is width-fit, so the file list is taller than the glass on phones — the glass
+  // must scroll (touch swipe) or the bottom projects are unreachable on mobile.
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, reducedMotion: "reduce" });
+  const page = await ctx.newPage();
+  await page.goto("/?view=files");
+  const glass = page.locator(".crt-scroll");
+  await expect(glass).toHaveCSS("overflow-y", "auto");
+  const last = page.locator(`a[href="/work/${WORK_SLUGS[WORK_SLUGS.length - 1]}"]`);
+  await glass.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+  await expect(last).toBeInViewport();
+  await ctx.close();
+});

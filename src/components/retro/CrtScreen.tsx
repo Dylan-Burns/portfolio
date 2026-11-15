@@ -38,6 +38,7 @@ export function CrtScreen<T>({
           <div
             key={i}
             className="flex leading-loose"
+            data-crt-line
             onMouseEnter={line.itemIndex >= 0 ? () => onHover(line.itemIndex) : undefined}
           >
             <div className="w-[42px] shrink-0 border-r border-[rgba(100,240,160,.14)] px-3 text-right text-[#2c6b45]">
