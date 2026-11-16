@@ -348,12 +348,11 @@ export const projects: Project[] = [
     summary:
       "Keel answers research questions about public companies from their 10-K and 10-Q filings: a direct answer, findings per company with citation chips, a comparison table, a coverage statement, and the gaps. Question understanding, hybrid retrieval, reranking, and citation validation are deterministic code, so each answer costs exactly one model request — about nine cents — and every claim links back to the passage in the filing that supports it.",
     category: "AI · Research",
-    // TODO(owner): confirm role/period and how to describe the PE-firm context; the
-    // CloudFront demo is offline, so the case study links to source only.
+    // TODO(owner): confirm role/period and how to describe the PE-firm context.
     role: "Builder",
     period: "2026",
     frame: "browser",
-    links: { source: "https://github.com/Dylan-Burns/keel" },
+    links: { live: "https://keeldd.com", source: "https://github.com/Dylan-Burns/keel" },
     cover: { src: "/projects/keel/cover.png", alt: "Keel answering “What are the primary risk factors facing Apple, Tesla, and JPMorgan, and how do they compare?” with a cited direct answer and a citations panel", width: 2000, height: 1250 },
     screenshots: [],
     tour: [
