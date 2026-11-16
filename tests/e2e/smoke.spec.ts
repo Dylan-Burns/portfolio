@@ -45,7 +45,7 @@ test("each project page renders with a launch action", async ({ page }) => {
     // Gated projects with `links: {}` (cartlords) render no launch button by design —
     // their case study leads with an embedded walkthrough instead.
     const links = projects.find((p) => p.slug === s)?.links ?? {};
-    // Source-only projects (keel — its hosted demo is offline) lead with "View source".
+    // Source-only projects lead with "View source".
     const hasLaunch = Boolean(links.live || links.app || links.demo || links.appStore);
     if (hasLaunch) {
       await expect(page.getByRole("link", { name: /\bapp\b|site|store|launch|demo/i }).first()).toBeVisible();
