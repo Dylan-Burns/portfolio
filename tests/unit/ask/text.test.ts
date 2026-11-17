@@ -20,7 +20,7 @@ describe("sanitizeQuestion", () => {
   it("NFKC-normalizes lookalikes", () => {
     expect(sanitizeQuestion("ｗｈａｔ is ｋｅｅｌ")).toEqual({ ok: true, q: "what is keel" });
   });
-  it.each([["U+202E", "\u202e"], ["U+2066", "\u2066"], ["U+E0041", "\u{E0041}"], ["U+00AD", "\u00ad"], ["U+FE0F", "\ufe0f"]])(
+  it.each([["U+202E", "\u202e"], ["U+2066", "\u2066"], ["U+E0041", "\u{E0041}"], ["U+00AD", "\u00ad"], ["U+FE0F", "\ufe0f"], ["U+E0000", "\u{E0000}"], ["U+E0002", "\u{E0002}"], ["U+E001F", "\u{E001F}"], ["U+E000", "\ue000"]])(
     "removes %s",
     (_n, ch) => {
       expect(sanitizeQuestion(`what is${ch} keel`)).toEqual({ ok: true, q: "what is keel" });

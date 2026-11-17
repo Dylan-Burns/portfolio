@@ -3,8 +3,8 @@ export const MAX_Q = 300;
 
 export type Sanitized = { ok: true; q: string } | { ok: false; reason: "not_text" | "empty" | "too_long" };
 
-/** Controls, format characters (bidi, zero-width, tags) and variation selectors. */
-const INVISIBLE = /[\p{Cc}\p{Cf}\u034F\u180E\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/gu;
+/** Controls, format, private-use and unassigned code points, the Tags block and variation selectors. */
+const INVISIBLE = /[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Cs}\u{E0000}-\u{E007F}\u034F\u180E\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/gu;
 
 export function sanitizeQuestion(raw: unknown): Sanitized {
   if (typeof raw !== "string") return { ok: false, reason: "not_text" };
