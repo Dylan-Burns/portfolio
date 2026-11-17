@@ -142,7 +142,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 @media (max-width: 1100px) { .legend.zoomed { left: 50%; top: auto; bottom: 3vh; transform: translateX(-50%); flex-direction: row; gap: 18px; font-size: 10px; } }
 .term-os { padding: 26px 30px; font-size: 25px; line-height: 27px; justify-content: flex-start; gap: 10px; }
 .term-os .t-head { display: flex; justify-content: space-between; }
-.files { display: flex; flex-direction: column; width: 58%; position: relative; z-index: 1; line-height: 24px; }
+.files { display: flex; flex-direction: column; width: 58%; position: relative; z-index: 1; line-height: 23px; }
 .file { display: flex; gap: 8px; padding: 0 8px; margin: 0 -8px; border-radius: 4px; color: #62d68b; text-decoration: none; white-space: nowrap; text-shadow: none; }
 .file .pre { width: 1ch; opacity: 0; } .file.sel .pre { opacity: 1; }
 .file.sel { background: rgba(110, 245, 165, 0.17); color: #d9ffe8; text-shadow: 0 0 12px rgba(125, 255, 166, 0.6); }
@@ -155,12 +155,13 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .t-out::-webkit-scrollbar { display: none; }
 .t-out .b { color: #d9ffe8; } .t-out .d { opacity: 0.55; }
 .t-game { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
-.t-prompt { display: flex; gap: 10px; align-items: baseline; position: relative; z-index: 1; }
+.t-prompt { display: flex; gap: 10px; align-items: baseline; position: relative; z-index: 1; border-top: 1px solid rgba(125, 255, 166, 0.38); padding-top: 7px; }
 .t-prompt #tBuf { white-space: pre; color: #d9ffe8; }
 .t-prompt .caret { margin-left: -8px; }
 .t-prompt input { flex: 1; min-width: 0; font: inherit; color: #d9ffe8; background: none; border: 0; outline: none; padding: 0; caret-color: var(--phos); display: none; }
 .touch .t-prompt input { display: block; } .touch .t-prompt #tBuf, .touch .t-prompt .caret, .touch .t-prompt #tHint { display: none; }
-.term.big { border-radius: 14px; padding: 30px 40px; }
+.term.mini { padding: 58px 70px 50px; }
+.term.big { border-radius: 0; padding: max(26px, env(safe-area-inset-top, 0px)) max(34px, env(safe-area-inset-right, 0px)) max(22px, env(safe-area-inset-bottom, 0px)) max(34px, env(safe-area-inset-left, 0px)); }
 /* a project, drawn on the screen */
 .t-page { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; white-space: normal; }
 .t-page::-webkit-scrollbar { display: none; }
@@ -495,7 +496,7 @@ const P = [
   { slug: "claruss", name: "Claruss", cat: "Wellness, iOS", role: "Developer", period: "Released 2026", form: "phone", url: "claruss.app",
     what: "a screen-time blocker for iOS",
     tag: "A screen-time blocker that actually holds the line.",
-    metric: "Live", label: "on the App Store, free with a Pro subscription",
+    metric: "Live", label: "on the App Store. Free to download, with an optional Pro upgrade",
     out: ["System-level enforcement through Apple's Screen Time API, on a schedule you set.",
           "Hardcore and Lockdown modes raise the stakes, and an accountability partner can approve early unlocks.",
           "Designed, built and shipped solo."],
@@ -521,8 +522,8 @@ const P = [
     links: [["Open the live demo", "https://steamhouse.vercel.app/"]] },
 ];
 const CYCLE = ["syene", "watchtower", "parahealth", "steamhouse", "outpost", "keel", "remoteretros", "claruss", "cartlords"].map((s) => P.findIndex((p) => p.slug === s));
-const FORM_ORDER = ["capsule", "radar", "board", "stack", "globe", "page", "phone", "bars", "phyllo", "portrait"];
-const ROT = { globe: 0.5, capsule: 0.5, radar: 0.42, board: 0.26, stack: 0.42, page: 0.28, phone: 0.4, bars: 0.42, phyllo: 0.32, portrait: 0.13 };
+const FORM_ORDER = ["capsule", "radar", "board", "stack", "globe", "page", "phone", "bars", "phyllo", "portrait", "compass", "plane", "envelope"];
+const ROT = { globe: 0.5, capsule: 0.5, radar: 0.42, board: 0.26, stack: 0.42, page: 0.28, phone: 0.4, bars: 0.42, phyllo: 0.32, portrait: 0.13, compass: 0.3, plane: 0.42, envelope: 0.3 };
 
 /* --------------------------------------------------------------- shapes */
 const TAU = Math.PI * 2, R = Math.random;
@@ -650,6 +651,39 @@ const SHAPES = {
     }]], (p) => rotX([p[0], p[1] - 0.12, p[2]], 0.95));
   },
 };
+// Three more forms, so every file on the computer has its own: a compass (principles), a paper plane (dispatch), an envelope (contact).
+const seg = (a, b, t = R()) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const tri = (a, b, c) => { let u = R(), v = R(); if (u + v > 1) { u = 1 - u; v = 1 - v; } return [a[0] + (b[0] - a[0]) * u + (c[0] - a[0]) * v, a[1] + (b[1] - a[1]) * u + (c[1] - a[1]) * v, a[2] + (b[2] - a[2]) * u + (c[2] - a[2]) * v]; };
+SHAPES.compass = (N) => {
+  const needle = (p) => rotZ(p, -0.6);
+  return build(N, [
+    [0.24, () => { const a = R() * TAU; return j([0.96 * Math.cos(a), 0.96 * Math.sin(a), 0], 0.005); }],
+    [0.10, () => { const a = R() * TAU; return j([0.8 * Math.cos(a), 0.8 * Math.sin(a), 0], 0.003); }],
+    [0.16, () => { const k = (R() * 16) | 0, a = k / 16 * TAU, r0 = k % 4 === 0 ? 0.62 : k % 2 === 0 ? 0.72 : 0.78, r = r0 + R() * (0.94 - r0); return [r * Math.cos(a), r * Math.sin(a), 0]; }],
+    [0.26, () => { const t = R(), w = (1 - t) * 0.13; return needle([(R() - 0.5) * 2 * w, t * 0.7, 0.04]); }],                                   // north half, filled
+    [0.16, () => { const t = R(), w = (1 - t) * 0.13; return needle(j([(R() < 0.5 ? -1 : 1) * w, -t * 0.7, 0.04], 0.003)); }],                 // south half, outline
+    [0.08, () => { const a = R() * TAU; return [0.06 * Math.cos(a), 0.06 * Math.sin(a), 0.06]; }],
+  ], (p) => rotX(p, 0.42));
+};
+SHAPES.plane = (N) => {
+  const nose = [1, -0.05, 0], L = [-0.85, 0.12, 0.78], Rt = [-0.85, 0.12, -0.78], c1 = [-0.85, 0.12, 0.09], c2 = [-0.85, 0.12, -0.09], keel = [-0.85, -0.3, 0];
+  const edges = [[nose, L], [nose, Rt], [L, c1], [Rt, c2], [nose, c1], [nose, c2], [nose, keel], [c1, keel], [c2, keel]], faces = [[nose, L, c1], [nose, Rt, c2], [nose, c1, keel], [nose, c2, keel]];
+  return build(N, [
+    [0.52, () => { const e = pick(edges); return j(seg(e[0], e[1]), 0.004); }],
+    [0.36, () => { const f = pick(faces); return tri(f[0], f[1], f[2]); }],
+    [0.12, () => { const k = (R() * 5) | 0, t = (k + R() * 0.45) / 5, x = -1 - t * 0.9; return j([x, -0.05 - 0.5 * t * t + 0.12 * Math.sin(t * 6), 0], 0.006); }],   // dashed trail
+  ], (p) => rotX(rotZ(rotY([p[0] * 0.82 + 0.25, p[1] * 0.82, p[2] * 0.82], 0.55), 0.3), 0.32));
+};
+SHAPES.envelope = (N) => {
+  const w = 1.5, h = 1.0, tl = [-w / 2, h / 2, 0], tr = [w / 2, h / 2, 0], bl = [-w / 2, -h / 2, 0], br = [w / 2, -h / 2, 0], mid = [0, -0.06, 0];
+  return build(N, [
+    [0.34, () => j(rectEdge(w, h), 0.004)],
+    [0.28, () => j(R() < 0.5 ? seg(tl, mid) : seg(tr, mid), 0.004)],
+    [0.18, () => j(R() < 0.5 ? seg(bl, [-0.2, 0.06, 0]) : seg(br, [0.2, 0.06, 0]), 0.004)],
+    [0.12, () => { const p = rectEdge(w, h); p[2] = -0.07; return p; }],
+    [0.08, () => { const a = R() * TAU, r = Math.sqrt(R()) * 0.07; return [r * Math.cos(a), -0.06 + r * Math.sin(a), 0.02]; }],
+  ], (p) => rotX(rotY(p, -0.38), 0.16));
+};
 /** Portrait: sample the cut-out photograph. Brighter pixels get more particles; luminance also lifts them toward the viewer. */
 let portraitPx = null;
 SHAPES.portrait = (N) => {
@@ -703,24 +737,34 @@ function makeMachine(root, glass, term) {
     fn.zs = Math.log(Gt / gw) / Math.log(S); fn.rest = { w: Gt, h: Gt * gh / gw }; fn.last = null;
   };
   /** zt: 0 = standing in the gallery, fn.zs = at the keyboard, 1 = fully inside the screen. Returns the glass rect inside the pin. */
-  const fn = (zt, g = 0, pre = false) => {
-    if (fn.last && fn.last.zt === zt && fn.last.g === g && fn.last.pre === pre) return fn.last.rect;      // nothing moved: touch no styles
+  const fn = (zt, g = 0, pre = false, mini = false) => {
+    if (fn.last && fn.last.zt === zt && fn.last.g === g && fn.last.pre === pre && fn.last.mini === mini) return fn.last.rect;      // nothing moved: touch no styles
     const { vw, vh, gw, gh, gcx, gcy, S, sp } = geo, total = Math.pow(S, zt), k = smooth(zt);
     const s = total < sp ? total : sp * Math.pow(total / sp, 0.22);
     let cx = lerp(gcx, vw / 2, k), cy = lerp(gcy, vh / 2, k), w = gw * total, h = gh * total;
     root.style.transform = `translate(${cx - gcx}px, ${cy - gcy}px) scale(${s})`;
     const op = 1 - clamp((zt - 0.82) / 0.18); root.style.opacity = op; root.style.visibility = op <= 0 ? "hidden" : "visible";
     // full screen: the glass leaves its bezel and fills the window, and the terminal gains rows and columns
-    const side = 14, top = 70, bw = vw - side * 2, bh = vh - top - 46, sg = smooth(g);
+    const top = 0, bw = vw, bh = vh, sg = smooth(g);
     if (sg > 0) { cx = lerp(cx, vw / 2, sg); cy = lerp(cy, top + bh / 2, sg); w = lerp(w, bw, sg); h = lerp(h, bh, sg); }
     fn.bigRect = { w: bw, h: bh };
-    const big = g > 0.02 || pre, kk = vw < 768 ? 0.6 : 0.84, tw = big ? Math.round(bw / kk) : 600, th = Math.round(big ? bh / kk : 600 * gh / gw);
-    if (fn.tw !== tw || fn.th !== th) { fn.tw = tw; fn.th = th; term.style.width = tw + "px"; term.style.height = th + "px"; term.classList.toggle("big", big); term.classList.toggle("narrow", tw < 1000); fn.isBig = big; glass.style.borderRadius = big ? "1.3% / 2.3%" : ""; glass.style.boxShadow = big ? "none" : ""; if (fn.onsize) fn.onsize(); }
+    // `pre` is the layout the screen is heading for (full-screen or not). The layout switches at the START of a
+    // resize and is then scaled evenly: the terminal keeps its width in its own pixels and only its height
+    // follows the glass, so nothing stretches and nothing snaps into place when the animation ends.
+    const big = pre, kk = vw < 768 ? 0.6 : 0.84, bigTw = Math.round(bw / kk);
+    const small = !big && mini, tw = big ? bigTw : small ? Math.min(1400, bigTw) : 600, th = Math.max(40, Math.round(h * tw / w));
+    if (fn.tw !== tw || fn.isBig !== big) {
+      fn.tw = tw; fn.isBig = big; term.style.width = tw + "px";
+      term.classList.toggle("big", big); term.classList.toggle("narrow", tw < 1000); term.classList.toggle("mini", small && tw > 1000);
+      glass.style.borderRadius = big ? "0" : ""; glass.style.boxShadow = big ? "none" : "";
+      if (fn.onsize) fn.onsize();
+    }
+    if (fn.th !== th) { fn.th = th; term.style.height = th + "px"; }
     glass.style.transform = `translate(${cx - w / 2}px, ${cy - h / 2}px) scale(${w / gw}, ${h / gh})`;
     glass.style.opacity = zt >= 1 ? 0 : 1;
-    term.style.transform = `translate(${cx - w / 2}px, ${cy - h / 2}px) scale(${w / tw}, ${h / th})`;
+    term.style.transform = `translate(${cx - w / 2}px, ${cy - h / 2}px) scale(${w / tw})`;
     term.style.opacity = op * clamp((w - 60) / 160);
-    fn.last = { zt, g, pre, rect: { cx, cy, w, h } };
+    fn.last = { zt, g, pre, mini, rect: { cx, cy, w, h } };
     return fn.last.rect;
   };
   layout(); addEventListener("resize", layout); fn.layout = layout;
@@ -881,13 +925,13 @@ const LABEL = { parahealth: "parahealth.ai", watchtower: "watchtower", remoteret
 const KIND = { parahealth: ["healthcare", "AI-powered prior authorization workflow"], watchtower: ["infrastructure", "self-healing software infra"],
   remoteretros: ["collaboration", "Agile retrospectives for remote teams"], outpost: ["self-hosted", "emergency offline library with local AI models"],
   syene: ["fintech", "oil market signals from satellite images"], keel: ["research", "answers about companies, cited from SEC filings"],
-  claruss: ["wellness", "an iPhone app that blocks distracting apps"], cartlords: ["commerce", "finds the cheapest way to buy your groceries"],
+  claruss: ["wellness", "iOS screentime app that requires a partner to approve screentime overrides"], cartlords: ["commerce", "finds the cheapest way to buy your groceries"],
   steamhouse: ["agtech", "crop and feeding plans for commercial growers"] };
 const FILES = [...P.map((p, i) => ({ name: p.slug, label: LABEL[p.slug], title: p.name, form: p.form, metric: KIND[p.slug][0], what: KIND[p.slug][1] })),
   { name: "about", label: "about.txt", title: "About", form: "portrait", metric: "about", what: "passionate technologist and explorer" },
-  { name: "principles", label: "principles.txt", title: "Principles", form: "page", metric: "principles", what: "what I try to live by" },
-  { name: "dispatch", label: "dispatch.txt", title: "Dispatch", form: "radar", metric: "dispatch", what: "dated notes, as I write them" },
-  { name: "contact", label: "contact.txt", title: "Contact", form: "globe", metric: "contact", what: "building something hard? say hello" }];
+  { name: "principles", label: "principles.txt", title: "Principles", form: "compass", metric: "principles", what: "what I try to live by" },
+  { name: "dispatch", label: "dispatch.txt", title: "Dispatch", form: "plane", metric: "dispatch", what: "short essays, thoughts and writings" },
+  { name: "contact", label: "contact.txt", title: "Contact", form: "envelope", metric: "contact", what: "say hello" }];
 const filesEl = $("files");
 filesEl.innerHTML = FILES.map((f, i) => `<a class="file" href="#${f.name}" data-i="${i}"><span class="pre">&gt;</span><span>${f.label}</span></a>`).join("");
 let pickd = -1, selAt = 0, touched = false, formOverride = "";
@@ -937,13 +981,12 @@ function pageHTML(i) {
     side = p.noshot ? `<div class="pg-noshot">no screenshot<br>the app is in private beta and its screens stay behind sign-in</div>` : `<figure class="pg-shot"><img src="/burnsos/${p.slug}.jpg" alt="${esc(p.name)} screenshot" width="1400" height="875" decoding="async"><figcaption>${isTouch ? "tap" : "hover"} for full colour</figcaption></figure>`;
     cols = `<div class="pg-cols"><section><p class="pg-h">what it is</p><p class="lead">${esc(ABOUT[p.slug])}</p></section><section><p class="pg-h">results</p><ul>${p.out.map((o) => `<li>${esc(o)}</li>`).join("")}</ul></section><section><p class="pg-h">built with</p><ul>${p.stack.map((t) => `<li>${esc(t)}</li>`).join("")}</ul></section></div>`;
   } else if (f.name === "about") {
-    main = `<p class="dim">about.txt</p><h2 class="pg-name">Dylan Burns</h2><p class="pg-tag">Passionate technologist and explorer.</p>
+    main = `<p class="dim">about.txt</p><h2 class="pg-name long">Dylan Burns</h2><p class="pg-tag">Passionate technologist and explorer.</p>
       <p>I have never believed you have to choose between range and depth. The people I admire most went deep in more than one place, and each new depth made the earlier ones more valuable.</p>
-      <p>So when I take something on, I commit to it completely and master it, until it works and ships. Then I take on the next. Building a product alone demands that. You are the designer in the morning, the backend engineer after lunch, and by evening the person who has to decide whether any of it is good. The seams between those jobs are where most projects go wrong, and you only see the seams if you have done real work on both sides.</p>
+      <p>So when I take something on, I commit to it completely and master it, until it works and ships. Then I take on the next. Taking a product from idea to launch demands that range. The seams between design, engineering and judgment are where most projects go wrong, and you only see them if you have done real work on both sides.</p>
       <p>That is why my interests run so wide: healthcare, fintech, satellite data, infrastructure, agriculture, and software that keeps working when the internet doesn't. Each began as a field I knew nothing about, and I stayed with each one until I had built something real in it.</p>
       <p>That is the pattern I trust. Not knowing how is rarely a reason to stop. More often it is the reason to begin, and finishing is what turns curiosity into skill. The thirst behind it has never been limited to software. I want to be properly good at everything I take on.</p>
       <p class="pg-links">${cmdLink("open principles.txt", "my principles")}${cmdLink("open contact.txt", "get in touch")}${cmdLink("ls", "see the work")}</p>`;
-    side += `<p class="dim">portrait drawn live from a photograph, one particle per sample.</p>`;
   } else if (f.name === "principles") {
     main = `<p class="dim">principles.txt</p><h2 class="pg-name">Principles</h2><p class="pg-tag">What I try to live by. Short on purpose, and added to as I go.</p>
       <div class="wr"><p class="wr-t"><span class="dim">01</span>Create more than you consume</p><p>The world is built to be consumed, and making things is the way out of it. I only use social media if I am there to post and take part.</p></div>
@@ -956,8 +999,8 @@ function pageHTML(i) {
       <div class="wr"><p class="wr-t"><span class="dim">08</span>Curiosity compounds</p><p>Each thing I learn makes the next one cheaper to learn. Range has turned out to be a shortcut to depth.</p></div>
       <p class="pg-links">${cmdLink("open dispatch.txt", "dispatch")}${cmdLink("open about.txt", "about me")}${cmdLink("open contact.txt", "get in touch")}</p>`;
   } else if (f.name === "dispatch") {
-    main = `<p class="dim">dispatch.txt</p><h2 class="pg-name">Dispatch</h2><p class="pg-tag">Dated notes, newest first. Each entry is stamped when it is filed.</p>
-      ${DISPATCH.length ? DISPATCH.map((d) => `<div class="wr"><p class="dim">${stamp(d.at)}</p><p class="wr-t">${esc(d.title)}</p><p>${esc(d.body)}</p></div>`).join("") : `<div class="wr"><p class="dim">total 0</p><p>Nothing filed yet. The first dispatch will appear here with its date and time.</p></div>`}
+    main = `<p class="dim">dispatch.txt</p><h2 class="pg-name">Dispatch</h2><p class="pg-tag">Short essays, thoughts and writings.</p>
+      ${DISPATCH.length ? DISPATCH.map((d) => `<div class="wr"><p class="dim">${stamp(d.at)}</p><p class="wr-t">${esc(d.title)}</p><p>${esc(d.body)}</p></div>`).join("") : `<div class="wr"><p class="dim">total 0</p><p>No current entries.</p></div>`}
       <p class="pg-links">${cmdLink("open principles.txt", "principles")}${cmdLink("open about.txt", "about me")}</p>`;
   } else {
     main = `<p class="dim">contact.txt</p><h2 class="pg-name">Let's talk.</h2><p class="pg-tag">Building something hard? I'd like to hear about it.</p>
@@ -1045,7 +1088,7 @@ function fileText(i) {
   if (p) return `<span class="b">${esc(p.name)}</span>  <span class="d">${esc(p.cat)}, ${esc(p.role.toLowerCase())}, ${esc(p.period)}</span>\n${esc(p.tag)}\n\n<span class="b">${esc(p.metric)}</span>  ${esc(p.label)}\n\n${p.out.map((o) => "- " + esc(o)).join("\n")}\n\n<span class="d">stack</span>  ${esc(p.stack.join(", "))}\n\n${cmdLink("open " + f.label, "open the page")}${p.links.map((l) => `   <a href="${l[1]}" target="_blank" rel="noopener">${esc(l[0].toLowerCase())}</a>`).join("")}`;
   if (f.name === "about") return `<span class="b">Dylan Burns</span>  <span class="d">passionate technologist and explorer</span>\n\nI have never believed you have to choose between range and depth. The people I admire most went deep in more than one place, and each new depth made the earlier ones more valuable.\n\nThat is why my interests run so wide: healthcare, fintech, satellite data, infrastructure, agriculture, and software that keeps working when the internet doesn't. Each began as a field I knew nothing about, and I stayed with each one until I had built something real in it.\n\nThat is the pattern I trust. Not knowing how is rarely a reason to stop. More often it is the reason to begin, and finishing is what turns curiosity into skill. The thirst behind it has never been limited to software. I want to be properly good at everything I take on.\n\n${cmdLink("open about.txt", "read the whole thing")}   ${cmdLink("cat principles.txt", "principles")}   ${cmdLink("stack")}`;
   if (f.name === "principles") return `<span class="b">Principles</span>  <span class="d">what I try to live by</span>\n\n<span class="b">01  Create more than you consume</span>\nThe world is built to be consumed, and making things is the way out of it. I only use social media if I am there to post and take part.\n\n<span class="b">02  Leave it better than you found it</span>\nA codebase, a team, a campsite, a conversation. You don't have to fix everything. You have to leave one thing better than it was when you arrived.\n\n<span class="b">03  Aggressive, persistent action toward your goals</span>\nPlans are cheap and motion is rare. Most goals are lost to waiting long before they are lost to failure. Move today, and again tomorrow.\n\n<span class="b">04  Size the decision</span>\nDecisions rarely come out simply good or bad. More often the payoff is lopsided: ten parts upside to one part downside, or the reverse. Some choices are easy to undo and should be made fast for exactly that reason. Others can't be taken back. Every decision carries a weight, and knowing its ratio of cost to benefit tells you how much risk it holds and how much time it deserves.\n\n<span class="b">05  Be a beginner on purpose</span>\nThe feeling of not knowing what you are doing is the feeling of learning. Go looking for it before you get comfortable.\n\n<span class="b">06  Measure it, or you're guessing</span>\nIf I can't put a number on whether something works, I don't yet know that it does.\n\n<span class="b">07  Own the whole thing</span>\nThe interesting problems live between the layers. You only find them if you are willing to work on every layer.\n\n<span class="b">08  Curiosity compounds</span>\nEach thing I learn makes the next one cheaper to learn. Range has turned out to be a shortcut to depth.\n\n${cmdLink("open principles.txt", "open the page")}`;
-  if (f.name === "dispatch") return `<span class="b">Dispatch</span>  <span class="d">dated notes, newest first</span>\n\n${DISPATCH.length ? DISPATCH.map((d) => `<span class="b">${stamp(d.at)}</span>  ${esc(d.title)}\n${esc(d.body)}`).join("\n\n") : "total 0\n<span class=\"d\">nothing filed yet</span>"}`;
+  if (f.name === "dispatch") return `<span class="b">Dispatch</span>  <span class="d">short essays, thoughts and writings</span>\n\n${DISPATCH.length ? DISPATCH.map((d) => `<span class="b">${stamp(d.at)}</span>  ${esc(d.title)}\n${esc(d.body)}`).join("\n\n") : "total 0\n<span class=\"d\">no current entries</span>"}`;
   return `<span class="b">Contact</span>\n\nBuilding something hard? I'd like to hear about it.\n\nmail      dylanburns1524@gmail.com   ${cmdLink("mail", "copy")}\ngithub    <a href="https://github.com/Dylan-Burns" target="_blank" rel="noopener">github.com/Dylan-Burns</a>\nlinkedin  <a href="https://www.linkedin.com/in/dylan-burns-" target="_blank" rel="noopener">linkedin.com/in/dylan-burns-</a>`;
 }
 const openTab = (url) => { const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove(); };
@@ -1118,9 +1161,9 @@ function startGame(kind) {
   const x = tGame.getContext("2d"); x.setTransform(q, 0, 0, q, 0, 0); x.font = '22px "VT323", monospace'; x.textBaseline = "top";
   game.on = (kind === "snake" ? snakeGame : pongGame)(x, W, H); game.on.kind = kind;
 }
-const fitField = () => { const r = m1.isBig ? m1.bigRect : m1.rest; if (r) field.fit(r.w, r.h); canvas.style.borderRadius = m1.isBig ? "1.3% / 2.3%" : ""; };
+const fitField = () => { const r = m1.isBig ? m1.bigRect : m1.rest; if (r) field.fit(r.w, r.h); canvas.style.borderRadius = m1.isBig ? "0" : ""; };
 m1.onsize = () => { fitField(); if (game.on) startGame(game.on.kind); };
-addEventListener("resize", () => requestAnimationFrame(() => { m1(m1.zs * zk, grow, preBig); fitField(); }));
+addEventListener("resize", () => requestAnimationFrame(() => { m1(m1.zs * zk, grow, preBig || growTo === 1, shell.mode === "page"); fitField(); }));
 function snakeGame(x, W, H) {
   const cols = 30, top = 30, cell = Math.max(6, Math.floor(Math.min(W / cols, (H - top) / 12))), nx = Math.floor(W / cell), ny = Math.floor((H - top) / cell), ox = (W - nx * cell) / 2;
   let s, dir, next, food, score, dead, lastT = 0, best = +store("snake") || 0;
@@ -1238,7 +1281,7 @@ function frame(now) {
   if (view === -1) {
     // gallery -> at the keyboard by scroll; through the glass only when a file is opened
     if (zoomTo === 0 && growTo) COMMANDS.fullscreen();          // stepping back always shrinks the screen first
-    grow += (growTo - grow) * (1 - Math.exp(-dt * 7)); if (Math.abs(growTo - grow) < 0.002) grow = growTo;
+    grow += (growTo - grow) * (1 - Math.exp(-dt * 9)); if (Math.abs(growTo - grow) < 0.004) grow = growTo;
     zk = reduce ? zoomTo : clamp(zk + Math.sign(zoomTo - zk) * dt / 1.15, 0, 1); if (Math.abs(zoomTo - zk) < 0.004) zk = zoomTo;
     const d = zk, zs = m1.zs, zt = zs * (d < 0.5 ? 4 * d * d * d : 1 - Math.pow(-2 * d + 2, 3) / 2);
     // the tube is dark until you are at the keyboard, then it powers on; it collapses as you step back
@@ -1250,8 +1293,8 @@ function frame(now) {
     const lo = 1 - smooth(grow); if (lo !== lastLegendOp) { lastLegendOp = lo; legendEl.style.opacity = lo; }
     if (preBig && (grow > 0.05 || shell.mode !== "page")) preBig = false;
     const moving = grow !== growTo || preBig || (zk !== zoomTo && screenOn);
-    if (moving !== wasMoving) { wasMoving = moving; termEl.style.willChange = glassEl.style.willChange = canvas.style.willChange = moving ? "transform" : ""; }
-    g1 = m1(zt, grow, preBig); const pinTop = 0;
+    if (moving !== wasMoving) { wasMoving = moving; if (!moving && game.on) startGame(game.on.kind); termEl.style.willChange = glassEl.style.willChange = canvas.style.willChange = moving ? "transform" : ""; }
+    g1 = m1(zt, grow, preBig || growTo === 1, shell.mode === "page"); const pinTop = 0;
     if (termEl.dataset.on !== String(screenOn)) { termEl.dataset.on = screenOn; termEl.style.pointerEvents = screenOn ? "auto" : "none"; termEl.style.visibility = screenOn ? "visible" : "hidden"; }
     // at the keyboard the form sits right of the file list, previewing the selected file
     const tb = smooth(clamp((zt - zs * 0.45) / (zs * 0.55))) * (1 - smooth(clamp((zt - zs) / ((1 - zs) * 0.3))));
