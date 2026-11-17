@@ -1,0 +1,1335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dylan Burns</title>
+<meta name="description" content="Dylan Burns, passionate technologist and explorer. Step up to the computer: every project runs on its screen.">
+<link rel="canonical" href="https://www.burnsdylan.com/">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dylan Burns">
+<meta property="og:title" content="Dylan Burns">
+<meta property="og:description" content="Dylan Burns, passionate technologist and explorer. Step up to the computer: every project runs on its screen.">
+<meta property="og:url" content="https://www.burnsdylan.com/">
+<meta property="og:image" content="https://www.burnsdylan.com/opengraph-image">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#eeebe8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="image" href="/burnsos/machine.jpg" media="(min-width: 768px)">
+<link rel="preload" as="image" href="/burnsos/machine-m.jpg" media="(max-width: 767px)">
+<style>html, body { margin: 0; } img { max-width: 100%; } [hidden] { display: none !important; }</style>
+<!--
+  burnsOS 2.0: the whole home page. Served at "/" by the rewrite in next.config.ts.
+  It is a single static file on purpose: one WebGL particle system, one shell, no framework.
+  Project copy here is written for the terminal; the long-form case studies still live at /work/<slug>.
+-->
+</head>
+<body>
+<noscript>
+  <div style="max-width:40rem;margin:4rem auto;padding:0 1.25rem;font:16px/1.6 system-ui,sans-serif;color:#eef1f7">
+    <h1>Dylan Burns</h1>
+    <p>Passionate technologist and explorer. This page is an interactive computer and needs JavaScript. The case studies work without it:</p>
+    <ul><li><a style="color:#7dffa6" href="/work/parahealth">Parahealth</a></li><li><a style="color:#7dffa6" href="/work/watchtower">Watchtower</a></li><li><a style="color:#7dffa6" href="/work/remoteretros">Remote Retro</a></li><li><a style="color:#7dffa6" href="/work/outpost">Outpost</a></li><li><a style="color:#7dffa6" href="/work/syene">Syene</a></li><li><a style="color:#7dffa6" href="/work/keel">Keel</a></li><li><a style="color:#7dffa6" href="/work/claruss">Claruss</a></li><li><a style="color:#7dffa6" href="/work/cartlords">Cartlords</a></li><li><a style="color:#7dffa6" href="/work/steamhouse">Steamhouse</a></li></ul>
+  </div>
+</noscript>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=VT323&display=swap">
+<style>
+/* Layout: a white gallery holds one retro computer. Scrolling dives through its CRT into a dark
+   world where one particle system forms each product; the last scroll pulls back out to the gallery.
+   Single look by design: the gallery supplies the light, the inside of the screen supplies the dark. */
+:root {
+  color-scheme: dark;
+  --bg: #05070d;        /* inside the tube */
+  --bg-raise: #0c1220;
+  --fg: #eef1f7;        /* bone */
+  --muted: #98a1b5;
+  --faint: #566076;
+  --line: rgba(238, 241, 247, 0.14);
+  --accent: #ffb35c;    /* sodium amber */
+  --accent-ink: #1a1206;
+  --ink: #101218;       /* type on the gallery wall */
+  --ink-muted: #5c5f68;
+  --phos: #7dffa6;      /* CRT phosphor */
+  --shadow: 0 50px 90px -30px rgba(0, 0, 0, 0.8);
+  --display: "Bricolage Grotesque", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --crt: "VT323", ui-monospace, Menlo, monospace;
+  --gutter: clamp(16px, 4vw, 52px);
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+a { color: inherit; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+::selection { background: var(--accent); color: var(--accent-ink); }
+.wrap { max-width: 1360px; margin-inline: auto; padding-left: max(var(--gutter), env(safe-area-inset-left, 0px)); padding-right: max(var(--gutter), env(safe-area-inset-right, 0px)); }
+.disp { font-family: var(--display); font-weight: 800; font-stretch: 78%; letter-spacing: -0.012em; line-height: 0.92; }
+
+/* the particle canvas lives on the glass and is only as large as the screen, so there is little to composite */
+#field { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; border-radius: 9% / 11%; }
+
+/* ---------- HUD (inverts itself over the white gallery) ---------- */
+.scrim { position: fixed; inset: 0 0 auto; height: calc(96px + env(safe-area-inset-top, 0px)); z-index: 29; pointer-events: none; opacity: 0; background: linear-gradient(var(--bg) 45%, transparent); }
+.hud { position: fixed; z-index: 30; color: #fff; mix-blend-mode: difference; }
+.nav { inset: 0 0 auto; padding-top: env(safe-area-inset-top, 0px); }
+.nav-in { display: flex; align-items: center; gap: 26px; height: 64px; }
+.brand { font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: -0.02em; text-decoration: none; margin-right: auto; }
+.nav-links { display: flex; gap: 24px; }
+.nav-links button { font-size: 15px; opacity: 0.72; transition: opacity .15s; }
+.nav-links button:hover { opacity: 1; }
+.kbd-btn { display: inline-flex; align-items: center; gap: 10px; height: 34px; padding: 0 8px 0 12px; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 8px; font-size: 14px; }
+.kbd-btn kbd { font-family: var(--mono); font-size: 11px; padding: 2px 6px; border-radius: 5px; background: rgba(255, 255, 255, 0.2); }
+.progress { inset: 0 0 auto; height: 2px; background: #fff; transform-origin: 0 50%; transform: scaleX(0); margin-top: env(safe-area-inset-top, 0px); }
+.readout { left: max(var(--gutter), env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 18px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; pointer-events: none; font-variant-numeric: tabular-nums; }
+.readout span + span { opacity: 0.6; }
+.rail { right: max(14px, env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: flex-end; gap: 0; }
+.rail button { display: flex; align-items: center; gap: 10px; height: 20px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.rail button span { opacity: 0; transform: translateX(6px); transition: opacity .2s, transform .2s; white-space: nowrap; }
+.rail button::after { content: ""; width: 12px; height: 1.5px; background: #fff; opacity: 0.45; transition: width .25s, opacity .25s; }
+.rail button:hover span, .rail button[aria-current="true"] span { opacity: 1; transform: none; }
+.rail button[aria-current="true"]::after, .rail button:hover::after { width: 30px; opacity: 1; }
+@media (max-width: 1180px) { .rail { display: none; } }
+@media (max-width: 720px) { .nav-links { display: none; } .kbd-btn span { display: none; } .kbd-btn { padding: 0 8px; } .readout { font-size: 10px; gap: 12px; } .readout .opt { display: none; } }
+
+/* ---------- gallery scenes (boot + exit) ---------- */
+.scene { position: relative; z-index: 0; }
+#boot { height: 100svh; }
+.hud, .scrim { display: none !important; }   /* the room and the computer are the whole page */
+.pin { position: sticky; top: 0; height: 100svh; overflow: hidden; background: var(--bg); }
+.machine { position: absolute; transform-origin: 50% 50%; cursor: pointer; will-change: transform; }
+.zoomed .machine { cursor: default; }
+.machine img { display: block; width: 100%; height: 100%; object-fit: cover; max-width: none; }
+/* a sharper close-up of the computer sits over the wide shot, feathered at its edges, so the machine stays crisp through the zoom */
+.machine .near { position: absolute; object-fit: fill; transform-origin: 0 0; will-change: transform;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0.5%, #000 4.5%, #000 92%, transparent 98%), linear-gradient(transparent 1.7%, #000 6.8%, #000 92.7%, transparent 98.8%);
+  mask-image: linear-gradient(90deg, transparent 0.5%, #000 4.5%, #000 92%, transparent 98%), linear-gradient(transparent 1.7%, #000 6.8%, #000 92.7%, transparent 98.8%);
+  -webkit-mask-composite: source-in; mask-composite: intersect; }
+.glass { position: absolute; left: 0; top: 0; transform-origin: 0 0; background: radial-gradient(120% 120% at 50% 45%, #07140d, #020503 80%); border-radius: 9% / 11%; transition: border-radius .4s; pointer-events: none; box-shadow: 0 0 0 1.5px #1b1c1a; }
+.term { position: absolute; left: 0; top: 0; width: 600px; overflow: hidden; border-radius: 9% / 11%; transform-origin: 0 0; font-family: var(--crt); color: var(--phos); font-size: 30px; line-height: 1; padding: 34px 38px; display: flex; flex-direction: column; justify-content: space-between; text-shadow: 0 0 12px rgba(125, 255, 166, 0.55); pointer-events: none; }
+.term p { margin: 0; white-space: nowrap; } .term .dim { opacity: 0.55; }
+/* tube power: a spark, a line that snaps across, then the picture blooms open; the reverse on power-off */
+.glass::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(130% 130% at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.55) 100%), linear-gradient(155deg, rgba(255, 255, 255, 0.07) 0%, transparent 22%); }
+.glass .pw { position: absolute; inset: 0; z-index: 1; border-radius: inherit; opacity: 0; background: radial-gradient(ellipse at center, #f6fff9 0%, #c4ffd9 38%, rgba(125, 255, 166, 0.8) 100%); }
+.glass.on .pw { animation: crt-on .62s cubic-bezier(.2, .7, .2, 1) both; }
+.glass.off .pw { animation: crt-off .46s cubic-bezier(.5, 0, .3, 1) both; }
+@keyframes crt-on {
+  0% { opacity: 0; transform: scaleX(.16) scaleY(.02); } 7% { opacity: 1; transform: scaleX(.55) scaleY(.02); }
+  16% { opacity: .9; transform: scaleX(1) scaleY(.02); } 22% { opacity: 1; transform: scaleX(1) scaleY(.02); }
+  28% { opacity: .72; transform: scaleX(1) scaleY(.02); } 34% { opacity: 1; transform: scaleX(1) scaleY(.02); }
+  56% { opacity: .95; transform: scaleX(1) scaleY(1.03); } 72% { opacity: .5; transform: scaleX(1) scaleY(1); } 100% { opacity: 0; transform: scaleX(1) scaleY(1); }
+}
+@keyframes crt-off {
+  0% { opacity: 1; transform: scaleX(1) scaleY(1); } 15% { opacity: 1; transform: scaleX(1.01) scaleY(.014); } 42% { opacity: 1; transform: scaleX(1) scaleY(.014); }
+  75% { opacity: 1; transform: scaleX(.025) scaleY(.03); } 85% { opacity: 1; transform: scaleX(.14) scaleY(.13); } 100% { opacity: 0; transform: scaleX(.02) scaleY(.02); }
+}
+.term.warm { animation: crt-warmup .78s linear both; }
+@keyframes crt-warmup {
+  0%, 38% { opacity: 0; filter: brightness(2.6) blur(.6px); } 44% { opacity: 1; filter: brightness(2.3) blur(.5px); } 52% { opacity: .45; filter: brightness(1.7) blur(.2px); }
+  60% { opacity: 1; filter: brightness(1.6) blur(.1px); } 74% { opacity: .82; filter: brightness(1.25); } 100% { opacity: 1; filter: none; }
+}
+@media (prefers-reduced-motion: reduce) { .glass .pw { animation: none !important; } .term.warm { animation: none; } }
+/* the key legend from the original site */
+.legend { position: absolute; display: flex; flex-direction: column; gap: 9px; align-items: center; left: 50%; bottom: 19vh; transform: translateX(-50%); font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #6f6655; pointer-events: none; white-space: nowrap; }
+.legend span { display: inline-flex; gap: 8px; align-items: center; animation: legendfade .45s ease .5s both; }
+.legend b { font-weight: 600; color: #3a3128; } .legend i { font-style: normal; opacity: 0.45; }
+.legend.zoomed { left: 7vw; bottom: auto; top: 50%; transform: translateY(-50%); align-items: flex-start; gap: 13px; }
+.touch .legend, .touch .legend.zoomed { left: 50%; top: auto; bottom: 4vh; transform: translateX(-50%); align-items: center; gap: 6px; letter-spacing: 0.1em; }
+@keyframes legendfade { from { opacity: 0; transform: translateY(4px); } }
+@media (max-width: 1100px) { .legend.zoomed { left: 50%; top: auto; bottom: 3vh; transform: translateX(-50%); flex-direction: row; gap: 18px; font-size: 10px; } }
+.term-os { padding: 26px 30px; font-size: 25px; line-height: 27px; justify-content: flex-start; gap: 10px; }
+.term-os .t-head { display: flex; justify-content: space-between; }
+.files { display: flex; flex-direction: column; width: 58%; position: relative; z-index: 1; line-height: 24px; }
+.file { display: flex; gap: 8px; padding: 0 8px; margin: 0 -8px; border-radius: 4px; color: #62d68b; text-decoration: none; white-space: nowrap; text-shadow: none; }
+.file .pre { width: 1ch; opacity: 0; } .file.sel .pre { opacity: 1; }
+.file.sel { background: rgba(110, 245, 165, 0.17); color: #d9ffe8; text-shadow: 0 0 12px rgba(125, 255, 166, 0.6); }
+.file:focus-visible { outline: none; }
+.t-tools { display: flex; gap: 18px; }
+.term a { color: #d9ffe8; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.term .file { text-decoration: none; }
+.t-body { position: relative; flex: 1; min-height: 0; z-index: 1; }
+.t-out { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; white-space: pre-wrap; overflow-wrap: anywhere; scrollbar-width: none; text-shadow: 0 0 10px rgba(125, 255, 166, 0.45); }
+.t-out::-webkit-scrollbar { display: none; }
+.t-out .b { color: #d9ffe8; } .t-out .d { opacity: 0.55; }
+.t-game { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+.t-prompt { display: flex; gap: 10px; align-items: baseline; position: relative; z-index: 1; }
+.t-prompt #tBuf { white-space: pre; color: #d9ffe8; }
+.t-prompt .caret { margin-left: -8px; }
+.t-prompt input { flex: 1; min-width: 0; font: inherit; color: #d9ffe8; background: none; border: 0; outline: none; padding: 0; caret-color: var(--phos); display: none; }
+.touch .t-prompt input { display: block; } .touch .t-prompt #tBuf, .touch .t-prompt .caret, .touch .t-prompt #tHint { display: none; }
+.term.big { border-radius: 14px; padding: 30px 40px; }
+/* a project, drawn on the screen */
+.t-page { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; white-space: normal; }
+.t-page::-webkit-scrollbar { display: none; }
+/* the page opens in a small browser window on the machine */
+.t-page { border: 1px solid rgba(125, 255, 166, 0.45); border-radius: 8px; background: rgba(2, 10, 5, 0.55); }
+.win-bar { position: sticky; top: 0; z-index: 2; display: flex; gap: 10px; align-items: center; padding: 7px 12px; background: #06180e; border-bottom: 1px solid rgba(125, 255, 166, 0.45); }
+.term .win-bar .wb { text-decoration: none; border: 1px solid rgba(125, 255, 166, 0.5); padding: 0 10px; border-radius: 4px; }
+.term .win-bar .wb:hover, .term .pg-links a:hover { background: var(--phos); color: #02140a; text-shadow: none; }
+.win-url { flex: 1; min-width: 0; border: 1px solid rgba(125, 255, 166, 0.35); border-radius: 999px; padding: 0 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: #020804; color: #d9ffe8; }
+.win-name { opacity: 0.55; white-space: nowrap; }
+.term.narrow .win-name { display: none; }
+.t-page .pg { padding: 26px 30px 12px; } .t-page .pg-nav { margin: 0 30px; }
+.term.narrow .t-page .pg { padding: 16px 18px 10px; } .term.narrow .t-page .pg-nav { margin: 0 18px; }
+.pg-h { opacity: 0.6; }
+.wr { display: flex; flex-direction: column; gap: 6px; padding-top: 14px; border-top: 1px dashed rgba(125, 255, 166, 0.3); max-width: 36em; }
+.t-page .wr-t { font-size: 34px; line-height: 34px; color: #e4ffee; white-space: normal; display: flex; gap: 16px; align-items: baseline; }
+.t-page .pg-main > p:not(.pg-name):not(.pg-tag) { max-width: 36em; }
+.term.narrow .t-page .wr-t { font-size: 29px; line-height: 29px; }
+.term .pg-links a { text-decoration: none; border: 1px solid rgba(125, 255, 166, 0.6); padding: 3px 18px; border-radius: 4px; }
+.t-page p { white-space: normal; margin: 0; }
+.pg { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 50px; align-items: start; padding-bottom: 20px; }
+.pg-main { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.pg-metric b { text-shadow: 0 0 18px rgba(125, 255, 166, 0.5); }
+.pg-name { margin: 0; font: 400 168px/0.74 var(--crt); color: #e4ffee; text-shadow: 0 0 26px rgba(125, 255, 166, 0.55); padding-top: 14px; }
+.pg-tag { font-size: 34px; line-height: 34px; color: #d9ffe8; max-width: 26em; }
+.pg-metric { display: flex; gap: 24px; align-items: center; padding: 16px 0; border-block: 1px dashed rgba(125, 255, 166, 0.4); }
+.pg-metric b { font-weight: 400; font-size: 96px; line-height: 64px; color: #e4ffee; white-space: nowrap; }
+.pg-metric span { opacity: 0.75; max-width: 24em; }
+.t-page ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.t-page li { padding-left: 1.3em; position: relative; } .t-page li::before { content: ">"; position: absolute; left: 0; opacity: 0.6; }
+.pg.proj { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: center; gap: 56px; }
+.pg-name.long { font-size: 128px; }
+.pg-cols { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.35fr) minmax(0, 0.7fr); gap: 50px; margin: 6px 30px 0; padding: 24px 0 26px; border-top: 1px dashed rgba(125, 255, 166, 0.4); }
+.pg-cols section { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.pg-cols .lead { color: #d9ffe8; }
+.term.narrow .pg-cols { grid-template-columns: minmax(0, 1fr); gap: 26px; margin: 0 18px; }
+.pg-noshot { border: 1px dashed rgba(125, 255, 166, 0.45); border-radius: 6px; aspect-ratio: 16 / 7; display: grid; place-content: center; text-align: center; padding: 20px; opacity: 0.7; }
+.pg-links { display: flex; flex-wrap: wrap; gap: 6px 26px; }
+.pg-side { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.pg-stage { aspect-ratio: 1.3; }
+.pg-shot { margin: 0; } .pg-shot img { display: block; width: 100%; height: auto; border: 1px solid rgba(125, 255, 166, 0.45); border-radius: 6px; filter: grayscale(1) sepia(1) hue-rotate(72deg) saturate(2.4) brightness(0.6) contrast(1.2); transition: filter .35s; cursor: pointer; }
+.pg-shot:hover img, .pg-shot.on img { filter: none; }
+.pg-shot figcaption { opacity: 0.55; font-size: 21px; margin-top: 6px; }
+.pg-nav { display: flex; flex-wrap: wrap; gap: 4px 30px; justify-content: space-between; padding: 14px 0 6px; border-top: 1px dashed rgba(125, 255, 166, 0.4); }
+.term.narrow .pg { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.term.narrow .pg-side.has-stage { order: -1; } .term.narrow .pg-stage { aspect-ratio: 1.7; }
+.term.narrow .pg-name, .term.narrow .pg-name.long { font-size: 104px; } .term.narrow .pg-metric b { font-size: 68px; line-height: 50px; } .term.narrow .pg-tag { font-size: 29px; line-height: 29px; }
+.term.narrow .pg-metric { flex-direction: column; align-items: flex-start; gap: 10px; }
+.t-prev { position: absolute; right: -4px; bottom: 0; width: 42%; text-align: center; display: flex; flex-direction: column; gap: 4px; }
+.t-prev .pv-m { font-size: 36px; line-height: 32px; color: #d9ffe8; }
+.t-prev .pv-w { font-size: 19px; line-height: 19px; white-space: normal; }
+/* ---------- project pages ---------- */
+.pager { position: relative; z-index: 2; display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; padding-block: 26px calc(64px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); font-size: 15px; }
+.pager a { text-decoration: none; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+.pager a b { font-family: var(--display); font-weight: 700; font-stretch: 80%; font-size: clamp(20px, 2.4vw, 34px); color: var(--fg); line-height: 1.05; transition: color .15s; }
+.pager a:hover b { color: var(--accent); }
+.pager #pgNext { text-align: right; align-items: flex-end; }
+.pager #pgHome { flex-direction: row; align-items: center; gap: 8px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; color: var(--fg); font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.pager #pgHome:hover { border-color: var(--accent); }
+@media (max-width: 620px) { .pager { grid-template-columns: 1fr 1fr; } .pager #pgHome { grid-column: 1 / -1; grid-row: 2; justify-content: center; } }
+#views { animation: viewIn .6s ease-out; }
+@keyframes viewIn { from { opacity: 0; } }
+#contact .mail-addr { color: var(--fg); border-color: var(--line); background: var(--bg-raise); }
+#contact .mail { margin-top: 26px; } #contact .links { margin-top: 20px; }
+#contact button.btn { cursor: pointer; }
+.term::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 3; background: repeating-linear-gradient(rgba(0, 0, 0, 0) 0 3px, rgba(0, 0, 0, 0.28) 3px 4px); }
+.caret { display: inline-block; width: 0.55em; height: 0.85em; background: currentColor; vertical-align: -0.08em; margin-left: 2px; }
+.wall { position: absolute; inset: 0; color: var(--ink); pointer-events: none; }
+.wall > * { pointer-events: auto; }
+.wall-main { position: absolute; left: max(var(--gutter), env(safe-area-inset-left, 0px)); top: 50%; transform: translateY(-50%); width: min(38vw, 560px); display: flex; flex-direction: column; gap: 22px; align-items: flex-start; }
+.wall h1, .wall h2 { margin: 0; font-size: clamp(38px, 5.5vw, 92px); text-wrap: balance; }
+.wall-main p { margin: 0; font-size: clamp(15px, 1.25vw, 18px); line-height: 1.5; color: var(--ink-muted); max-width: 30em; }
+.wall-main p strong { color: var(--ink); font-weight: 600; }
+.placard { position: absolute; left: 63vw; top: 50%; transform: translateY(-34%); width: min(250px, 26vw); padding: 16px 18px; background: rgba(255, 255, 255, 0.82); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08), 0 12px 30px -18px rgba(0, 0, 0, 0.35); font-size: 13px; line-height: 1.45; color: var(--ink-muted); display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.placard b { color: var(--ink); font-weight: 600; font-size: 14px; }
+.ink-btn { display: inline-flex; align-items: center; gap: 10px; height: 46px; padding: 0 22px; border-radius: 999px; background: var(--ink); color: #fff; font-weight: 500; font-size: 15px; text-decoration: none; white-space: nowrap; transition: transform .15s, background .15s; }
+.ink-btn:hover { background: #2b3040; } .ink-btn:active { transform: scale(0.97); }
+.ink-btn svg { animation: nudge 1.6s ease-in-out infinite; }
+.ink-link { font-weight: 600; text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 1.5px; }
+.mail { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.mail-addr { font-family: var(--mono); font-size: clamp(13px, 1.25vw, 17px); padding: 12px 16px; border: 1px solid rgba(16, 18, 24, 0.25); border-radius: 10px; background: rgba(255, 255, 255, 0.7); user-select: all; overflow-wrap: anywhere; color: var(--ink); }
+.socials { display: flex; gap: 20px; font-size: 15px; }
+@media (max-width: 767px) {
+  .wall-main { top: calc(76px + env(safe-area-inset-top, 0px)); transform: none; width: auto; right: max(var(--gutter), env(safe-area-inset-right, 0px)); gap: 12px; }
+  .wall h1, .wall h2 { font-size: clamp(34px, 10.4vw, 46px); }
+  .wall-main p { font-size: 15px; }
+  .placard { left: max(var(--gutter), env(safe-area-inset-left, 0px)); right: max(var(--gutter), env(safe-area-inset-right, 0px)); top: auto; bottom: calc(52px + env(safe-area-inset-bottom, 0px)); transform: none; width: auto; flex-direction: row; align-items: center; justify-content: space-between; gap: 14px; }
+  .placard .long { display: none; }
+  #wallExit .placard { display: none; }
+  #wallExit .wall-main { gap: 14px; }
+}
+@media (max-height: 700px) and (max-width: 767px) { .wall-main p { display: none; } #wallExit .wall-main p { display: block; } }
+
+/* evidence: the first screen inside the tube */
+.evidence { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; column-gap: 24px; align-items: center; padding-block: 76px 52px; opacity: 0; }
+.ev-copy { display: flex; flex-direction: column; gap: 22px; align-items: flex-start; }
+.ev-copy h2 { margin: 0; font-size: clamp(40px, 6.6vw, 112px); text-wrap: balance; }
+.lede { margin: 0; max-width: 33em; font-size: clamp(16px, 1.35vw, 20px); line-height: 1.5; color: var(--muted); }
+.btn { display: inline-flex; align-items: center; height: 48px; padding: 0 22px; border-radius: 999px; font-weight: 500; font-size: 15px; text-decoration: none; background: var(--fg); color: var(--bg); transition: transform .15s, background .15s; }
+.btn:hover { background: var(--accent); color: var(--accent-ink); } .btn:active { transform: scale(0.97); }
+.stage-col { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0; height: 100%; justify-content: center; }
+.stage { width: 100%; aspect-ratio: 1; max-height: 56svh; }
+.caption { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.caption-text { margin: 0; font-size: 15px; color: var(--muted); }
+.caption-text button { font-family: var(--display); font-weight: 600; font-size: 19px; letter-spacing: -0.01em; color: var(--fg); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 5px; margin-right: 8px; }
+.dots { display: flex; gap: 2px; }
+.dots button { width: 22px; height: 22px; display: grid; place-items: center; }
+.dots button::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--faint); transition: transform .2s, background .2s; }
+.dots button[aria-current="true"]::before { background: var(--accent); transform: scale(1.5); }
+.ledger { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; border-top: 1px solid var(--line); }
+.ledger div { padding: 16px 20px 0 0; } .ledger div + div { padding-left: 20px; border-left: 1px solid var(--line); }
+.ledger dt { font-family: var(--display); font-weight: 700; font-stretch: 85%; font-size: clamp(26px, 3vw, 46px); letter-spacing: -0.03em; line-height: 1.05; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ledger dd { margin: 4px 0 0; font-size: 14px; line-height: 1.4; color: var(--muted); max-width: 30ch; }
+.ledger dd b { color: var(--fg); font-weight: 500; }
+@media (max-width: 900px) {
+  .evidence { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; align-content: center; row-gap: 14px; padding-block: 68px 44px; }
+  .stage-col { order: -1; height: auto; } .evidence .stage { height: 27svh; aspect-ratio: auto; }
+  .ev-copy { gap: 12px; } .ev-copy .lede { font-size: 15px; }
+  .ledger { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ledger div { padding: 10px 10px 10px 0; } .ledger div + div { padding-left: 0; border-left: 0; }
+  .ledger div:nth-child(even) { padding-left: 12px; border-left: 1px solid var(--line); }
+  .ledger div:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .ledger dd { font-size: 12.5px; }
+}
+@media (max-width: 900px) and (max-height: 760px) { .ev-copy .lede, .ev-copy .btn { display: none; } }
+
+/* ---------- chapters ---------- */
+#work, .about, .marquee { position: relative; z-index: 2; }
+.ch { min-height: 100svh; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: auto auto; column-gap: 24px; align-content: center; padding-block: 11svh; }
+.ch-head { grid-column: 1 / span 6; grid-row: 1; align-self: end; position: relative; z-index: 3; }
+.ch-body { grid-column: 1 / span 6; grid-row: 2; align-self: start; display: flex; flex-direction: column; gap: 20px; padding-top: 22px; }
+.ch-vis { grid-column: 7 / span 6; grid-row: 1 / span 2; align-self: center; display: flex; flex-direction: column; }
+.ch.alt .ch-head, .ch.alt .ch-body { grid-column: 7 / span 6; }
+.ch.alt .ch-vis { grid-column: 1 / span 6; }
+.ch-idx { display: flex; flex-wrap: wrap; gap: 4px 16px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; font-variant-numeric: tabular-nums; }
+.ch-idx b { color: var(--accent); font-weight: 500; }
+.ch-name { margin: 0; font-size: clamp(54px, 9.4vw, 164px); white-space: nowrap; }
+.ch-name .line { display: block; overflow: hidden; padding-block: 0.06em 0.12em; margin-block: -0.06em -0.12em; }
+.ch-name .line > span { display: inline-block; }
+.ch-tag { margin: 18px 0 0; max-width: 34em; font-size: clamp(16px, 1.4vw, 20px); line-height: 1.45; color: var(--fg); }
+.ch-metric { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 20px; align-items: center; padding: 16px 0; border-block: 1px solid var(--line); }
+.ch-metric strong { font-family: var(--display); font-weight: 800; font-stretch: 80%; font-size: clamp(38px, 4.6vw, 72px); letter-spacing: -0.04em; line-height: 1; color: var(--accent); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ch-metric span { color: var(--muted); font-size: 15px; line-height: 1.45; max-width: 36ch; }
+.outcomes { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; max-width: 60ch; }
+.outcomes li { padding-left: 20px; position: relative; font-size: 15px; color: var(--muted); }
+.outcomes li::before { content: ""; position: absolute; left: 0; top: 0.7em; width: 9px; height: 1.5px; background: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.chips li { font-size: 12.5px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); }
+.links { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 15px; }
+.links a { font-weight: 500; text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 5px; text-decoration-thickness: 1.5px; }
+.links a:hover { color: var(--accent); } .links span { color: var(--muted); }
+.ch-vis .stage { max-height: 52svh; }
+.card-wrap { width: 80%; margin-top: -20%; align-self: flex-end; perspective: 1400px; position: relative; z-index: 2; }
+.ch.alt .card-wrap { align-self: flex-start; }
+.card { border-radius: 12px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--bg-raise); transform-origin: 50% 60%; }
+.card-bar { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.card-bar i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); } .card-bar span { margin-left: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; object-position: top; }
+.card .noshot { aspect-ratio: 16 / 6; display: grid; place-content: center; padding: 20px; color: var(--muted); font-size: 14px; text-align: center; }
+@media (max-width: 960px) {
+  .ch { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; padding-block: 8svh; }
+  .ch-head, .ch-body, .ch-vis, .ch.alt .ch-head, .ch.alt .ch-body, .ch.alt .ch-vis { grid-column: 1; grid-row: auto; }
+  .ch-vis .stage { height: 34svh; aspect-ratio: auto; }
+  .card-wrap, .ch.alt .card-wrap { width: 100%; margin-top: -6%; }
+  .ch-name { font-size: clamp(48px, 15.5vw, 110px); white-space: normal; }
+  .ch-vis { margin-top: 6px; }
+}
+
+/* reveal choreography, only when motion is welcome and JS is running */
+@media (prefers-reduced-motion: no-preference) {
+  .js .ch .ch-name .line > span { transform: translateY(112%); transition: transform 1s cubic-bezier(.16, .84, .24, 1); }
+  .js .ch .ch-idx, .js .ch .ch-tag, .js .ch .ch-body > * { opacity: 0; transform: translateY(18px); transition: opacity .7s ease-out, transform .8s cubic-bezier(.16, .84, .24, 1); }
+  .js .ch .card-wrap { opacity: 0; transition: opacity .8s ease-out .15s; }
+  .js .ch.in .ch-name .line > span { transform: none; }
+  .js .ch.in .ch-idx, .js .ch.in .ch-tag, .js .ch.in .ch-body > *, .js .ch.in .card-wrap { opacity: 1; transform: none; }
+  .js .ch.in .ch-tag { transition-delay: .12s; }
+  .js .ch.in .ch-body > :nth-child(1) { transition-delay: .2s; } .js .ch.in .ch-body > :nth-child(2) { transition-delay: .28s; }
+  .js .ch.in .ch-body > :nth-child(3) { transition-delay: .36s; } .js .ch.in .ch-body > :nth-child(4) { transition-delay: .44s; }
+  .caret { animation: blink 1s steps(1) infinite; }
+}
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes nudge { 50% { transform: translateY(3px); } }
+@media (prefers-reduced-motion: reduce) { .ink-btn svg { animation: none; } }
+
+/* ---------- marquee ---------- */
+.marquee { overflow: hidden; padding-block: 5svh; border-block: 1px solid var(--line); }
+.marquee div { display: flex; gap: 0.5em; white-space: nowrap; font-size: clamp(56px, 10vw, 170px); color: transparent; -webkit-text-stroke: 1px var(--faint); will-change: transform; }
+.marquee div + div { margin-top: 0.06em; }
+.marquee b { font-weight: inherit; color: var(--fg); -webkit-text-stroke: 0; }
+
+/* ---------- about ---------- */
+.about { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: clamp(24px, 4vw, 72px); align-items: center; min-height: 100svh; padding-block: 12svh; }
+.about .stage { max-height: 64svh; }
+.sitter { display: flex; align-items: center; gap: 12px; justify-content: center; font-size: 13.5px; color: var(--muted); margin: 8px 0 0; }
+.sitter img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; object-position: 50% 20%; border: 1px solid var(--line); }
+.about h2 { margin: 0 0 26px; font-size: clamp(44px, 6.4vw, 108px); }
+.bio { display: flex; flex-direction: column; gap: 16px; }
+.bio p { margin: 0; font-size: clamp(17px, 1.55vw, 22px); line-height: 1.45; max-width: 34em; letter-spacing: -0.01em; }
+.bio p + p { color: var(--muted); }
+.tools { margin: 26px 0 0; border-top: 1px solid var(--line); }
+.tools div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.tools dt { color: var(--muted); } .tools dd { margin: 0; }
+@media (max-width: 900px) { .about { grid-template-columns: minmax(0, 1fr); } .about .stage { height: 46svh; aspect-ratio: auto; } .tools div { grid-template-columns: 108px minmax(0, 1fr); } }
+
+/* ---------- quick jump ---------- */
+.pal-back { position: fixed; inset: 0; z-index: 50; background: rgba(5, 7, 13, 0.74); display: grid; place-items: start center; padding: 14svh 16px 0; }
+.pal { width: min(600px, 100%); background: var(--bg-raise); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+.pal input { width: 100%; padding: 18px 20px; font: inherit; font-size: 17px; color: var(--fg); background: none; border: 0; border-bottom: 1px solid var(--line); outline: none; }
+.pal input::placeholder { color: var(--faint); }
+.pal ul { list-style: none; margin: 0; padding: 6px; max-height: min(48svh, 400px); overflow-y: auto; }
+.pal li { display: flex; justify-content: space-between; gap: 16px; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-size: 15px; }
+.pal li small { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pal li[aria-selected="true"] { background: rgba(255, 179, 92, 0.18); }
+.pal .empty { color: var(--muted); cursor: default; }
+.toast { position: fixed; left: 50%; bottom: calc(44px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; background: var(--fg); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 14px; font-weight: 500; box-shadow: var(--shadow); }
+</style>
+
+<div class="scrim" id="scrim" aria-hidden="true"></div>
+<div class="hud progress" id="progress" aria-hidden="true"></div>
+<header class="hud nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top" id="brand">Dylan Burns</a>
+    <nav class="nav-links" aria-label="Sections">
+      <button type="button" data-go="work">Work</button>
+      <button type="button" data-go="about">About</button>
+      <button type="button" data-go="contact">Contact</button>
+    </nav>
+    <button class="kbd-btn" id="palOpen" type="button" aria-label="Open quick jump"><span>Jump to</span><kbd id="palKey">⌘K</kbd></button>
+  </div>
+</header>
+<div class="hud readout" aria-hidden="true"><span id="rForm">form 01/10 globe</span><span class="opt" id="rPts"></span><span id="rFps">60 fps</span></div>
+<nav class="hud rail" id="rail" aria-label="Page index"></nav>
+
+<main id="top">
+  <section class="scene" id="boot">
+    <div class="pin">
+      <div class="machine" id="m1"><picture><source media="(max-width: 767px)" srcset="/burnsos/machine-m.jpg"><img src="/burnsos/machine.jpg" alt="A vintage computer terminal on a plinth in an empty white gallery" decoding="async" fetchpriority="high"></picture><img class="near" src="/burnsos/machine-near.jpg" alt="" decoding="async"></div>
+      <div class="legend" id="legend" aria-hidden="true"></div>
+      <div class="glass" id="g1"><span class="pw"></span></div>
+      <canvas id="field" aria-hidden="true"></canvas>
+      <div class="term term-os" id="t1">
+        <p class="t-head"><span>burnsOS 2.0</span><span class="t-tools"><a data-cmd="help">help</a><a data-cmd="games">games</a><a data-cmd="fullscreen" id="fsBtn">full screen</a></span></p>
+        <div class="t-body" id="tBody">
+          <nav class="files" id="files" aria-label="Files on the computer"></nav>
+          <div class="t-prev" id="tPrev" aria-live="polite"><p class="pv-m" id="pvMetric"></p><p class="pv-w dim" id="pvWhat"></p></div>
+          <div class="t-out" id="tOut" hidden></div>
+          <canvas class="t-game" id="tGame" hidden></canvas>
+          <div class="t-page" id="tPage" hidden></div>
+        </div>
+        <p class="t-prompt"><span class="dim">guest@burnsOS:~$</span><span id="tBuf"></span><span class="caret"></span><span class="dim" id="tHint">type help, or pick a file</span><input id="tIn" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="tap to type a command" aria-label="Command"></p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="pal-back" id="pal" hidden>
+  <div class="pal" role="dialog" aria-modal="true" aria-label="Quick jump">
+    <input id="palInput" type="text" placeholder="Jump to a project, or type a command" autocomplete="off" spellcheck="false" aria-label="Search projects and commands">
+    <ul id="palList" role="listbox"></ul>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+"use strict";
+document.documentElement.classList.add("js");
+const $ = (id) => document.getElementById(id);
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SITE = "https://www.burnsdylan.com/work/";
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const smooth = (t) => t * t * (3 - 2 * t);
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/* ------------------------------------------------------------------ data */
+const P = [
+  { slug: "parahealth", name: "Parahealth", cat: "Healthcare AI", role: "Founder", period: "2026 to now", form: "capsule", url: "parahealth.ai",
+    what: "prior authorizations in minutes",
+    tag: "AI that automates prescription prior authorizations. Chart in, a payer-ready PA out in minutes.",
+    metric: "< 5 min", label: "to generate a payer-ready prior authorization, down from the 15–45 minutes a tech spends today",
+    out: ["Answers a real 166-question GLP-1 form end to end against de-identified patient records, with accuracy above 90% on high-confidence fields. Low-evidence questions go to human review.",
+          "Verifies benefits with an automated AI phone call to the insurer, flags denial risk before submission, and drafts the appeal if the PA is denied.",
+          "Designed and built solo, and validated through 50+ pharmacist and provider interviews."],
+    stack: ["TypeScript", "Next.js", "React", "FastAPI", "Postgres", "Redis", "AWS", "Anthropic Claude"],
+    links: [["Visit parahealth.ai", "https://parahealth.ai"], ["Read the docs", "https://www.parahealth.ai/learn-more"]] },
+  { slug: "watchtower", name: "Watchtower", cat: "AI infrastructure", role: "Builder", period: "2026", form: "radar", url: "watchtower.dylanburns.workers.dev",
+    what: "an agent that root-causes incidents",
+    tag: "An AI incident investigator that runs 24/7 on Cloudflare Workers. A statistical detector hands incidents to a Claude agent that finds the root cause.",
+    metric: "4 / 4", label: "fault scenarios correctly root-caused in the final production eval",
+    out: ["Each investigation takes 5–7 tool calls and 45–78 seconds, graded by a rubric that penalizes blaming the red herring.",
+          "Prompt caching brings a full multi-step investigation to roughly $0.10–0.40 of API spend.",
+          "An injected fault surfaces as an incident in about two minutes (107 seconds measured). Built, evaluated and shipped solo in under a week."],
+    stack: ["TypeScript", "Cloudflare Workers", "Durable Objects", "D1", "Hono", "React", "Anthropic Claude", "Vitest"],
+    links: [["Open the live demo", "https://watchtower.dylanburns.workers.dev"], ["View source", "https://github.com/Dylan-Burns/polylane"]] },
+  { slug: "remoteretros", name: "Remote Retro", cat: "Collaboration", role: "Builder", period: "2026", form: "board", url: "remoteretros.org",
+    what: "retrospectives for distributed teams",
+    tag: "Free, real-time agile retrospectives. Anonymous while it matters, named when it counts.",
+    metric: "Free", label: "and open source, with adoption at Spotify, Warby Parker, Casper, Squarespace, The Weather Channel and Flatiron School",
+    out: ["Psychological safety is enforced by the software: anonymous ideas, blind voting, and action items that require an owner.",
+          "One link is the whole invite. Everyone writes at once, and the team groups, labels and votes live.",
+          "The landing page demos the product. The hero board is interactive, and every stage is explained before sign-in."],
+    stack: ["TypeScript", "Next.js", "React", "Tailwind CSS", "Motion", "WebSockets", "Vercel"],
+    links: [["Visit remoteretros.org", "https://remoteretros.org"]] },
+  { slug: "outpost", name: "Outpost", cat: "Offline, self-hosted", role: "Builder", period: "2026", form: "stack", url: "projectoutpost.org",
+    what: "an offline library on hardware you own",
+    tag: "An offline knowledge server for hardware you own: Wikipedia, medical guides, maps and a local AI, with no internet required.",
+    metric: "1 line", label: "pasted into a terminal installs it. A five-step wizard and unattended downloads do the rest",
+    out: ["Runs on macOS (Intel and Apple Silicon) and 64-bit Linux (amd64 and arm64).",
+          "Reproducible, signed releases. Anyone can rebuild a tag and confirm the served binaries match the source, and CI checks the same thing every week.",
+          "An end-to-end suite drives a fresh node in a real browser and runs the real installer on Linux and Mac runners before a release goes live."],
+    stack: ["Go", "TypeScript", "Preact", "Python", "Kiwix", "Protomaps", "Ollama", "Playwright"],
+    links: [["Visit projectoutpost.org", "https://projectoutpost.org"], ["View source", "https://github.com/Dylan-Burns/outpost"]] },
+  { slug: "syene", name: "Syene", cat: "Fintech data", role: "Builder", period: "2026", form: "globe", url: "syene.ai",
+    what: "oil storage, read from orbit",
+    tag: "A commodities intelligence terminal that measures the physical world from orbit and fuses it into signals you can check.",
+    metric: "0.79", label: "correlation between the satellite storage nowcast and EIA prints, scored walk-forward on the fixture backfill",
+    out: ["Reads storage-tank fill levels from shadow geometry in satellite scenes.",
+          "Twenty-five energy signals, each with a public method document, and every value stamped with the moment it became knowable.",
+          "Research that reports its own failures. The weekly direction hit rate (0.55) is published beside the headline number, and strategies that lose after costs say so."],
+    stack: ["Python", "TypeScript", "Next.js", "FastAPI", "Dagster", "DuckDB", "Polars", "Postgres", "MapLibre", "Anthropic Claude"],
+    links: [["Visit syene.ai", "https://www.syene.ai"]] },
+  { slug: "keel", name: "Keel", cat: "AI research", role: "Builder", period: "2026", form: "page", url: "keeldd.com",
+    what: "cited answers from SEC filings",
+    tag: "Grounded, cited answers to business questions about SEC filings, from exactly one LLM call per question.",
+    metric: "$0.09", label: "per question with a 34-second p95, from exactly one model request per answer",
+    out: ["All 10 eval gates pass on a 28-question golden set: faithfulness 0.94, citation precision 1.00, numeric accuracy 1.00.",
+          "Hybrid search earns its place. Recall at 25 is 0.86 with keywords and embeddings together, against 0.79 and 0.82 for each alone.",
+          "Question understanding, retrieval, reranking and citation validation are deterministic code. The model is called once."],
+    stack: ["Python", "FastAPI", "SQLite FTS5", "sentence-transformers", "Anthropic Claude", "React", "Terraform", "AWS"],
+    links: [["Visit keeldd.com", "https://keeldd.com"], ["View source", "https://github.com/Dylan-Burns/keel"]] },
+  { slug: "claruss", name: "Claruss", cat: "Wellness, iOS", role: "Developer", period: "Released 2026", form: "phone", url: "claruss.app",
+    what: "a screen-time blocker for iOS",
+    tag: "A screen-time blocker that actually holds the line.",
+    metric: "Live", label: "on the App Store, free with a Pro subscription",
+    out: ["System-level enforcement through Apple's Screen Time API, on a schedule you set.",
+          "Hardcore and Lockdown modes raise the stakes, and an accountability partner can approve early unlocks.",
+          "Designed, built and shipped solo."],
+    stack: ["Swift", "SwiftUI", "Screen Time API", "Railway", "Postgres", "Redis", "Resend"],
+    links: [["Visit claruss.app", "https://www.claruss.app/"], ["App Store", "https://apps.apple.com/us/app/claruss/id6756468602"]] },
+  { slug: "cartlords", name: "Cartlords", cat: "Commerce", role: "Full-stack", period: "2025 to 2026", form: "bars", noshot: true,
+    what: "the cheapest way to buy a grocery cart",
+    tag: "Compare an entire grocery cart across every nearby store and find the cheapest way to buy it.",
+    metric: "$ / oz", label: "every price normalized to a true per-ounce cost, so the comparison is honest",
+    out: ["Finds the exact best one-, two- or three-store split for a cart, with a concrete savings figure against buying at one store.",
+          "Collects prices from DoorDash's uniform store pages: one extraction path in place of a scraper per chain.",
+          "Private beta built by a small team over roughly eight months, with Southern California coverage."],
+    stack: ["TypeScript", "Next.js", "NestJS", "MongoDB", "Puppeteer", "Anthropic Claude", "Mapbox GL"],
+    links: [] },
+  { slug: "steamhouse", name: "Steamhouse", cat: "AgTech platform", role: "Full-stack", period: "2022 to 2023", form: "phyllo", url: "steamhouse.vercel.app",
+    what: "feed programs for commercial grows",
+    tag: "Precision cultivation management. Design a nutrient feed program, then track every crop day by day against the plan.",
+    metric: "10+", label: "feature areas shipped, from crops and feed schedules to teams and admin",
+    out: ["A multi-tenant data model with route-level RBAC enforced on every mutation.",
+          "A linear-algebra fertilizer-composition solver that encodes real agronomy and chemistry.",
+          "A zero-setup demo: seeded data refreshed daily and one-click sign-in."],
+    stack: ["TypeScript", "Next.js", "React", "MUI", "MongoDB", "NextAuth", "AWS S3", "mathjs"],
+    links: [["Open the live demo", "https://steamhouse.vercel.app/"]] },
+];
+const CYCLE = ["syene", "watchtower", "parahealth", "steamhouse", "outpost", "keel", "remoteretros", "claruss", "cartlords"].map((s) => P.findIndex((p) => p.slug === s));
+const FORM_ORDER = ["capsule", "radar", "board", "stack", "globe", "page", "phone", "bars", "phyllo", "portrait"];
+const ROT = { globe: 0.5, capsule: 0.5, radar: 0.42, board: 0.26, stack: 0.42, page: 0.28, phone: 0.4, bars: 0.42, phyllo: 0.32, portrait: 0.13 };
+
+/* --------------------------------------------------------------- shapes */
+const TAU = Math.PI * 2, R = Math.random;
+const g = () => (R() + R() + R() + R() - 2) * 0.5;
+const rotX = (p, a) => { const c = Math.cos(a), s = Math.sin(a); return [p[0], p[1] * c - p[2] * s, p[1] * s + p[2] * c]; };
+const rotY = (p, a) => { const c = Math.cos(a), s = Math.sin(a); return [p[0] * c + p[2] * s, p[1], -p[0] * s + p[2] * c]; };
+const rotZ = (p, a) => { const c = Math.cos(a), s = Math.sin(a); return [p[0] * c - p[1] * s, p[0] * s + p[1] * c, p[2]]; };
+const pick = (arr) => arr[(R() * arr.length) | 0];
+const j = (p, k) => [p[0] + g() * k, p[1] + g() * k, p[2] + g() * k];
+function boxFace(w, h, d) {
+  const a = [w * h, w * d, h * d], t = R() * (a[0] + a[1] + a[2]), s = R() < 0.5 ? -0.5 : 0.5, u = R() - 0.5, v = R() - 0.5;
+  if (t < a[0]) return [u * w, v * h, s * d];
+  if (t < a[0] + a[1]) return [u * w, s * h, v * d];
+  return [s * w, u * h, v * d];
+}
+function boxEdge(w, h, d) {
+  const t = R() * (w + h + d), s1 = R() < 0.5 ? -0.5 : 0.5, s2 = R() < 0.5 ? -0.5 : 0.5, u = R() - 0.5;
+  if (t < w) return [u * w, s1 * h, s2 * d];
+  if (t < w + h) return [s1 * w, u * h, s2 * d];
+  return [s1 * w, s2 * h, u * d];
+}
+function rectEdge(w, h) { const t = R() * (w + h), s = R() < 0.5 ? -0.5 : 0.5, u = R() - 0.5; return t < w ? [u * w, s * h, 0] : [s * w, u * h, 0]; }
+function roundRectEdge(w, h, r) {
+  const sw = w - 2 * r, sh = h - 2 * r, arc = (Math.PI / 2) * r, t = R() * (2 * sw + 2 * sh + 4 * arc);
+  if (t < 2 * sw) return [(R() - 0.5) * sw, (t < sw ? 0.5 : -0.5) * h, 0];
+  if (t < 2 * sw + 2 * sh) return [(R() < 0.5 ? 0.5 : -0.5) * w, (R() - 0.5) * sh, 0];
+  const q = (R() * 4) | 0, a = R() * Math.PI / 2 + q * Math.PI / 2;
+  const cx = (q === 0 || q === 3 ? 1 : -1) * sw / 2, cy = (q < 2 ? 1 : -1) * sh / 2;
+  return [cx + Math.cos(a) * r, cy + Math.sin(a) * r, 0];
+}
+function build(N, parts, post) {
+  const out = new Float32Array(N * 3), total = parts.reduce((s, p) => s + p[0], 0);
+  let i = 0, acc = 0;
+  parts.forEach(([w, fn], k) => {
+    acc += w;
+    const end = k === parts.length - 1 ? N : Math.round((acc / total) * N);
+    for (; i < end; i++) { let p = fn(); if (post) p = post(p); out[i * 3] = p[0]; out[i * 3 + 1] = p[1]; out[i * 3 + 2] = p[2]; }
+  });
+  return out;
+}
+const SHAPES = {
+  globe(N) {
+    const r = 0.8, tilt = (p) => rotX(rotZ(p, 0.42), 0.3);
+    return build(N, [
+      [0.40, () => { const u = R() * 2 - 1, t = R() * TAU, s = Math.sqrt(1 - u * u); return [r * s * Math.cos(t), r * u, r * s * Math.sin(t)]; }],
+      [0.34, () => {
+        if (R() < 0.6) { const t = ((R() * 12) | 0) / 12 * TAU, f = R() * Math.PI; return j([r * Math.sin(f) * Math.cos(t), r * Math.cos(f), r * Math.sin(f) * Math.sin(t)], 0.004); }
+        const f = (((R() * 7) | 0) + 1) / 8 * Math.PI, t = R() * TAU; return j([r * Math.sin(f) * Math.cos(t), r * Math.cos(f), r * Math.sin(f) * Math.sin(t)], 0.004);
+      }],
+      [0.20, () => { const a = R() * TAU; return tilt(j([1.1 * Math.cos(a), 0, 1.1 * Math.sin(a)], 0.006)); }],
+      [0.06, () => { const a = 1.1; return tilt(j([1.1 * Math.cos(a), 0, 1.1 * Math.sin(a)], 0.045)); }],
+    ]);
+  },
+  capsule(N) {
+    const r = 0.36, L = 0.46;
+    return build(N, [
+      [0.50, () => { const t = R() * TAU; return [(R() * 2 - 1) * L, r * Math.cos(t), r * Math.sin(t)]; }],
+      [0.38, () => { const u = R(), t = R() * TAU, s = Math.sqrt(1 - u * u), sg = R() < 0.5 ? -1 : 1; return [sg * (L + r * u), r * s * Math.cos(t), r * s * Math.sin(t)]; }],
+      [0.12, () => { const t = R() * TAU; return [g() * 0.006, 1.015 * r * Math.cos(t), 1.015 * r * Math.sin(t)]; }],
+    ], (p) => rotZ([p[0] * 1.2, p[1] * 1.2, p[2] * 1.2], 0.62));
+  },
+  radar(N) {
+    const blips = [[0.55, 0.3], [-0.35, 0.6], [0.2, -0.7]];
+    return build(N, [
+      [0.40, () => { const rr = pick([0.25, 0.5, 0.75, 1, 1]), a = R() * TAU; return j([rr * Math.cos(a), 0, rr * Math.sin(a)], 0.004); }],
+      [0.08, () => { const t = R() * 2 - 1; return R() < 0.5 ? [t, 0, 0] : [0, 0, t]; }],
+      [0.25, () => { const a = -R() * R() * 1.0 + 0.6, rr = Math.sqrt(R()); return [rr * Math.cos(a), 0, rr * Math.sin(a)]; }],
+      [0.09, () => { const b = pick(blips); return [b[0] + g() * 0.04, Math.abs(g()) * 0.08, b[1] + g() * 0.04]; }],
+      [0.09, () => j([0, R() * 0.6, 0], 0.006)],
+      [0.09, () => { const u = R() * 2 - 1, t = R() * TAU, s = Math.sqrt(1 - u * u); return [0.07 * s * Math.cos(t), 0.66 + 0.07 * u, 0.07 * s * Math.sin(t)]; }],
+    ], (p) => { const q = rotX([p[0], p[1] - 0.15, p[2]], 0.5); return [q[0] * 1.05, q[1] * 1.05, q[2] * 1.05]; });
+  },
+  board(N) {
+    const cards = [], cols = [-0.72, -0.24, 0.24, 0.72], counts = [3, 4, 2, 3];
+    cols.forEach((x, c) => { for (let k = 0; k < counts[c]; k++) cards.push([x, 0.5 - k * 0.32, (R() - 0.5) * 0.1]); });
+    return build(N, [
+      [0.55, () => { const c = pick(cards), e = rectEdge(0.4, 0.26); return j([c[0] + e[0], c[1] + e[1], c[2]], 0.003); }],
+      [0.30, () => { const c = pick(cards), line = (R() * 3) | 0; return [c[0] - 0.16 + R() * (line === 2 ? 0.16 : 0.32), c[1] + 0.07 - line * 0.065, c[2]]; }],
+      [0.15, () => { const x = pick(cols); return j([x + (R() - 0.5) * 0.34, 0.74, 0], 0.006); }],
+    ], (p) => rotX([p[0] * 1.08, (p[1] - 0.1) * 1.08, p[2]], 0.12));
+  },
+  stack(N) {
+    const ys = [-0.48, -0.16, 0.16, 0.48], W = 1.35, H = 0.22, D = 0.85;
+    return build(N, [
+      [0.40, () => { const p = boxFace(W, H, D); p[1] += pick(ys); return p; }],
+      [0.48, () => { const p = boxEdge(W, H, D); p[1] += pick(ys); return j(p, 0.003); }],
+      [0.12, () => j([pick([-0.52, -0.42, -0.32]), pick(ys), D / 2 + 0.005], 0.012)],
+    ], (p) => rotX(rotY(p, 0.62), 0.34));
+  },
+  page(N) {
+    const W = 0.92, H = 1.28, lens = Array.from({ length: 13 }, () => 0.5 + R() * 0.3);
+    const line = () => { const k = R() < 0.22 ? 5 : (R() * 13) | 0; return [-0.36 + R() * (k === 0 ? 0.36 : lens[k]), 0.5 - k * 0.082 + (k === 0 || k === 5 ? g() * 0.012 : 0), 0]; };
+    const sheet = (dx, dy, dz) => (p) => [p[0] + dx, p[1] + dy, dz];
+    const front = sheet(-0.09, -0.05, 0.14), back = sheet(0.1, 0.07, -0.14);
+    return build(N, [
+      [0.14, () => front(j(rectEdge(W, H), 0.003))], [0.50, () => front(line())],
+      [0.11, () => back(j(rectEdge(W, H), 0.003))], [0.25, () => back(line())],
+    ], (p) => rotY(rotX(p, 0.1), -0.35));
+  },
+  phone(N) {
+    return build(N, [
+      [0.40, () => { const p = roundRectEdge(0.76, 1.52, 0.16); p[2] = R() < 0.5 ? -0.05 : 0.05; return j(p, 0.003); }],
+      [0.13, () => { const p = roundRectEdge(0.76, 1.52, 0.16); p[2] = (R() - 0.5) * 0.1; return p; }],
+      [0.05, () => j([(R() - 0.5) * 0.2, 0.66, 0.05], 0.006)],
+      [0.22, () => [(R() - 0.5) * 0.34, -0.13 + (R() - 0.5) * 0.26, 0.05]],
+      [0.14, () => { const a = R() * Math.PI, rr = 0.115 + g() * 0.012; return [rr * Math.cos(a), rr * Math.sin(a) * 1.25, 0.05]; }],
+      [0.06, () => j([(R() - 0.5) * 0.26, -0.66, 0.05], 0.005)],
+    ], (p) => rotY(rotZ(p, -0.1), 0.3));
+  },
+  bars(N) {
+    const bars = [[-0.5, 1.25], [0, 0.78], [0.5, 1.02]], base = -0.62;
+    const bar = () => { const t = R() * 3.05; return t < 1.25 ? bars[0] : t < 2.03 ? bars[1] : bars[2]; };
+    return build(N, [
+      [0.36, () => { const b = bar(), p = boxFace(0.32, b[1], 0.32); return [p[0] + b[0], p[1] + base + b[1] / 2, p[2]]; }],
+      [0.40, () => { const b = bar(), p = boxEdge(0.32, b[1], 0.32); return j([p[0] + b[0], p[1] + base + b[1] / 2, p[2]], 0.003); }],
+      [0.17, () => { const k = ((R() * 7) | 0) / 6 - 0.5; return R() < 0.5 ? [(R() - 0.5) * 1.9, base, k * 1.1] : [k * 1.9, base, (R() - 0.5) * 1.1]; }],
+      [0.07, () => { const a = R() * TAU; return j([0.28 * Math.cos(a), base + 0.78 + 0.16, 0.28 * Math.sin(a)], 0.004); }],
+    ], (p) => rotX(rotY(p, 0.6), 0.34));
+  },
+  phyllo(N) {
+    const M = 1300;
+    return build(N, [[1, () => {
+      const s = (R() * M) | 0, rr = Math.sqrt((s + 0.5) / M), a = s * 2.399963, k = 0.004 + rr * 0.007;
+      return [rr * Math.cos(a) + g() * k, 0.34 * (1 - rr * rr) + g() * k, rr * Math.sin(a) + g() * k];
+    }]], (p) => rotX([p[0], p[1] - 0.12, p[2]], 0.95));
+  },
+};
+/** Portrait: sample the cut-out photograph. Brighter pixels get more particles; luminance also lifts them toward the viewer. */
+let portraitPx = null;
+SHAPES.portrait = (N) => {
+  if (!portraitPx) return SHAPES.globe(N);
+  const { data, size } = portraitPx, out = new Float32Array(N * 3);
+  let i = 0, guard = 0;
+  while (i < N && guard++ < N * 60) {
+    const x = R() * size, y = R() * size, k = (((y | 0) * size) + (x | 0)) * 4, a = data[k + 3] / 255;
+    if (a < 0.5) continue;
+    const L = (0.299 * data[k] + 0.587 * data[k + 1] + 0.114 * data[k + 2]) / 255;
+    if (R() > 0.035 + Math.pow(L, 1.55) * 1.15) continue;
+    out[i * 3] = (x / size - 0.5) * 2.15; out[i * 3 + 1] = -(y / size - 0.5) * 2.15 - 0.02; out[i * 3 + 2] = (L - 0.35) * 0.42; i++;
+  }
+  return out;
+};
+
+const GLYPHS = "0123456789<>/$#%+=";
+function scramble(el, final) {
+  if (reduce) { el.textContent = final; return; }
+  const t0 = performance.now(), dur = 700;
+  const tick = (now) => {
+    const k = clamp((now - t0) / dur), done = Math.floor(k * final.length);
+    el.textContent = final.split("").map((c, n) => (n < done || c === " " ? c : GLYPHS[(R() * GLYPHS.length) | 0])).join("");
+    if (k < 1) requestAnimationFrame(tick); else el.textContent = final;
+  };
+  requestAnimationFrame(tick);
+}
+
+/* ------------------------------------------------------- gallery machine */
+// Glass position and close-up placement are % of the wide photo. `sp` caps how far the photo itself is
+// scaled; past that the screen opens outward on its own, so the photograph is never stretched into blur.
+const CUT_D = { l: 46.94, t: 47.86, w: 4.21, h: 5.53, aspect: 1672 / 941, near: [43.94, 45.37, 11.48, 17.42] };
+const CUT_M = { l: 43.06, t: 47.37, w: 9.9, h: 4.13, aspect: 941 / 1672, near: [36.01, 45.54, 27.03, 13.01] };
+function makeMachine(root, glass, term) {
+  const pin = root.parentElement, near = root.querySelector(".near");
+  let geo = null;
+  const layout = () => {
+    if (!pin.clientWidth) return;
+    const vw = pin.clientWidth, vh = pin.clientHeight, c = vw < 768 ? CUT_M : CUT_D;
+    const W = Math.max(vw, vh * c.aspect), H = W / c.aspect, left = (vw - W) / 2, top = (vh - H) / 2;
+    Object.assign(root.style, { width: W + "px", height: H + "px", left: left + "px", top: top + "px", transformOrigin: `${c.l + c.w / 2}% ${c.t + c.h / 2}%` });
+    // The close-up is laid out at its own pixel size and scaled down, so it has a full-resolution GPU layer:
+    // zooming is then pure compositing (no repaint) and the machine still sharpens as it grows.
+    const nw = W * c.near[2] / 100, nh = H * c.near[3] / 100, K = Math.max(1, Math.min(8, 1440 / (nw * (devicePixelRatio || 1))));
+    Object.assign(near.style, { left: c.near[0] + "%", top: c.near[1] + "%", width: nw * K + "px", height: nh * K + "px", transform: `scale(${1 / K})` });
+    const gw = W * c.w / 100, gh = H * c.h / 100;
+    Object.assign(glass.style, { width: gw + "px", height: gh + "px" });
+    // the "at the keyboard" stop: the screen is big enough to read and use, with the bezel still framing it
+    const Gt = Math.min(vw < 768 ? vw * 0.84 : clamp(vw * 0.34, 360, 540), vh * 0.5 * gw / gh), S = Math.max(vw / gw, vh / gh) * 1.12;
+    geo = { vw, vh, gw, gh, gcx: left + W * (c.l + c.w / 2) / 100, gcy: top + H * (c.t + c.h / 2) / 100, S, sp: Gt / gw };
+    fn.zs = Math.log(Gt / gw) / Math.log(S); fn.rest = { w: Gt, h: Gt * gh / gw }; fn.last = null;
+  };
+  /** zt: 0 = standing in the gallery, fn.zs = at the keyboard, 1 = fully inside the screen. Returns the glass rect inside the pin. */
+  const fn = (zt, g = 0, pre = false) => {
+    if (fn.last && fn.last.zt === zt && fn.last.g === g && fn.last.pre === pre) return fn.last.rect;      // nothing moved: touch no styles
+    const { vw, vh, gw, gh, gcx, gcy, S, sp } = geo, total = Math.pow(S, zt), k = smooth(zt);
+    const s = total < sp ? total : sp * Math.pow(total / sp, 0.22);
+    let cx = lerp(gcx, vw / 2, k), cy = lerp(gcy, vh / 2, k), w = gw * total, h = gh * total;
+    root.style.transform = `translate(${cx - gcx}px, ${cy - gcy}px) scale(${s})`;
+    const op = 1 - clamp((zt - 0.82) / 0.18); root.style.opacity = op; root.style.visibility = op <= 0 ? "hidden" : "visible";
+    // full screen: the glass leaves its bezel and fills the window, and the terminal gains rows and columns
+    const side = 14, top = 70, bw = vw - side * 2, bh = vh - top - 46, sg = smooth(g);
+    if (sg > 0) { cx = lerp(cx, vw / 2, sg); cy = lerp(cy, top + bh / 2, sg); w = lerp(w, bw, sg); h = lerp(h, bh, sg); }
+    fn.bigRect = { w: bw, h: bh };
+    const big = g > 0.02 || pre, kk = vw < 768 ? 0.6 : 0.84, tw = big ? Math.round(bw / kk) : 600, th = Math.round(big ? bh / kk : 600 * gh / gw);
+    if (fn.tw !== tw || fn.th !== th) { fn.tw = tw; fn.th = th; term.style.width = tw + "px"; term.style.height = th + "px"; term.classList.toggle("big", big); term.classList.toggle("narrow", tw < 1000); fn.isBig = big; glass.style.borderRadius = big ? "1.3% / 2.3%" : ""; glass.style.boxShadow = big ? "none" : ""; if (fn.onsize) fn.onsize(); }
+    glass.style.transform = `translate(${cx - w / 2}px, ${cy - h / 2}px) scale(${w / gw}, ${h / gh})`;
+    glass.style.opacity = zt >= 1 ? 0 : 1;
+    term.style.transform = `translate(${cx - w / 2}px, ${cy - h / 2}px) scale(${w / tw}, ${h / th})`;
+    term.style.opacity = op * clamp((w - 60) / 160);
+    fn.last = { zt, g, pre, rect: { cx, cy, w, h } };
+    return fn.last.rect;
+  };
+  layout(); addEventListener("resize", layout); fn.layout = layout;
+  return fn;
+}
+const boot = $("boot"), pinEl = boot.querySelector(".pin");
+const m1 = makeMachine($("m1"), $("g1"), $("t1"));
+
+/* ------------------------------------------------------------ renderer */
+const canvas = $("field");
+const gl = canvas.getContext("webgl2", { antialias: false, alpha: true, premultipliedAlpha: true, powerPreference: "high-performance" });
+const small = Math.min(innerWidth, innerHeight) < 700;
+const N = small ? 22000 : 56000;
+let mouse = { x: -9999, y: -9999, nx: 0, ny: 0 };
+const field = { form: "", setForm() {}, draw() {}, fit() {}, prewarm() {}, css: () => [1, 1] };
+
+if (gl) {
+  const vs = `#version 300 es
+  precision highp float;
+  in vec3 aPos; in vec3 aSeed;
+  uniform vec2 uRes, uCenter, uMouse, uRot;
+  uniform float uRadius, uTime, uPx, uAlpha, uMouseR, uPhos;
+  out vec4 vCol;
+  void main() {
+    vec3 p = aPos;
+    p += 0.011 * vec3(sin(uTime * 0.9 + aSeed.x * 40.0), cos(uTime * 0.7 + aSeed.x * 31.0), sin(uTime * 0.6 + aSeed.y * 17.0));
+    float c = cos(uRot.y), s = sin(uRot.y);
+    p = vec3(c * p.x + s * p.z, p.y, -s * p.x + c * p.z);
+    c = cos(uRot.x); s = sin(uRot.x);
+    p = vec3(p.x, c * p.y - s * p.z, s * p.y + c * p.z);
+    float persp = 1.0 / (1.0 - p.z * 0.24);
+    vec2 px = uCenter + vec2(p.x, -p.y) * uRadius * persp;
+    vec2 d = px - uMouse; float dist = length(d);
+    float f = smoothstep(uMouseR, 0.0, dist);
+    px += normalize(d + 0.0001) * f * f * uMouseR * 0.42;
+    gl_Position = vec4(px.x / uRes.x * 2.0 - 1.0, 1.0 - px.y / uRes.y * 2.0, 0.0, 1.0);
+    gl_PointSize = max(1.0, aSeed.z * uPx * persp);
+    float lit = clamp(0.5 + 0.55 * (p.x * 0.8 - p.y * 0.6) + (aSeed.y - 0.5) * 0.35, 0.0, 1.0);
+    float depth = 0.38 + 0.62 * smoothstep(-1.0, 0.9, p.z);
+    vec3 col = mix(vec3(0.42, 0.66, 1.0), vec3(1.0, 0.66, 0.30), lit);
+    col = mix(col, vec3(0.42, 1.0, 0.6), uPhos);
+    vCol = vec4(col, uAlpha * depth * (0.55 + 0.45 * aSeed.x));
+  }`;
+  const fs = `#version 300 es
+  precision mediump float;
+  in vec4 vCol; out vec4 o;
+  void main() { float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.12, d) * vCol.a; o = vec4(vCol.rgb * a, a); }`;
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s)); return s; };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog);
+  gl.useProgram(prog);
+  const U = {}; ["uRes", "uCenter", "uMouse", "uRot", "uRadius", "uTime", "uPx", "uAlpha", "uMouseR", "uPhos"].forEach((n) => (U[n] = gl.getUniformLocation(prog, n)));
+  const cur = new Float32Array(N * 3), seed = new Float32Array(N * 3), speed = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const u = R() * 2 - 1, t = R() * TAU, s = Math.sqrt(1 - u * u), rr = 1.2 + R() * 1.6;
+    cur[i * 3] = rr * s * Math.cos(t); cur[i * 3 + 1] = rr * u; cur[i * 3 + 2] = rr * s * Math.sin(t);
+    seed[i * 3] = R(); seed[i * 3 + 1] = R(); seed[i * 3 + 2] = 1.1 + R() * R() * 2.4;
+    speed[i] = 1.7 + R() * 4.2;
+  }
+  const posBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuf); gl.bufferData(gl.ARRAY_BUFFER, cur, gl.DYNAMIC_DRAW);
+  const aPos = gl.getAttribLocation(prog, "aPos"); gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+  const seedBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, seedBuf); gl.bufferData(gl.ARRAY_BUFFER, seed, gl.STATIC_DRAW);
+  const aSeed = gl.getAttribLocation(prog, "aSeed"); gl.enableVertexAttribArray(aSeed); gl.vertexAttribPointer(aSeed, 3, gl.FLOAT, false, 0, 0);
+  gl.enable(gl.BLEND); gl.disable(gl.DEPTH_TEST); gl.blendFunc(gl.ONE, gl.ONE);
+  gl.uniform2f(U.uRes, 2, 2); gl.uniform1f(U.uAlpha, 0); gl.drawArrays(gl.POINTS, 0, N); gl.finish();   // compile the pipeline now, not at power-on
+
+  const cache = {};
+  let tgt = null, settleAt = 0, rotAmp = 0.5, rotGoal = 0.5;
+  field.setForm = (name, force) => {
+    if (name === field.form && !force) return;
+    field.form = name;
+    if (force) delete cache[name];
+    tgt = cache[name] || (cache[name] = SHAPES[name](N));
+    rotGoal = ROT[name] ?? 0.45; settleAt = performance.now() + 3600;
+    if (reduce) { cur.set(tgt); stale = true; }
+    $("rForm").textContent = `form ${String(FORM_ORDER.indexOf(name) + 1).padStart(2, "0")}/${FORM_ORDER.length} ${name}`;
+  };
+  let bufW = 0, bufH = 0, cssW = 1, cssH = 1, mx = 0, my = 0, blank = false, stale = false;
+  /** Size the drawing buffer to the screen's settled size (not the window), capped for very large displays. */
+  field.fit = (w, h) => {
+    const d = Math.min(devicePixelRatio || 1, 2, Math.sqrt(3.2e6 / (w * h))), W2 = Math.max(2, Math.round(w * d)), H2 = Math.max(2, Math.round(h * d));
+    cssW = w; cssH = h; canvas.style.width = w + "px"; canvas.style.height = h + "px";
+    if (W2 !== bufW || H2 !== bufH) { bufW = canvas.width = W2; bufH = canvas.height = H2; gl.viewport(0, 0, W2, H2); blank = false; }
+  };
+  field.css = () => [cssW, cssH];
+  /** x, y, rad are in the canvas's own CSS pixels; shown is the radius as it appears on screen. */
+  field.draw = (now, dt, x, y, rad, shown, phos, gain, mouseX, mouseY) => {
+    if (gain < 0.004) {                         // nothing visible: clear once, then leave the canvas alone
+      if (tgt && now < settleAt) { cur.set(tgt); settleAt = 0; stale = true; }
+      if (!blank) { gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); blank = true; }
+      return;
+    }
+    blank = false;
+    if (tgt && !reduce && now < settleAt) {
+      for (let i = 0, k = 0; i < N; i++, k += 3) {
+        const a = 1 - Math.exp(-dt * speed[i]);
+        cur[k] += (tgt[k] - cur[k]) * a; cur[k + 1] += (tgt[k + 1] - cur[k + 1]) * a; cur[k + 2] += (tgt[k + 2] - cur[k + 2]) * a;
+      }
+      stale = true;
+    }
+    if (stale) { gl.bindBuffer(gl.ARRAY_BUFFER, posBuf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, cur); stale = false; }
+    const ease = 1 - Math.exp(-dt * 5);
+    mx += (mouse.nx - mx) * ease; my += (mouse.ny - my) * ease; rotAmp += (rotGoal - rotAmp) * (1 - Math.exp(-dt * 2));
+    const t = now / 1000, density = N / 56000, d = bufW / cssW, fit = rad / Math.max(1, shown);
+    // small forms pack the same particles into far fewer pixels, so thin the alpha and the point size with radius
+    const alpha = 0.62 * Math.min(1, Math.pow(shown / (small ? 105 : 150), 2.1)) / Math.max(0.55, density);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.uniform2f(U.uRes, bufW, bufH); gl.uniform2f(U.uCenter, x * d, y * d); gl.uniform2f(U.uMouse, mouseX * d, mouseY * d);
+    gl.uniform2f(U.uRot, 0.06 + my * 0.14, reduce ? 0.2 : Math.sin(t * 0.23) * rotAmp + mx * 0.24);
+    gl.uniform1f(U.uRadius, rad * d); gl.uniform1f(U.uTime, reduce ? 0 : t);
+    gl.uniform1f(U.uPx, d * fit * (small ? 1.15 : 1) * clamp(shown / 190, 0.4, 1));
+    gl.uniform1f(U.uAlpha, alpha * gain); gl.uniform1f(U.uMouseR, Math.min(150, shown * 0.55) * fit * d); gl.uniform1f(U.uPhos, phos);
+    gl.drawArrays(gl.POINTS, 0, N);
+  };
+  $("rPts").textContent = N.toLocaleString("en-US") + " pts";
+  field.prewarm = (name) => { if (!cache[name] && (name !== "portrait" || portraitPx)) cache[name] = SHAPES[name](N); };
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 60));
+  const warmNext = (k) => { if (k >= FORM_ORDER.length) return; field.prewarm(FORM_ORDER[k]); idle(() => warmNext(k + 1)); };
+  idle(() => warmNext(0));
+  // portrait source
+  const im = new Image();
+  im.onload = () => {
+    try {
+      const c = document.createElement("canvas"), size = 300; c.width = c.height = size;
+      const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(im, 0, 0, size, size);
+      portraitPx = { data: x.getImageData(0, 0, size, size).data, size };
+      if (field.form === "portrait") field.setForm("portrait", true); else { delete cache.portrait; idle(() => field.prewarm("portrait")); }
+    } catch (e) { /* tainted canvas: the globe stands in */ }
+  };
+  im.src = "/burnsos/cutout.png";
+} else { canvas.hidden = true; $("rForm").textContent = "webgl2 unavailable"; }
+addEventListener("pointermove", (e) => { mouse.x = e.clientX; mouse.y = e.clientY; mouse.nx = e.clientX / innerWidth * 2 - 1; mouse.ny = e.clientY / innerHeight * 2 - 1; }, { passive: true });
+document.addEventListener("pointerout", (e) => { if (!e.relatedTarget) mouse.x = mouse.y = -9999; });
+addEventListener("touchend", () => { mouse.x = mouse.y = -9999; }, { passive: true });
+
+/* ----------------------------------------------------------- navigation */
+let tween = 0;
+function scrollToY(y, ms, done) {
+  cancelAnimationFrame(tween);
+  y = clamp(y, 0, document.documentElement.scrollHeight - innerHeight);
+  if (reduce || ms === 0) { scrollTo(0, y); if (done) done(); return; }
+  const y0 = scrollY, t0 = performance.now(), dur = ms ?? clamp(Math.abs(y - y0) * 0.55, 700, 2600);
+  const step = (now) => { const k = clamp((now - t0) / dur), e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; scrollTo(0, lerp(y0, y, e)); if (k < 1) tween = requestAnimationFrame(step); else if (done) done(); };
+  tween = requestAnimationFrame(step);
+}
+["wheel", "touchstart"].forEach((ev) => addEventListener(ev, () => cancelAnimationFrame(tween), { passive: true }));
+// Zoom is a state, as on the original site: Space (or a click on the machine) steps up to the keyboard and back.
+let zoomTo = 0, zk = 0;
+const bootD = () => zk;
+const toKeyboard = () => { zoomTo = 1; };
+const zoomOut = () => { zoomTo = 0; };
+
+/* ------------------------------------------- burnsOS: files on the CRT */
+const LABEL = { parahealth: "parahealth.ai", watchtower: "watchtower", remoteretros: "remoteretros.org", outpost: "projectoutpost.org", syene: "syene.ai", keel: "keeldd.com", claruss: "claruss.app", cartlords: "cartlords.com", steamhouse: "steamhouse.app" };
+// the preview beside the file list: the product's category, and the plainest one-line description of what it does
+const KIND = { parahealth: ["healthcare", "AI-powered prior authorization workflow"], watchtower: ["infrastructure", "self-healing software infra"],
+  remoteretros: ["collaboration", "Agile retrospectives for remote teams"], outpost: ["self-hosted", "emergency offline library with local AI models"],
+  syene: ["fintech", "oil market signals from satellite images"], keel: ["research", "answers about companies, cited from SEC filings"],
+  claruss: ["wellness", "an iPhone app that blocks distracting apps"], cartlords: ["commerce", "finds the cheapest way to buy your groceries"],
+  steamhouse: ["agtech", "crop and feeding plans for commercial growers"] };
+const FILES = [...P.map((p, i) => ({ name: p.slug, label: LABEL[p.slug], title: p.name, form: p.form, metric: KIND[p.slug][0], what: KIND[p.slug][1] })),
+  { name: "about", label: "about.txt", title: "About", form: "portrait", metric: "about", what: "passionate technologist and explorer" },
+  { name: "principles", label: "principles.txt", title: "Principles", form: "page", metric: "principles", what: "what I try to live by" },
+  { name: "dispatch", label: "dispatch.txt", title: "Dispatch", form: "radar", metric: "dispatch", what: "dated notes, as I write them" },
+  { name: "contact", label: "contact.txt", title: "Contact", form: "globe", metric: "contact", what: "building something hard? say hello" }];
+const filesEl = $("files");
+filesEl.innerHTML = FILES.map((f, i) => `<a class="file" href="#${f.name}" data-i="${i}"><span class="pre">&gt;</span><span>${f.label}</span></a>`).join("");
+let pickd = -1, selAt = 0, touched = false, formOverride = "";
+function selectFile(i, user) {
+  pickd = (i + FILES.length) % FILES.length; selAt = performance.now(); if (user) touched = true;
+  [...filesEl.children].forEach((a, n) => a.classList.toggle("sel", n === pickd));
+  $("pvMetric").textContent = FILES[pickd].metric; $("pvWhat").textContent = FILES[pickd].what;
+  formOverride = "";
+}
+selectFile(0);
+filesEl.addEventListener("click", (e) => { const a = e.target.closest(".file"); if (!a) return; e.preventDefault(); go(FILES[+a.dataset.i].name); });
+filesEl.addEventListener("pointermove", (e) => { const a = e.target.closest(".file"); if (a && e.pointerType === "mouse" && +a.dataset.i !== pickd) selectFile(+a.dataset.i, true); });
+const isTouch = matchMedia("(hover: none)").matches; if (isTouch) document.documentElement.classList.add("touch");
+
+/* ------------------------------------ pages render on the CRT, by #name */
+const anchor = { x: innerWidth / 2, y: innerHeight / 2, r: 60, rate: 5, init: false };
+let view = -1, dive = 0, diveAnim = null, pageIdx = -1, autoGrow = false, preBig = false, quietHash = false, routing = false;
+const rail = $("rail");
+const STOPS = [{ label: "burnsOS", name: "" }, ...FILES.map((f) => ({ label: f.title, name: f.name }))];
+rail.innerHTML = STOPS.map((s, i) => `<button type="button" data-i="${i}"><span>${s.label}</span></button>`).join("");
+rail.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) go(STOPS[+b.dataset.i].name); });
+const setRail = (i) => [...rail.children].forEach((b, n) => b.setAttribute("aria-current", n === i));
+// one plain paragraph per project: what it is and who it is for, condensed from the case studies
+const ABOUT = {
+  parahealth: "Prior authorization is the hours-per-patient paperwork that pharmacy techs and clinic staff fight through for every script. With Parahealth, a user uploads the patient's chart and picks the drug and payer. It decides whether a PA is needed, fills in the payer's own form with a confidence score on every answer, and submits it.",
+  watchtower: "A production watchdog that demos itself. It runs a simulated six-service system, breaks it on demand, and heals it. A chaos panel injects a fault, a statistical detector catches the anomaly, and a Claude agent investigates the metrics, logs, traces and deploys, then writes a root-cause report with evidence you can click.",
+  remoteretros: "A free web app for running agile retrospectives with a distributed team. One link is the whole invite. Everyone writes at once, notes land on a shared board anonymously, the team groups and labels them live, votes stay blind until the reveal, and every action item leaves with a named owner.",
+  outpost: "Outpost turns a spare Mac or Linux computer into an offline library that every phone and laptop on the network can read: Wikipedia, medical and survival references, repair guides, courses, books and street maps, plus an optional local AI assistant that answers from the library and cites it.",
+  syene: "An energy-first commodities terminal that combines satellite imagery, fundamentals, positioning, flows and market structure into research signals. It reads storage-tank fill levels from shadow geometry in satellite scenes, then scores that estimate against the weekly EIA reports.",
+  keel: "Keel answers research questions about public companies from their 10-K and 10-Q filings. Each answer has a direct response, findings per company with citations, a comparison table, a coverage statement and the gaps. Everything except the final answer is deterministic code, so an answer costs one model request.",
+  claruss: "Claruss blocks the apps and websites you choose on a schedule you set, enforced at the system level. An accountability partner can approve early unlocks, and a one-time passcode arrives by email or SMS when you genuinely need out.",
+  cartlords: "Cartlords compares a whole grocery list across the stores near you using real prices, then finds the cheapest way to buy it, including splitting the cart across two or three stores. Prices are normalized to a true per-unit cost so the comparison is fair.",
+  steamhouse: "A multi-tenant platform for commercial growing operations that replaces the spreadsheets and paper logs most grows run on. Teams write week-by-week feed schedules, attach them to a crop, then log daily readings, feedings and climate against the plan.",
+};
+// Dated entries for dispatch.txt, newest first: { at: "2026-11-17T12:30:00-08:00", title: "...", body: "..." }
+const DISPATCH = [];
+const stamp = (iso) => { const d = new Date(iso), p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+function pageHTML(i) {
+  const f = FILES[i], p = P[i], prev = FILES[(i - 1 + FILES.length) % FILES.length], next = FILES[(i + 1) % FILES.length];
+  const nav = `<p class="pg-nav">${cmdLink("open " + prev.label, "< " + prev.label)}${cmdLink("close", "[esc] back to files")}${cmdLink("open " + next.label, next.label + " >")}</p>`;
+  let main, side = `<div class="pg-stage"></div>`, cols = "", cls = "pg";
+  if (p) {
+    cls = "pg proj";
+    main = `<p class="dim">${String(i + 1).padStart(2, "0")}/${String(P.length).padStart(2, "0")}  ${esc(p.cat.toLowerCase())}, ${esc(p.role.toLowerCase())}, ${esc(p.period)}</p><h2 class="pg-name${p.name.length > 9 ? " long" : ""}">${esc(p.name)}</h2><p class="pg-tag">${esc(p.tag)}</p>
+      <p class="pg-metric"><b data-scramble="${esc(p.metric)}">${esc(p.metric)}</b><span>${esc(p.label)}</span></p>
+      <p class="pg-links">${p.links.map((l) => `<a href="${l[1]}" target="_blank" rel="noopener">${esc(l[0].toLowerCase())}</a>`).join("") || `<span class="dim">private beta, sign-in only</span>`}</p>`;
+    side = p.noshot ? `<div class="pg-noshot">no screenshot<br>the app is in private beta and its screens stay behind sign-in</div>` : `<figure class="pg-shot"><img src="/burnsos/${p.slug}.jpg" alt="${esc(p.name)} screenshot" width="1400" height="875" decoding="async"><figcaption>${isTouch ? "tap" : "hover"} for full colour</figcaption></figure>`;
+    cols = `<div class="pg-cols"><section><p class="pg-h">what it is</p><p class="lead">${esc(ABOUT[p.slug])}</p></section><section><p class="pg-h">results</p><ul>${p.out.map((o) => `<li>${esc(o)}</li>`).join("")}</ul></section><section><p class="pg-h">built with</p><ul>${p.stack.map((t) => `<li>${esc(t)}</li>`).join("")}</ul></section></div>`;
+  } else if (f.name === "about") {
+    main = `<p class="dim">about.txt</p><h2 class="pg-name">Dylan Burns</h2><p class="pg-tag">Passionate technologist and explorer.</p>
+      <p>I have never believed you have to choose between range and depth. The people I admire most went deep in more than one place, and each new depth made the earlier ones more valuable.</p>
+      <p>So when I take something on, I commit to it completely and master it, until it works and ships. Then I take on the next. Building a product alone demands that. You are the designer in the morning, the backend engineer after lunch, and by evening the person who has to decide whether any of it is good. The seams between those jobs are where most projects go wrong, and you only see the seams if you have done real work on both sides.</p>
+      <p>That is why my interests run so wide: healthcare, fintech, satellite data, infrastructure, agriculture, and software that keeps working when the internet doesn't. Each began as a field I knew nothing about, and I stayed with each one until I had built something real in it.</p>
+      <p>That is the pattern I trust. Not knowing how is rarely a reason to stop. More often it is the reason to begin, and finishing is what turns curiosity into skill. The thirst behind it has never been limited to software. I want to be properly good at everything I take on.</p>
+      <p class="pg-links">${cmdLink("open principles.txt", "my principles")}${cmdLink("open contact.txt", "get in touch")}${cmdLink("ls", "see the work")}</p>`;
+    side += `<p class="dim">portrait drawn live from a photograph, one particle per sample.</p>`;
+  } else if (f.name === "principles") {
+    main = `<p class="dim">principles.txt</p><h2 class="pg-name">Principles</h2><p class="pg-tag">What I try to live by. Short on purpose, and added to as I go.</p>
+      <div class="wr"><p class="wr-t"><span class="dim">01</span>Create more than you consume</p><p>The world is built to be consumed, and making things is the way out of it. I only use social media if I am there to post and take part.</p></div>
+      <div class="wr"><p class="wr-t"><span class="dim">02</span>Leave it better than you found it</p><p>A codebase, a team, a campsite, a conversation. You don't have to fix everything. You have to leave one thing better than it was when you arrived.</p></div>
+      <div class="wr"><p class="wr-t"><span class="dim">03</span>Aggressive, persistent action toward your goals</p><p>Plans are cheap and motion is rare. Most goals are lost to waiting long before they are lost to failure. Move today, and again tomorrow.</p></div>
+      <div class="wr"><p class="wr-t"><span class="dim">04</span>Size the decision</p><p>Decisions rarely come out simply good or bad. More often the payoff is lopsided: ten parts upside to one part downside, or the reverse. Some choices are easy to undo and should be made fast for exactly that reason. Others can't be taken back. Every decision carries a weight, and knowing its ratio of cost to benefit tells you how much risk it holds and how much time it deserves.</p></div>
+      <div class="wr"><p class="wr-t"><span class="dim">05</span>Be a beginner on purpose</p><p>The feeling of not knowing what you are doing is the feeling of learning. Go looking for it before you get comfortable.</p></div>
+      <div class="wr"><p class="wr-t"><span class="dim">06</span>Measure it, or you're guessing</p><p>If I can't put a number on whether something works, I don't yet know that it does.</p></div>
+      <div class="wr"><p class="wr-t"><span class="dim">07</span>Own the whole thing</p><p>The interesting problems live between the layers. You only find them if you are willing to work on every layer.</p></div>
+      <div class="wr"><p class="wr-t"><span class="dim">08</span>Curiosity compounds</p><p>Each thing I learn makes the next one cheaper to learn. Range has turned out to be a shortcut to depth.</p></div>
+      <p class="pg-links">${cmdLink("open dispatch.txt", "dispatch")}${cmdLink("open about.txt", "about me")}${cmdLink("open contact.txt", "get in touch")}</p>`;
+  } else if (f.name === "dispatch") {
+    main = `<p class="dim">dispatch.txt</p><h2 class="pg-name">Dispatch</h2><p class="pg-tag">Dated notes, newest first. Each entry is stamped when it is filed.</p>
+      ${DISPATCH.length ? DISPATCH.map((d) => `<div class="wr"><p class="dim">${stamp(d.at)}</p><p class="wr-t">${esc(d.title)}</p><p>${esc(d.body)}</p></div>`).join("") : `<div class="wr"><p class="dim">total 0</p><p>Nothing filed yet. The first dispatch will appear here with its date and time.</p></div>`}
+      <p class="pg-links">${cmdLink("open principles.txt", "principles")}${cmdLink("open about.txt", "about me")}</p>`;
+  } else {
+    main = `<p class="dim">contact.txt</p><h2 class="pg-name">Let's talk.</h2><p class="pg-tag">Building something hard? I'd like to hear about it.</p>
+      <p class="pg-metric"><b style="font-size:48px;line-height:44px;white-space:normal;overflow-wrap:anywhere">dylanburns1524@gmail.com</b></p>
+      <p class="pg-links">${cmdLink("mail", "copy the address")}<a href="https://github.com/Dylan-Burns" target="_blank" rel="noopener">github</a><a href="https://www.linkedin.com/in/dylan-burns-" target="_blank" rel="noopener">linkedin</a></p>`;
+  }
+  const url = p ? (p.links[0] ? p.links[0][1] : "burns://" + f.label) : "burns://" + f.label;
+  const bar = `<div class="win-bar">${cmdLink("close", "x").replace("<a ", '<a class="wb" title="Close" ')}${cmdLink("open " + prev.label, "<").replace("<a ", '<a class="wb" title="Previous" ')}${cmdLink("open " + next.label, ">").replace("<a ", '<a class="wb" title="Next" ')}<span class="win-url">${esc(url)}</span><span class="win-name">burnsOS Navigator</span></div>`;
+  return `${bar}<div class="${cls}"><div class="pg-main">${main}</div><div class="pg-side${p ? "" : " has-stage"}">${side}</div></div>${cols}${nav}`;
+}
+function showPage(i) {
+  pageIdx = i; selectFile(i, true); formOverride = "";
+  const el = $("tPage"); el.innerHTML = pageHTML(i); setMode("page"); el.scrollTop = 0;   // reset the scroll only once the page is visible, or the last page's position sticks
+  if (!growTo) { autoGrow = true; preBig = true; setTimeout(() => { if (pageIdx === i && !growTo && zoomTo) COMMANDS.fullscreen(); }, 150); }
+  setRail(i + 1);
+  const m = el.querySelector("[data-scramble]"); if (m) scramble(m, m.dataset.scramble);
+}
+function closePage() {
+  pageIdx = -1; setRail(0);
+  if (shell.mode === "page") setMode("list");
+  if (autoGrow && growTo) COMMANDS.fullscreen(); autoGrow = false;
+}
+$("tPage").addEventListener("click", (e) => { const fig = e.target.closest(".pg-shot"); if (fig) fig.classList.toggle("on"); });
+/** Opening a file first "downloads" its package on the terminal: a live bar, then READY, then it runs. */
+let loadId = 0;
+function download(i, done) {
+  const id = ++loadId, f = FILES[i], pkg = f.name + ".pkg";
+  const total = 18 + ((f.name.length * 7 + f.name.charCodeAt(0) * 3) % 46) + (f.name.charCodeAt(1) % 10) / 10, W = 22, dur = 1500 + R() * 500, t0 = performance.now();
+  if (P[i] && !P[i].noshot) { const im = new Image(); im.src = `/burnsos/${P[i].slug}.jpg`; if (im.decode) im.decode().catch(() => {}); }
+  field.prewarm(f.form);
+  tOut.innerHTML = ""; setMode("out");
+  print(`<span class="d">$ open ${esc(f.label)}</span>\nresolving ${esc(pkg)} <span class="d">... ok</span>`);
+  const row = print(""), stall = 0.3 + R() * 0.4;
+  const step = (now) => {
+    if (id !== loadId) return;
+    let k = clamp((now - t0) / dur); k = k < stall ? k * 0.8 : k < stall + 0.12 ? stall * 0.8 : lerp(stall * 0.8, 1, (k - stall - 0.12) / (1 - stall - 0.12));   // a believable stall partway
+    const n = Math.round(k * W), pct = Math.round(k * 100);
+    row.innerHTML = `<span class="b">${"#".repeat(n)}</span><span class="d">${"-".repeat(W - n)}</span>  ${(total * k).toFixed(1)}MB/${total.toFixed(1)}MB  ${String(pct).padStart(3)}%`;
+    if (k < 1) return requestAnimationFrame(step);
+    print(`unpacking <span class="d">... done</span>\n<span class="b">READY</span>  launching ${esc(f.title)}`);
+    setTimeout(() => { if (id === loadId) done(); }, 420);
+  };
+  requestAnimationFrame(step);
+}
+/** The only place the screen changes program. Everything stays on the computer. */
+function route(name, instant) {
+  const i = FILES.findIndex((f) => f.name === name);
+  loadId++;
+  if (i < 0) return closePage();
+  routing = true;
+  if (instant || reduce) { zoomTo = 1; if (instant) zk = 1; showPage(i); }
+  else { selectFile(i, true); toKeyboard(); download(i, () => { routing = true; showPage(i); routing = false; }); }
+  routing = false;
+}
+const hashName = () => location.hash.replace(/^#/, "");
+const setHash = (name) => { const y = scrollY; location.hash = name; if (scrollY !== y) scrollTo(0, y); };
+function go(name) { if (hashName() === name) route(name); else setHash(name); }
+addEventListener("hashchange", () => { if (quietHash) { quietHash = false; return; } route(hashName()); });
+document.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", (e) => {
+  e.preventDefault();
+  if (b.dataset.go === "work") { go(""); setMode("list"); toKeyboard(); } else go(b.dataset.go);
+}));
+$("brand").addEventListener("click", (e) => { e.preventDefault(); go(""); zoomOut(); });
+$("m1").addEventListener("click", () => { if (zoomTo === 0) toKeyboard(); else if (isTouch) zoomOut(); });   // touch: tap outside the screen steps back
+/* ----------------------------------------------- burnsOS shell + games */
+// A small shell written for this page: a read-only file system of the projects, and a handful of programs.
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const store = (k, v) => { try { if (v === undefined) return localStorage.getItem("burnsos-" + k); localStorage.setItem("burnsos-" + k, v); } catch (e) { return null; } };
+const tOut = $("tOut"), tBuf = $("tBuf"), tIn = $("tIn"), tGame = $("tGame");
+const shell = { buf: "", hist: [], hi: -1, mode: "list" };
+let growTo = 0, grow = 0;
+function setMode(m) {
+  // leaving a page by any other route (ls, a game, a command) also clears its #name
+  if (shell.mode === "page" && m !== "page" && !routing) { pageIdx = -1; setRail(0); if (hashName()) { quietHash = true; setHash(""); } }
+  shell.mode = m;
+  $("files").hidden = $("tPrev").hidden = m !== "list"; tOut.hidden = m !== "out"; tGame.hidden = m !== "game"; $("tPage").hidden = m !== "page";
+  if (m !== "game") game.on = null;
+}
+function setBuf(t) { shell.buf = t; tBuf.textContent = t; if (tIn.value !== t) tIn.value = t; $("tHint").hidden = !!t || shell.mode !== "list"; }
+function print(html) { if (shell.mode !== "out") { tOut.innerHTML = ""; setMode("out"); } const d = document.createElement("div"); d.innerHTML = html; tOut.appendChild(d); tOut.scrollTop = Math.max(0, d.offsetTop - 27); return d; }
+const cmdLink = (c, label) => `<a data-cmd="${esc(c)}">${esc(label || c)}</a>`;
+const findFile = (arg) => { const a = (arg || "").toLowerCase().replace(/^\.\//, "").replace(/\/$/, ""); return FILES.findIndex((f) => a && [f.label, f.name, f.title.toLowerCase(), f.label.replace(/\.\w+$/, "")].includes(a)); };
+function fileText(i) {
+  const f = FILES[i], p = P[i];
+  if (p) return `<span class="b">${esc(p.name)}</span>  <span class="d">${esc(p.cat)}, ${esc(p.role.toLowerCase())}, ${esc(p.period)}</span>\n${esc(p.tag)}\n\n<span class="b">${esc(p.metric)}</span>  ${esc(p.label)}\n\n${p.out.map((o) => "- " + esc(o)).join("\n")}\n\n<span class="d">stack</span>  ${esc(p.stack.join(", "))}\n\n${cmdLink("open " + f.label, "open the page")}${p.links.map((l) => `   <a href="${l[1]}" target="_blank" rel="noopener">${esc(l[0].toLowerCase())}</a>`).join("")}`;
+  if (f.name === "about") return `<span class="b">Dylan Burns</span>  <span class="d">passionate technologist and explorer</span>\n\nI have never believed you have to choose between range and depth. The people I admire most went deep in more than one place, and each new depth made the earlier ones more valuable.\n\nThat is why my interests run so wide: healthcare, fintech, satellite data, infrastructure, agriculture, and software that keeps working when the internet doesn't. Each began as a field I knew nothing about, and I stayed with each one until I had built something real in it.\n\nThat is the pattern I trust. Not knowing how is rarely a reason to stop. More often it is the reason to begin, and finishing is what turns curiosity into skill. The thirst behind it has never been limited to software. I want to be properly good at everything I take on.\n\n${cmdLink("open about.txt", "read the whole thing")}   ${cmdLink("cat principles.txt", "principles")}   ${cmdLink("stack")}`;
+  if (f.name === "principles") return `<span class="b">Principles</span>  <span class="d">what I try to live by</span>\n\n<span class="b">01  Create more than you consume</span>\nThe world is built to be consumed, and making things is the way out of it. I only use social media if I am there to post and take part.\n\n<span class="b">02  Leave it better than you found it</span>\nA codebase, a team, a campsite, a conversation. You don't have to fix everything. You have to leave one thing better than it was when you arrived.\n\n<span class="b">03  Aggressive, persistent action toward your goals</span>\nPlans are cheap and motion is rare. Most goals are lost to waiting long before they are lost to failure. Move today, and again tomorrow.\n\n<span class="b">04  Size the decision</span>\nDecisions rarely come out simply good or bad. More often the payoff is lopsided: ten parts upside to one part downside, or the reverse. Some choices are easy to undo and should be made fast for exactly that reason. Others can't be taken back. Every decision carries a weight, and knowing its ratio of cost to benefit tells you how much risk it holds and how much time it deserves.\n\n<span class="b">05  Be a beginner on purpose</span>\nThe feeling of not knowing what you are doing is the feeling of learning. Go looking for it before you get comfortable.\n\n<span class="b">06  Measure it, or you're guessing</span>\nIf I can't put a number on whether something works, I don't yet know that it does.\n\n<span class="b">07  Own the whole thing</span>\nThe interesting problems live between the layers. You only find them if you are willing to work on every layer.\n\n<span class="b">08  Curiosity compounds</span>\nEach thing I learn makes the next one cheaper to learn. Range has turned out to be a shortcut to depth.\n\n${cmdLink("open principles.txt", "open the page")}`;
+  if (f.name === "dispatch") return `<span class="b">Dispatch</span>  <span class="d">dated notes, newest first</span>\n\n${DISPATCH.length ? DISPATCH.map((d) => `<span class="b">${stamp(d.at)}</span>  ${esc(d.title)}\n${esc(d.body)}`).join("\n\n") : "total 0\n<span class=\"d\">nothing filed yet</span>"}`;
+  return `<span class="b">Contact</span>\n\nBuilding something hard? I'd like to hear about it.\n\nmail      dylanburns1524@gmail.com   ${cmdLink("mail", "copy")}\ngithub    <a href="https://github.com/Dylan-Burns" target="_blank" rel="noopener">github.com/Dylan-Burns</a>\nlinkedin  <a href="https://www.linkedin.com/in/dylan-burns-" target="_blank" rel="noopener">linkedin.com/in/dylan-burns-</a>`;
+}
+const openTab = (url) => { const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove(); };
+const HELP = [["ls", "list the files"], ["cat <file>", "read a file here"], ["open <file>", "open its full page"], ["browse <file>", "text-mode web view"],
+  ["snake, pong", "games"], ["particles <shape>", "reshape the particles"], ["neofetch", "about this machine"], ["stack", "languages and tools"], ["mail", "copy my email"],
+  ["fullscreen", "bigger screen"], ["history, clear, top", "the usual"], ["exit", "step back"]];
+const COMMANDS = {
+  help: () => print(`<span class="d">tab completes, up arrow recalls</span>\n` + HELP.map(([c, d]) => `${c.split(", ").map((x) => cmdLink(x.split(" ")[0], x)).join(", ").padEnd(0)}${" ".repeat(Math.max(2, 20 - c.length))}<span class="d">${d}</span>`).join("\n")),
+  ls: (a) => { if (a[0] === "-l" || a[0] === "-la") print(FILES.map((f, i) => `-r--r--r--  dylan  ${(P[i] ? P[i].period : "2026").padEnd(14)} ${cmdLink("cat " + f.label, f.label)}`).join("\n") + `\n-r-xr-xr-x  dylan  ${"1976, 1972".padEnd(14)} ${cmdLink("snake")}  ${cmdLink("pong")}`); else setMode("list"); },
+  cat: (a) => { const i = findFile(a[0]); if (i < 0) return print(a[0] ? `cat: ${esc(a[0])}: no such file. Try ${cmdLink("ls")}.` : "usage: cat &lt;file&gt;"); selectFile(i, true); print(fileText(i)); },
+  open: (a) => { if (/^https?:\/\//.test(a[0] || "")) { print(`opening ${esc(a[0])} in a new tab`); return openTab(a[0]); } const i = findFile(a[0]); if (i < 0) return print(a[0] ? `open: ${esc(a[0])}: no such file. Try ${cmdLink("ls")}.` : "usage: open &lt;file&gt;"); go(FILES[i].name); },
+  browse: (a) => {
+    const i = findFile(a[0]), p = P[i];
+    if (!a[0]) return print("usage: browse &lt;file or url&gt;");
+    if (/^https?:\/\//.test(a[0])) { print(`This terminal only renders text for the sites on this machine.\nOpening ${esc(a[0])} in a new tab.`); return openTab(a[0]); }
+    if (!p) return print(`browse: ${esc(a[0])}: not a site on this machine. Try ${cmdLink("ls")}.`);
+    const url = p.links[0] ? p.links[0][1] : "";
+    selectFile(i, true);
+    print(`<span class="d">${"=".repeat(46)}\n lynx  ${esc(url || "(private beta, no public site)")}\n${"=".repeat(46)}</span>\n\n   <span class="b">${esc(p.name.toUpperCase())}</span>\n\n   ${esc(p.tag)}\n\n   * ${esc(p.metric)} ${esc(p.label)}\n${p.out.map((o) => "   * " + esc(o)).join("\n")}\n\n<span class="d">links</span>\n${p.links.map((l, n) => `   [${n + 1}] <a href="${l[1]}" target="_blank" rel="noopener">${esc(l[1])}</a>`).join("\n") || "   none"}\n   [${p.links.length + 1}] ${cmdLink("open " + FILES[i].label, "the full page on this site")}`);
+  },
+  particles: (a) => { const shapes = FORM_ORDER; if (!shapes.includes(a[0])) return print(`usage: particles &lt;shape&gt;\n\n${shapes.map((x) => cmdLink("particles " + x, x)).join("  ")}`); setMode("list"); formOverride = a[0]; },
+  neofetch: () => print(`<span class="b">  .---------.</span>     <span class="b">guest@burnsOS</span>\n<span class="b">  | &gt;_      |</span>   os       burnsOS 2.0 (JS shell)\n<span class="b">  |         |</span>   host     vintage terminal\n<span class="b">  '---------'</span>   display  CRT, green phosphor\n<span class="b">  /_________\\</span>   gpu      WebGL2, 1 draw call\n                particles ${N.toLocaleString("en-US")}\n                speed    ${esc($("rFps").textContent)}\n                files    ${FILES.length}, read-only`),
+  stack: () => print(`languages   TypeScript, Python, Go, Swift\nproduct     React, Next.js, SwiftUI, Tailwind\nbackend     FastAPI, Postgres, Redis, DuckDB, Dagster\ninfra       AWS, Cloudflare Workers, Vercel, Terraform\nai          tool-use agents, hybrid retrieval and reranking, eval harnesses`),
+  top: () => print(`  PID  COMMAND            STATE\n    1  burnsos-shell      running\n    2  particle-renderer  ${N.toLocaleString("en-US")} pts, ${esc($("rFps").textContent)}\n    3  crt-phosphor       warm`),
+  mail: () => { copyEmail(); print("dylanburns1524@gmail.com  (copied to your clipboard if the browser allowed it)"); },
+  github: () => { print("opening github.com/Dylan-Burns in a new tab"); openTab("https://github.com/Dylan-Burns"); },
+  linkedin: () => { print("opening LinkedIn in a new tab"); openTab("https://www.linkedin.com/in/dylan-burns-"); },
+  games: () => print(`${cmdLink("snake")}   arrow keys or swipe\n${cmdLink("pong")}    arrow keys, or drag the paddle\n\n<span class="d">esc quits a game</span>`),
+  snake: () => startGame("snake"), pong: () => startGame("pong"),
+  fullscreen: () => { growTo = growTo ? 0 : 1; $("fsBtn").textContent = growTo ? "small screen" : "full screen"; },
+  clear: () => setMode("list"), close: () => go(""),
+  history: () => print(shell.hist.map((h, n) => `${String(n + 1).padStart(3)}  ${esc(h)}`).join("\n") || "nothing yet"),
+  whoami: () => print("guest"), pwd: () => print("/home/dylan"), date: () => print(esc(new Date().toString())),
+  uname: () => print("burnsOS 2.0 js-shell  (not Linux: a shell written for this page)"),
+  echo: (a) => print(esc(a.join(" "))),
+  sudo: () => print("guest is not in the sudoers file."),
+  rm: () => print("rm: read-only file system. The projects stay."),
+  exit: () => { growTo = 0; $("fsBtn").textContent = "full screen"; setMode("list"); zoomOut(); },
+};
+const ALIAS = { dir: "ls", ll: "ls", less: "cat", more: "cat", lynx: "browse", w3m: "browse", curl: "browse", cd: "open", email: "mail", contact: "mail", form: "particles", full: "fullscreen", f11: "fullscreen", cls: "clear", logout: "exit", man: "help", "?": "help" };
+function run(line) {
+  line = line.trim(); setBuf(""); shell.hi = -1;
+  if (!line) return;
+  if (shell.hist[shell.hist.length - 1] !== line) shell.hist.push(line);
+  const [c0, ...args] = line.split(/\s+/), c = c0.toLowerCase().replace(/^\.\//, ""), name = ALIAS[c] || c;
+  if (name === "open" && (args[0] === ".." || args[0] === "~" || !args[0]) && c === "cd") return setMode("list");
+  if (!["ls", "clear", "close", "snake", "pong", "open", "fullscreen", "exit", "particles"].includes(name)) print(`<span class="d">$ ${esc(line)}</span>`);
+  if (COMMANDS[name]) return COMMANDS[name](name === "ls" && c === "ll" ? ["-l"] : args);
+  const i = findFile(c0); if (i >= 0) return go(FILES[i].name);     // a bare file name opens it
+  print(`${esc(c0)}: command not found. Try ${cmdLink("help")}.`);
+}
+function complete() {
+  const parts = shell.buf.split(/\s+/), last = parts[parts.length - 1].toLowerCase();
+  const pool = parts.length === 1 ? Object.keys(COMMANDS).concat(FILES.map((f) => f.label)) : parts[0] === "particles" ? FORM_ORDER : FILES.map((f) => f.label);
+  const hits = pool.filter((x) => x.startsWith(last));
+  if (hits.length === 1) { parts[parts.length - 1] = hits[0]; setBuf(parts.join(" ") + (parts.length === 1 && COMMANDS[hits[0]] ? " " : "")); }
+  else if (hits.length > 1) { let pre = hits[0]; for (const h of hits) while (!h.startsWith(pre)) pre = pre.slice(0, -1); parts[parts.length - 1] = pre; setBuf(parts.join(" ")); }
+}
+$("t1").addEventListener("click", (e) => { const a = e.target.closest("[data-cmd]"); if (a) { e.preventDefault(); run(a.dataset.cmd); } });
+tIn.addEventListener("input", () => setBuf(tIn.value));
+tIn.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); const v = tIn.value; if (v.trim()) run(v); else if (shell.mode === "list") go(FILES[pickd].name); tIn.blur(); } });
+
+// games: drawn on a canvas inside the screen, in the same phosphor
+const game = { on: null };
+const PH = "#7dffa6";
+function startGame(kind) {
+  setMode("game");
+  const W = tGame.clientWidth, H = tGame.clientHeight, q = W * H > 9e5 ? 1.25 : 2;     // a full-screen board needs fewer pixels per cell
+  tGame.width = W * q; tGame.height = H * q;
+  const x = tGame.getContext("2d"); x.setTransform(q, 0, 0, q, 0, 0); x.font = '22px "VT323", monospace'; x.textBaseline = "top";
+  game.on = (kind === "snake" ? snakeGame : pongGame)(x, W, H); game.on.kind = kind;
+}
+const fitField = () => { const r = m1.isBig ? m1.bigRect : m1.rest; if (r) field.fit(r.w, r.h); canvas.style.borderRadius = m1.isBig ? "1.3% / 2.3%" : ""; };
+m1.onsize = () => { fitField(); if (game.on) startGame(game.on.kind); };
+addEventListener("resize", () => requestAnimationFrame(() => { m1(m1.zs * zk, grow, preBig); fitField(); }));
+function snakeGame(x, W, H) {
+  const cols = 30, top = 30, cell = Math.max(6, Math.floor(Math.min(W / cols, (H - top) / 12))), nx = Math.floor(W / cell), ny = Math.floor((H - top) / cell), ox = (W - nx * cell) / 2;
+  let s, dir, next, food, score, dead, lastT = 0, best = +store("snake") || 0;
+  const place = () => { do food = [(R() * nx) | 0, (R() * ny) | 0]; while (s.some((p) => p[0] === food[0] && p[1] === food[1])); };
+  const reset = () => { s = [[6, ny >> 1], [5, ny >> 1], [4, ny >> 1]]; dir = next = [1, 0]; score = 0; dead = false; place(); };
+  const turn = (dx, dy) => { if (dx !== -dir[0] || dy !== -dir[1]) next = [dx, dy]; };
+  reset();
+  return {
+    key(k) { const m = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] }[k]; if (m) { turn(m[0], m[1]); return true; } if (k === "Enter" && dead) { reset(); return true; } return false; },
+    swipe(dx, dy) { if (dead) return reset(); if (Math.abs(dx) > Math.abs(dy)) turn(Math.sign(dx), 0); else turn(0, Math.sign(dy)); },
+    tick(now) {
+      if (!dead && now - lastT > 105) {
+        lastT = now; dir = next; const h = [s[0][0] + dir[0], s[0][1] + dir[1]];
+        if (h[0] < 0 || h[1] < 0 || h[0] >= nx || h[1] >= ny || s.some((p) => p[0] === h[0] && p[1] === h[1])) { dead = true; if (score > best) { best = score; store("snake", best); } }
+        else { s.unshift(h); if (h[0] === food[0] && h[1] === food[1]) { score++; place(); } else s.pop(); }
+      }
+      x.clearRect(0, 0, W, H); x.fillStyle = PH; x.strokeStyle = PH;
+      x.textAlign = "left"; x.fillText(`SNAKE   score ${score}   best ${best}`, ox, 0); x.textAlign = "right"; x.fillText("esc quits", W - ox, 0);
+      x.strokeRect(ox + 0.5, top + 0.5, nx * cell - 1, ny * cell - 1);
+      x.globalAlpha = 0.6; x.fillRect(ox + food[0] * cell + 2, top + food[1] * cell + 2, cell - 4, cell - 4); x.globalAlpha = 1;
+      s.forEach((p) => x.fillRect(ox + p[0] * cell + 1, top + p[1] * cell + 1, cell - 2, cell - 2));
+      if (dead) { x.textAlign = "center"; x.fillText("game over. enter or tap to play again", W / 2, top + ny * cell / 2 - 11); }
+    },
+  };
+}
+function pongGame(x, W, H) {
+  const top = 30, ph = (H - top) * 0.22, pw = 8, mx = 22;
+  let py = H / 2, ay = H / 2, bx, by, vx, vy, ps = 0, as = 0, hold = 0, lastT = 0, over = false;
+  const serve = (d) => { bx = W / 2; by = top + (H - top) / 2; vx = d * W * 0.42; vy = (R() - 0.5) * H * 0.6; };
+  serve(R() < 0.5 ? 1 : -1);
+  const lim = (v) => clamp(v, top + ph / 2, H - ph / 2);
+  return {
+    key(k, down) { const m = { ArrowUp: -1, ArrowDown: 1, w: -1, s: 1 }[k]; if (m) { hold = down ? m : hold === m ? 0 : hold; return true; } if (k === "Enter" && over && down) { ps = as = 0; over = false; serve(1); return true; } return false; },
+    pointer(y) { py = lim(y); if (over) { ps = as = 0; over = false; serve(1); } },
+    tick(now) {
+      const dt = Math.min(0.04, (now - lastT) / 1000 || 0); lastT = now;
+      if (!over) {
+        py = lim(py + hold * H * 1.1 * dt); ay = lim(ay + clamp(by - ay, -H * 0.62 * dt, H * 0.62 * dt));
+        bx += vx * dt; by += vy * dt;
+        if (by < top + 5 && vy < 0) vy = -vy; if (by > H - 5 && vy > 0) vy = -vy;
+        if (vx < 0 && bx < mx + pw && bx > mx - 6 && Math.abs(by - py) < ph / 2 + 5) { vx = -vx * 1.06; vy += (by - py) * 5; }
+        if (vx > 0 && bx > W - mx - pw && bx < W - mx + 6 && Math.abs(by - ay) < ph / 2 + 5) { vx = -vx * 1.06; vy += (by - ay) * 5; }
+        if (bx < -10) { as++; serve(-1); } else if (bx > W + 10) { ps++; serve(1); }
+        if (ps >= 5 || as >= 5) over = true;
+      }
+      x.clearRect(0, 0, W, H); x.fillStyle = PH;
+      x.textAlign = "left"; x.fillText(`PONG   you ${ps}   machine ${as}`, mx, 0); x.textAlign = "right"; x.fillText("esc quits", W - mx, 0);
+      for (let y = top; y < H; y += 16) x.fillRect(W / 2 - 1, y, 2, 8);
+      x.fillRect(mx, py - ph / 2, pw, ph); x.fillRect(W - mx - pw, ay - ph / 2, pw, ph);
+      if (!over) x.fillRect(bx - 5, by - 5, 10, 10);
+      else { x.textAlign = "center"; x.fillText(`${ps > as ? "you win" : "the machine wins"}. enter or tap to play again`, W / 2, H / 2); }
+    },
+  };
+}
+let dragStart = null;
+tGame.addEventListener("pointerdown", (e) => { dragStart = [e.clientX, e.clientY]; if (game.on && game.on.pointer) movePaddle(e); });
+tGame.addEventListener("pointermove", (e) => { if (game.on && game.on.pointer && (e.pointerType === "mouse" || e.buttons)) movePaddle(e); });
+tGame.addEventListener("pointerup", (e) => { if (!game.on || !game.on.swipe || !dragStart) return; const dx = e.clientX - dragStart[0], dy = e.clientY - dragStart[1]; game.on.swipe(Math.abs(dx) + Math.abs(dy) < 14 ? 0 : dx, Math.abs(dx) + Math.abs(dy) < 14 ? 0 : dy); });
+function movePaddle(e) { const r = tGame.getBoundingClientRect(); game.on.pointer((e.clientY - r.top) / r.height * tGame.clientHeight); }
+
+addEventListener("wheel", (e) => {
+  if (Math.abs(e.deltaY) < 24 || e.target.closest(".term")) return;
+  if (e.deltaY > 0 && zoomTo === 0) toKeyboard(); else if (e.deltaY < 0 && zoomTo === 1 && !growTo) zoomOut();
+}, { passive: true });
+addEventListener("keyup", (e) => { if (game.on && game.on.kind === "pong") game.on.key(e.key, false); });
+addEventListener("keydown", (e) => {
+  if (!$("pal").hidden) return;
+  if (view !== -1) { if (e.key === "Escape") go(""); return; }
+  const atKb = bootD() >= 0.6;
+  if (game.on && atKb) {
+    if (e.key === "Escape" || e.key === "q") { e.preventDefault(); return setMode("list"); }
+    if (game.on.key(e.key, true)) e.preventDefault();
+    return;
+  }
+  if (e.key === " " && !shell.buf && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); zoomTo = zoomTo ? 0 : 1; return; }
+  if (shell.mode === "page" && !shell.buf && atKb) {
+    if (e.key === "Escape") { e.preventDefault(); return go(""); }
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); return go(FILES[(pageIdx + (e.key === "ArrowRight" ? 1 : -1) + FILES.length) % FILES.length].name); }
+    if (["ArrowDown", "ArrowUp", "PageDown", "PageUp"].includes(e.key)) { e.preventDefault(); $("tPage").scrollBy({ top: (e.key === "ArrowUp" || e.key === "PageUp" ? -1 : 1) * (e.key.startsWith("Arrow") ? 110 : 420), behavior: reduce ? "auto" : "smooth" }); return; }
+  }
+  if (e.ctrlKey && (e.key === "c" || e.key === "l")) { e.preventDefault(); setBuf(""); if (e.key === "l") setMode("list"); return; }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const listNav = shell.mode === "list" && !shell.buf;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault(); const dn = e.key === "ArrowDown";
+    if (listNav) { selectFile(pickd + (dn ? 1 : -1), true); if (!atKb) toKeyboard(); }
+    else if (shell.hist.length) { shell.hi = clamp(shell.hi < 0 ? (dn ? -1 : shell.hist.length - 1) : shell.hi + (dn ? 1 : -1), -1, shell.hist.length - 1); setBuf(shell.hi < 0 || shell.hi >= shell.hist.length ? "" : shell.hist[shell.hi]); }
+  }
+  else if (e.key === "Enter") { e.preventDefault(); if (!atKb) return toKeyboard(); if (listNav) go(FILES[pickd].name); else run(shell.buf); }
+  else if (e.key === "Escape") { if (shell.buf) setBuf(""); else if (growTo) COMMANDS.fullscreen(); else setMode("list"); }
+  else if (e.key === "Backspace") { e.preventDefault(); setBuf(shell.buf.slice(0, -1)); }
+  else if (e.key === "Tab" && atKb && shell.buf) { e.preventDefault(); complete(); }
+  else if (e.key.length === 1) { if (!atKb) toKeyboard(); e.preventDefault(); setBuf(shell.buf + e.key); }
+});
+
+/* ------------------------------------------------------------ main loop */
+const stageRect = (el) => { const r = el.getBoundingClientRect(); return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, r: Math.min(r.width, r.height) * (innerWidth > 900 ? 0.43 : 0.4) }; };
+let last = performance.now(), frames = 0, fpsAt = last, gain = 1, screenOn = false, onAt = 0, power = 0, legendKey = "", wasMoving = false, g1 = null, lastXf = "", lastLegendOp = -1;
+const glassEl = $("g1"), termEl = $("t1"), legendEl = $("legend");
+const lg = (rows) => rows.map(([k, l]) => `<span>${k.split("/").map((x) => `<b>${x}</b>`).join("<i>/</i>")}<i>&mdash;</i>${l}</span>`).join("");
+const LEGEND = { r: lg([["space", "zoom in"]]), z: lg([["up/down", "navigate"], ["enter", "open"], ["space", "zoom out"]]), tr: lg([["tap", "zoom in"]]), tz: lg([["tap a file", "open"], ["tap outside", "zoom out"]]) };
+const scrim = $("scrim"), progress = $("progress"), mq1 = $("mq1"), mq2 = $("mq2");
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  frames++; if (now - fpsAt > 600) { $("rFps").textContent = Math.round(frames * 1000 / (now - fpsAt)) + " fps"; frames = 0; fpsAt = now; }
+  if (diveAnim) {
+    const k = clamp((now - diveAnim.t0) / diveAnim.ms), a = diveAnim;
+    dive = lerp(a.from, a.to, k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+    if (k >= 1) { diveAnim = null; dive = a.to; if (a.done) a.done(); }
+  }
+  const vh = innerHeight, sy = scrollY;
+  let T, form, phos = 0, exact = false, gainTo = 1;
+  if (view === -1) {
+    // gallery -> at the keyboard by scroll; through the glass only when a file is opened
+    if (zoomTo === 0 && growTo) COMMANDS.fullscreen();          // stepping back always shrinks the screen first
+    grow += (growTo - grow) * (1 - Math.exp(-dt * 7)); if (Math.abs(growTo - grow) < 0.002) grow = growTo;
+    zk = reduce ? zoomTo : clamp(zk + Math.sign(zoomTo - zk) * dt / 1.15, 0, 1); if (Math.abs(zoomTo - zk) < 0.004) zk = zoomTo;
+    const d = zk, zs = m1.zs, zt = zs * (d < 0.5 ? 4 * d * d * d : 1 - Math.pow(-2 * d + 2, 3) / 2);
+    // the tube is dark until you are at the keyboard, then it powers on; it collapses as you step back
+    const wantOn = zoomTo === 1 && zk > 0.93;
+    if (wantOn && !screenOn) { screenOn = true; onAt = now; document.documentElement.classList.add("zoomed"); if (shell.mode === "page" && !growTo && !preBig) COMMANDS.fullscreen(); glassEl.classList.remove("off"); glassEl.classList.add("on"); termEl.classList.remove("warm"); void termEl.offsetWidth; termEl.classList.add("warm"); }
+    else if (zoomTo === 0 && screenOn) { screenOn = false; document.documentElement.classList.remove("zoomed"); glassEl.classList.remove("on"); glassEl.classList.add("off"); }
+    power = screenOn ? (reduce ? 1 : clamp((now - onAt - 300) / 500)) : 0;
+    if (legendKey !== (zoomTo ? "z" : "r")) { legendKey = zoomTo ? "z" : "r"; legendEl.className = "legend" + (zoomTo ? " zoomed" : ""); legendEl.innerHTML = LEGEND[(isTouch ? "t" : "") + legendKey]; }
+    const lo = 1 - smooth(grow); if (lo !== lastLegendOp) { lastLegendOp = lo; legendEl.style.opacity = lo; }
+    if (preBig && (grow > 0.05 || shell.mode !== "page")) preBig = false;
+    const moving = grow !== growTo || preBig || (zk !== zoomTo && screenOn);
+    if (moving !== wasMoving) { wasMoving = moving; termEl.style.willChange = glassEl.style.willChange = canvas.style.willChange = moving ? "transform" : ""; }
+    g1 = m1(zt, grow, preBig); const pinTop = 0;
+    if (termEl.dataset.on !== String(screenOn)) { termEl.dataset.on = screenOn; termEl.style.pointerEvents = screenOn ? "auto" : "none"; termEl.style.visibility = screenOn ? "visible" : "hidden"; }
+    // at the keyboard the form sits right of the file list, previewing the selected file
+    const tb = smooth(clamp((zt - zs * 0.45) / (zs * 0.55))) * (1 - smooth(clamp((zt - zs) / ((1 - zs) * 0.3))));
+    const cap = Math.min(innerWidth, vh) * 0.4;
+    T = { cx: g1.cx + g1.w * 0.25 * tb, cy: pinTop + g1.cy - g1.h * 0.07 * tb, r: Math.min(Math.min(g1.w, g1.h) * lerp(0.36, 0.26, tb), cap) };
+    form = formOverride || FILES[pickd].form; phos = 1 - smooth(clamp(((zt - zs) / (1 - zs) - 0.35) / 0.65)); exact = true;
+    // behind command output the particles stay as a ghost image; during a game they step aside
+    gainTo = shell.mode === "list" ? 1 : shell.mode === "out" ? 0.2 : 0;
+    const stg = shell.mode === "page" ? $("tPage").querySelector(".pg-stage") : null;
+    if (stg) {   // on a page the form moves to its stage and takes on full colour, as long as the stage is on screen
+      const sr = stageRect(stg), k2 = smooth(grow), gy = pinTop + g1.cy;
+      T = { cx: lerp(T.cx, sr.cx, k2), cy: lerp(T.cy, sr.cy, k2), r: lerp(T.r, sr.r, k2) }; phos = 1 - k2;
+      gainTo = sr.cy > gy - g1.h * 0.4 && sr.cy < gy + g1.h * 0.42 ? 1 : 0;
+    }
+    if (game.on) game.on.tick(now);
+  }
+  field.setForm(form);
+
+  // ease in page space so the form glides to its stage but stays locked to the glass on the computer
+  anchor.rate += ((exact ? 70 : 5) - anchor.rate) * (1 - Math.exp(-dt * (exact ? 3 : 30)));
+  const k = anchor.init ? 1 - Math.exp(-dt * anchor.rate) : 1; anchor.init = true;
+  anchor.x += (T.cx - anchor.x) * k; anchor.y += (T.cy + sy - anchor.y) * k; anchor.r += (T.r - anchor.r) * k;
+  gain += (gainTo - gain) * (1 - Math.exp(-dt * 6));
+  // the canvas rides on the glass: same box, same transform
+  const gx = g1.cx - g1.w / 2, gy = g1.cy - g1.h / 2, cs = field.css(), sx = g1.w / cs[0], sy2 = g1.h / cs[1];
+  const xf = `translate(${gx}px, ${gy}px) scale(${sx}, ${sy2})`; if (xf !== lastXf) { lastXf = xf; canvas.style.transform = xf; }
+  field.draw(now, dt, (anchor.x - gx) / sx, (anchor.y - sy - gy) / sy2, anchor.r / sx, anchor.r, phos, gain * power, (mouse.x - gx) / sx, (mouse.y - gy) / sy2);
+
+}
+if (new URLSearchParams(location.search).get("view") === "files") { zoomTo = 1; zk = 1; }
+route(hashName(), true);
+if (view === -1) setRail(0);
+requestAnimationFrame(frame);
+
+/* ----------------------------------------------------------- copy, toast */
+const toast = (msg) => { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 1800); };
+function copyEmail() {
+  const addr = "dylanburns1524@gmail.com";
+  try { navigator.clipboard.writeText(addr).then(() => toast("Email copied"), () => toast(addr)); } catch (e) { toast(addr); }
+}
+
+/* ------------------------------------------------------ quick jump (⌘K) */
+const pal = $("pal"), palInput = $("palInput"), palList = $("palList");
+$("palKey").textContent = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl K";
+const CMDS = [
+  ...P.map((p) => ({ label: p.name, hint: p.what, run: () => go(p.slug) })),
+  { label: "Copy email", hint: "dylanburns1524@gmail.com", run: copyEmail },
+  { label: "About", hint: "about.txt", run: () => go("about") },
+  { label: "Contact", hint: "contact.txt", run: () => go("contact") },
+  { label: "File list", hint: "burnsOS", run: () => { go(""); setMode("list"); toKeyboard(); } },
+  { label: "Snake", hint: "game", run: () => { toKeyboard(); run("snake"); } },
+  { label: "Pong", hint: "game", run: () => { toKeyboard(); run("pong"); } },
+  { label: "GitHub", hint: "github.com/Dylan-Burns", href: "https://github.com/Dylan-Burns" },
+  { label: "LinkedIn", hint: "linkedin.com/in/dylan-burns-", href: "https://www.linkedin.com/in/dylan-burns-" },
+];
+let shown = [], sel = 0, lastFocus = null;
+function renderPal() {
+  const q = palInput.value.trim().toLowerCase();
+  shown = CMDS.filter((c) => !q || (c.label + " " + c.hint).toLowerCase().includes(q)); sel = Math.min(sel, Math.max(0, shown.length - 1));
+  palList.innerHTML = shown.length ? shown.map((c, i) => `<li role="option" data-i="${i}" aria-selected="${i === sel}"><span>${c.label}</span><small>${c.hint}</small></li>`).join("") : `<li class="empty">Nothing matches. Try a project name.</li>`;
+  const el = palList.querySelector('[aria-selected="true"]'); if (el) el.scrollIntoView({ block: "nearest" });
+}
+function openPal() { lastFocus = document.activeElement; pal.hidden = false; palInput.value = ""; sel = 0; renderPal(); palInput.focus(); }
+function closePal() { pal.hidden = true; if (lastFocus) lastFocus.focus({ preventScroll: true }); }
+function runPal(i) { const c = shown[i]; if (!c) return; closePal(); if (c.href) { const a = document.createElement("a"); a.href = c.href; a.target = "_blank"; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove(); } else c.run(); }
+$("palOpen").addEventListener("click", openPal);
+palInput.addEventListener("input", () => { sel = 0; renderPal(); });
+pal.addEventListener("click", (e) => { const li = e.target.closest("li[data-i]"); if (li) runPal(+li.dataset.i); else if (e.target === pal) closePal(); });
+addEventListener("keydown", (e) => {
+  
+  if (pal.hidden) return;
+  if (e.key === "Escape") closePal();
+  else if (e.key === "ArrowDown") { e.preventDefault(); sel = (sel + 1) % Math.max(1, shown.length); renderPal(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); sel = (sel - 1 + shown.length) % Math.max(1, shown.length); renderPal(); }
+  else if (e.key === "Enter") { e.preventDefault(); runPal(sel); }
+  else if (e.key === "Tab") { e.preventDefault(); palInput.focus(); }
+});
+})();
+</script>
+</body>
+</html>

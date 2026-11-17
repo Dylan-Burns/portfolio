@@ -9,32 +9,75 @@ test.use({ contextOptions: { reducedMotion: "reduce" } });
 
 // Project pages that exist under /work — every project renders a detail page.
 const WORK_SLUGS = ["parahealth", "watchtower", "remoteretros", "outpost", "syene", "keel", "claruss", "cartlords", "steamhouse"];
-// Every CRT project file links to its own /work case study (label is the bare domain).
-const LANDING_HREFS = WORK_SLUGS.map((s) => `/work/${s}`);
+// Everything on the home page happens on the computer's screen. With reduced motion (set above) the
+// zoom, the power-on and the "download" before a page opens are instant, so these stay deterministic.
+const FILES = [...WORK_SLUGS, "about", "principles", "dispatch", "contact"];
+const screenOn = (page: import("@playwright/test").Page) => expect(page.locator("#g1")).toHaveClass(/\bon\b/);
 
-test("landing renders the machine and project files (no console errors)", async ({ page }) => {
+test("landing is the room and a powered-off computer (no console errors)", async ({ page }) => {
   const errors: string[] = [];
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(m.text());
   });
+  page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  // chassis image present (next/image encodes the src, so match by alt text, not path)
-  await expect(page.getByRole("img", { name: /micro-computer/i })).toBeVisible();
-  for (const href of LANDING_HREFS) await expect(page.locator(`a[href="${href}"]`)).toHaveCount(1);
-  // the resume was removed from the site entirely — no CRT file, no route
+  await expect(page.getByRole("img", { name: /vintage computer/i })).toBeVisible();
+  // the tube is dark and the terminal is not shown until the visitor steps up to it
+  await expect(page.locator("#g1")).not.toHaveClass(/\bon\b/);
+  await expect(page.locator("#t1")).toBeHidden();
+  await expect(page.locator("#legend")).toContainText(/space/i);
+  // the resume was removed from the site entirely
   await expect(page.locator('a[href="/resume"]')).toHaveCount(0);
   expect(errors, errors.join("\n")).toEqual([]);
 });
 
-test("a project file navigates to its page", async ({ page }) => {
-  // /?view=files is the deep-link a work page's "← home" uses: intro skipped, CRT
-  // already zoomed with the screen on, so file links receive pointer events. On a
-  // plain "/" they stay pointer-events-none until the user zooms in.
-  await page.goto("/?view=files");
-  // reduced-motion → TransitionLink falls back to direct nav.
-  await page.locator('a[href="/work/cartlords"]').click();
-  await expect(page).toHaveURL(/\/work\/cartlords$/);
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+test("space zooms in, the screen powers on and lists every file", async ({ page }) => {
+  await page.goto("/");
+  await page.keyboard.press("Space");
+  await screenOn(page);
+  for (const f of FILES) await expect(page.locator(`.file[href="#${f}"]`)).toBeVisible();
+  await page.keyboard.press("Space");
+  await expect(page.locator("#g1")).toHaveClass(/\boff\b/);
+});
+
+test("arrows select, enter opens the project on the CRT, escape returns to the files", async ({ page }) => {
+  await page.goto("/");
+  await page.keyboard.press("Space");
+  await screenOn(page);
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator(".file.sel")).toHaveText(/watchtower/);
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#tPage h2")).toHaveText("Watchtower");
+  await expect(page).toHaveURL(/#watchtower$/);
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#files")).toBeVisible();
+  await expect(page).not.toHaveURL(/#watchtower$/);
+});
+
+test("a #name deep link opens straight onto that page", async ({ page }) => {
+  await page.goto("/#keel");
+  await expect(page.locator("#tPage h2")).toHaveText("Keel");
+  await expect(page.locator('#tPage a[href="https://keeldd.com"]')).toBeVisible();
+});
+
+test("the shell runs typed commands and starts a game", async ({ page }) => {
+  await page.goto("/");
+  await page.keyboard.press("Space");
+  await screenOn(page);
+  await page.keyboard.type("cat keel");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#tOut")).toContainText("Keel");
+  await page.keyboard.type("snake");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#tGame")).toBeVisible();
+});
+
+test("a work page's home link lands back at the computer, already at the keyboard", async ({ page }) => {
+  await page.goto("/work/keel");
+  await page.getByRole("link", { name: "home" }).first().click();
+  await expect(page).toHaveURL(/\/\?view=files$/);
+  await screenOn(page);
+  await expect(page.locator("#files")).toBeVisible();
 });
 
 test("each project page renders with a launch action", async ({ page }) => {
@@ -68,16 +111,12 @@ test("the old resume route and PDF are gone", async ({ page }) => {
   expect(pdf?.status()).toBe(404);
 });
 
-test("on a phone, every CRT file is reachable by scrolling the glass", async ({ browser }) => {
-  // The terminal is width-fit, so the file list is taller than the glass on phones — the glass
-  // must scroll (touch swipe) or the bottom projects are unreachable on mobile.
+test("on a phone, a tap zooms in and every file fits on the glass", async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, reducedMotion: "reduce" });
   const page = await ctx.newPage();
-  await page.goto("/?view=files");
-  const glass = page.locator(".crt-scroll");
-  await expect(glass).toHaveCSS("overflow-y", "auto");
-  const last = page.locator(`a[href="/work/${WORK_SLUGS[WORK_SLUGS.length - 1]}"]`);
-  await glass.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
-  await expect(last).toBeInViewport();
+  await page.goto("/");
+  await page.locator("#m1").tap();
+  await screenOn(page);
+  for (const f of FILES) await expect(page.locator(`.file[href="#${f}"]`)).toBeInViewport();
   await ctx.close();
 });
