@@ -104,9 +104,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .machine img { display: block; width: 100%; height: 100%; object-fit: cover; max-width: none; }
 /* a sharper close-up of the computer sits over the wide shot, feathered at its edges, so the machine stays crisp through the zoom */
 .machine .near { position: absolute; object-fit: fill; transform-origin: 0 0; will-change: transform;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0.5%, #000 4.5%, #000 92%, transparent 98%), linear-gradient(transparent 1.7%, #000 6.8%, #000 92.7%, transparent 98.8%);
-  mask-image: linear-gradient(90deg, transparent 0.5%, #000 4.5%, #000 92%, transparent 98%), linear-gradient(transparent 1.7%, #000 6.8%, #000 92.7%, transparent 98.8%);
-  -webkit-mask-composite: source-in; mask-composite: intersect; }
+  /* only the computer itself is the sharp layer; the plinth and wall come from the one room photo, so their edges cannot step */
+  -webkit-mask: url(/burnsos/machine-near-mask.webp) 0 0 / 100% 100% no-repeat; mask: url(/burnsos/machine-near-mask.webp) 0 0 / 100% 100% no-repeat; }
 .glass { position: absolute; left: 0; top: 0; transform-origin: 0 0; background: radial-gradient(120% 120% at 50% 45%, #07140d, #020503 80%); border-radius: 9% / 11%; transition: border-radius .4s; pointer-events: none; box-shadow: 0 0 0 1.5px #1b1c1a; }
 .term { position: absolute; left: 0; top: 0; width: 600px; overflow: hidden; border-radius: 9% / 11%; transform-origin: 0 0; font-family: var(--crt); color: var(--phos); font-size: 30px; line-height: 1; padding: 34px 38px; display: flex; flex-direction: column; justify-content: space-between; text-shadow: 0 0 12px rgba(125, 255, 166, 0.55); pointer-events: none; }
 .term p { margin: 0; white-space: nowrap; } .term .dim { opacity: 0.55; }
@@ -155,6 +154,16 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .t-out::-webkit-scrollbar { display: none; }
 .t-out .b { color: #d9ffe8; } .t-out .d { opacity: 0.55; }
 .t-game { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+/* .env: a video player built into the terminal */
+.t-video { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 0.5em; text-shadow: 0 0 10px rgba(125, 255, 166, 0.45); }
+.t-video[hidden] { display: none; }
+.t-video p { margin: 0; white-space: pre; overflow: hidden; }
+.t-video .d { opacity: 0.55; } .t-video a { cursor: pointer; color: #d9ffe8; }
+.v-frame { position: relative; flex: 1; min-height: 0; overflow: hidden; border: 1px solid rgba(125, 255, 166, 0.45); border-radius: 6px; background: #000; }
+.v-frame iframe { position: absolute; left: 0; top: -48px; width: 100%; height: calc(100% + 96px); border: 0;   /* taller than its window, so the embed's own controls fall outside it */ filter: grayscale(1) sepia(1) hue-rotate(70deg) saturate(2.4) contrast(1.15) brightness(0.9); }
+.v-shield { position: absolute; inset: 0; z-index: 1; cursor: pointer; display: grid; place-items: center; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 3px); }
+.t-out video.meme { display: block; height: 8.2em; max-width: 60%; margin: 0.5em 0; border: 1px solid rgba(125, 255, 166, 0.45); border-radius: 6px; background: #000; }
+.v-bar { display: flex; gap: 1ch; align-items: baseline; } .v-prog { cursor: pointer; flex: none; } .v-bar .sp { flex: 1; }
 .t-prompt { display: flex; gap: 10px; align-items: baseline; position: relative; z-index: 1; border-top: 1px solid rgba(125, 255, 166, 0.38); padding-top: 7px; }
 .t-prompt #tBuf { white-space: pre; color: #d9ffe8; }
 .t-prompt .caret { margin-left: -8px; }
@@ -409,6 +418,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
           <div class="t-prev" id="tPrev" aria-live="polite"><p class="pv-m" id="pvMetric"></p><p class="pv-w dim" id="pvWhat"></p></div>
           <div class="t-out" id="tOut" hidden></div>
           <canvas class="t-game" id="tGame" hidden></canvas>
+          <div class="t-video" id="tVideo" hidden><p><span id="vTitle"></span></p><div class="v-frame" id="vFrame"><div class="v-shield" id="vShield"></div></div><p class="v-bar"><a id="vPlay"></a><span class="v-prog" id="vProg"></span><span id="vTime"></span><span class="sp"></span><a id="vMute"></a><a data-cmd="ls">[close]</a></p></div>
           <div class="t-page" id="tPage" hidden></div>
         </div>
         <p class="t-prompt"><span class="dim">guest@burnsOS:~$</span><span id="tBuf"></span><span class="caret"></span><span class="dim" id="tHint">type help, or pick a file</span><input id="tIn" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="tap to type a command" aria-label="Command"></p>
@@ -522,8 +532,8 @@ const P = [
     links: [["Open the live demo", "https://steamhouse.vercel.app/"]] },
 ];
 const CYCLE = ["syene", "watchtower", "parahealth", "steamhouse", "outpost", "keel", "remoteretros", "claruss", "cartlords"].map((s) => P.findIndex((p) => p.slug === s));
-const FORM_ORDER = ["capsule", "radar", "board", "stack", "globe", "page", "phone", "bars", "phyllo", "portrait", "compass", "plane", "envelope"];
-const ROT = { globe: 0.5, capsule: 0.5, radar: 0.42, board: 0.26, stack: 0.42, page: 0.28, phone: 0.4, bars: 0.42, phyllo: 0.32, portrait: 0.13, compass: 0.3, plane: 0.42, envelope: 0.3 };
+const FORM_ORDER = ["capsule", "radar", "board", "stack", "globe", "page", "phone", "bars", "phyllo", "portrait", "compass", "plane", "envelope", "key"];
+const ROT = { globe: 0.5, capsule: 0.5, radar: 0.42, board: 0.26, stack: 0.42, page: 0.28, phone: 0.4, bars: 0.42, phyllo: 0.32, portrait: 0.13, compass: 0.3, plane: 0.42, envelope: 0.3, key: 0.3 };
 
 /* --------------------------------------------------------------- shapes */
 const TAU = Math.PI * 2, R = Math.random;
@@ -674,6 +684,12 @@ SHAPES.plane = (N) => {
     [0.12, () => { const k = (R() * 5) | 0, t = (k + R() * 0.45) / 5, x = -1 - t * 0.9; return j([x, -0.05 - 0.5 * t * t + 0.12 * Math.sin(t * 6), 0], 0.006); }],   // dashed trail
   ], (p) => rotX(rotZ(rotY([p[0] * 0.82 + 0.25, p[1] * 0.82, p[2] * 0.82], 0.55), 0.3), 0.32));
 };
+SHAPES.key = (N) => build(N, [
+  [0.44, () => { const a = R() * TAU, r = 0.25 + (R() - 0.5) * 0.06; return [-0.5 + Math.cos(a) * r, Math.sin(a) * r, (R() - 0.5) * 0.1]; }],
+  [0.34, () => { const p = seg([-0.24, 0, 0], [0.78, 0, 0]); return [p[0], (R() - 0.5) * 0.07, (R() - 0.5) * 0.07]; }],
+  [0.11, () => { const p = seg([0.46, 0, 0], [0.46, -0.22, 0]); return [p[0] + (R() - 0.5) * 0.06, p[1], (R() - 0.5) * 0.06]; }],
+  [0.11, () => { const p = seg([0.66, 0, 0], [0.66, -0.3, 0]); return [p[0] + (R() - 0.5) * 0.06, p[1], (R() - 0.5) * 0.06]; }],
+]);
 SHAPES.envelope = (N) => {
   const w = 1.5, h = 1.0, tl = [-w / 2, h / 2, 0], tr = [w / 2, h / 2, 0], bl = [-w / 2, -h / 2, 0], br = [w / 2, -h / 2, 0], mid = [0, -0.06, 0];
   return build(N, [
@@ -931,7 +947,8 @@ const FILES = [...P.map((p, i) => ({ name: p.slug, label: LABEL[p.slug], title: 
   { name: "about", label: "about.txt", title: "About", form: "portrait", metric: "about", what: "passionate technologist and explorer" },
   { name: "principles", label: "principles.txt", title: "Principles", form: "compass", metric: "principles", what: "what I try to live by" },
   { name: "dispatch", label: "dispatch.txt", title: "Dispatch", form: "plane", metric: "dispatch", what: "short essays, thoughts and writings" },
-  { name: "contact", label: "contact.txt", title: "Contact", form: "envelope", metric: "contact", what: "say hello" }];
+  { name: "contact", label: "contact.txt", title: "Contact", form: "envelope", metric: "contact", what: "say hello" },
+  { name: "env", label: ".env", title: "API Keys", form: "key", metric: "secrets", what: "do not open" }];
 const filesEl = $("files");
 filesEl.innerHTML = FILES.map((f, i) => `<a class="file" href="#${f.name}" data-i="${i}"><span class="pre">&gt;</span><span>${f.label}</span></a>`).join("");
 let pickd = -1, selAt = 0, touched = false, formOverride = "";
@@ -1050,6 +1067,11 @@ function route(name, instant) {
   const i = FILES.findIndex((f) => f.name === name);
   loadId++;
   if (i < 0) return closePage();
+  if (name === "env") {
+    routing = true; pageIdx = -1; selectFile(i, true);
+    if (instant || reduce) { zoomTo = 1; if (instant) zk = 1; playVideo(); } else { toKeyboard(); download(i, playVideo); }
+    routing = false; return;
+  }
   routing = true;
   if (instant || reduce) { zoomTo = 1; if (instant) zk = 1; showPage(i); }
   else { selectFile(i, true); toKeyboard(); download(i, () => { routing = true; showPage(i); routing = false; }); }
@@ -1071,12 +1093,63 @@ const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 const store = (k, v) => { try { if (v === undefined) return localStorage.getItem("burnsos-" + k); localStorage.setItem("burnsos-" + k, v); } catch (e) { return null; } };
 const tOut = $("tOut"), tBuf = $("tBuf"), tIn = $("tIn"), tGame = $("tGame");
 const shell = { buf: "", hist: [], hi: -1, mode: "list" };
+/* .env plays a video on the CRT. The picture is Vimeo's embed with its own controls covered;
+   play, seek and mute are ours, driven over the player's postMessage API. Nothing loads until the file is opened. */
+const VIMEO = "https://player.vimeo.com", VIDEO_ID = "717817467";
+const vid = { el: null, ready: false, playing: false, muted: false, t: 0, dur: 212, timer: 0 };
+const vSay = (method, value) => { if (vid.el && vid.el.contentWindow) vid.el.contentWindow.postMessage(JSON.stringify(value === undefined ? { method } : { method, value }), VIMEO); };
+const vClock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+function vPaint(note) {
+  const W = 14, n = Math.round(clamp(vid.t / vid.dur) * W);
+  $("vTitle").innerHTML = `<span class="d">$ cat .env</span>   ${note || (vid.playing ? "API_KEY=never-gonna-give-you-up" : vid.ready ? "paused" : "decrypting ...")}`;
+  $("vPlay").textContent = vid.playing ? "[pause]" : "[play]";
+  $("vProg").innerHTML = `${"#".repeat(n)}<span class="d">${"-".repeat(W - n)}</span>`;
+  $("vTime").textContent = `${vClock(vid.t)}/${vClock(vid.dur)}`;
+  $("vMute").textContent = vid.muted ? "[unmute]" : "[mute]";
+}
+function playVideo() {
+  setMode("video"); stopVideo();
+  const el = document.createElement("iframe");
+  el.src = `${VIMEO}/video/${VIDEO_ID}?autoplay=1&playsinline=1&title=0&byline=0&portrait=0&dnt=1&pip=0&controls=0&transparent=0`;
+  el.allow = "autoplay; encrypted-media"; el.title = "Video"; el.referrerPolicy = "strict-origin-when-cross-origin"; el.tabIndex = -1;
+  $("vFrame").prepend(el); vid.el = el; vPaint();
+  vid.timer = setTimeout(() => { if (vid.el === el && !vid.ready) vPaint(`the player did not load here. <a href="https://vimeo.com/${VIDEO_ID}" target="_blank" rel="noopener">open the video</a>`); }, 7000);
+}
+function stopVideo() {
+  clearTimeout(vid.timer); if (vid.el) vid.el.remove();
+  Object.assign(vid, { el: null, ready: false, playing: false, muted: false, t: 0 });
+}
+const vToggle = () => vSay(vid.playing ? "pause" : "play");
+const vSeek = (t) => { vid.t = clamp(t, 0, vid.dur - 1); vSay("setCurrentTime", vid.t); vPaint(); };
+addEventListener("message", (e) => {
+  if (e.origin !== VIMEO || !vid.el || e.source !== vid.el.contentWindow) return;
+  let d; try { d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch (err) { return; }
+  if (!d || typeof d !== "object") return;
+  if (d.event === "ready") { vid.ready = true; ["play", "pause", "ended", "timeupdate", "playProgress", "volumechange"].forEach((v) => vSay("addEventListener", v)); vSay("play"); }
+  else if (d.event === "play") vid.playing = true;
+  else if (d.event === "pause") vid.playing = false;
+  else if (d.event === "ended") { vid.playing = false; vSeek(0); vSay("play"); }           // it never gives you up
+  else if ((d.event === "timeupdate" || d.event === "playProgress") && d.data) { vid.t = +d.data.seconds || 0; if (+d.data.duration) vid.dur = +d.data.duration; }
+  else if (d.event === "volumechange" && d.data) vid.muted = !!d.data.muted || d.data.volume === 0;
+  vPaint();
+});
+$("vShield").addEventListener("click", vToggle); $("vPlay").addEventListener("click", vToggle);
+$("vMute").addEventListener("click", () => { vid.muted = !vid.muted; vSay("setMuted", vid.muted); vPaint(); });
+$("vProg").addEventListener("click", (e) => { const r = e.currentTarget.getBoundingClientRect(); vSeek(((e.clientX - r.left) / r.width) * vid.dur); });
+// the vim trap: only :q and friends get you out
+function vimInput(line) {
+  if (/^:(q|q!|wq|wq!|x|qa|qa!)$/.test(line)) { shell.inVim = false; return print(`<span class="b">you got out.</span>  most people just close the laptop.`); }
+  shell.vimTries = (shell.vimTries || 0) + 1;
+  print(`<span class="d">E492: Not an editor command: ${esc(line)}</span>${shell.vimTries >= 3 ? `\n<span class="d">hint: it starts with a colon</span>` : ""}`);
+}
+
 let growTo = 0, grow = 0;
 function setMode(m) {
   // leaving a page by any other route (ls, a game, a command) also clears its #name
-  if (shell.mode === "page" && m !== "page" && !routing) { pageIdx = -1; setRail(0); if (hashName()) { quietHash = true; setHash(""); } }
+  if ((shell.mode === "page" || shell.mode === "video") && m !== shell.mode && !routing) { pageIdx = -1; setRail(0); if (hashName()) { quietHash = true; setHash(""); } }
   shell.mode = m;
-  $("files").hidden = $("tPrev").hidden = m !== "list"; tOut.hidden = m !== "out"; tGame.hidden = m !== "game"; $("tPage").hidden = m !== "page";
+  $("files").hidden = $("tPrev").hidden = m !== "list"; tOut.hidden = m !== "out"; tGame.hidden = m !== "game"; $("tPage").hidden = m !== "page"; $("tVideo").hidden = m !== "video";
+  if (m !== "video") stopVideo(); if (m !== "out") { shell.inVim = false; tOut.querySelectorAll("video").forEach((v) => v.pause()); }
   if (m !== "game") game.on = null;
 }
 function setBuf(t) { shell.buf = t; tBuf.textContent = t; if (tIn.value !== t) tIn.value = t; $("tHint").hidden = !!t || shell.mode !== "list"; }
@@ -1086,6 +1159,7 @@ const findFile = (arg) => { const a = (arg || "").toLowerCase().replace(/^\.\//,
 function fileText(i) {
   const f = FILES[i], p = P[i];
   if (p) return `<span class="b">${esc(p.name)}</span>  <span class="d">${esc(p.cat)}, ${esc(p.role.toLowerCase())}, ${esc(p.period)}</span>\n${esc(p.tag)}\n\n<span class="b">${esc(p.metric)}</span>  ${esc(p.label)}\n\n${p.out.map((o) => "- " + esc(o)).join("\n")}\n\n<span class="d">stack</span>  ${esc(p.stack.join(", "))}\n\n${cmdLink("open " + f.label, "open the page")}${p.links.map((l) => `   <a href="${l[1]}" target="_blank" rel="noopener">${esc(l[0].toLowerCase())}</a>`).join("")}`;
+  if (f.name === "env") return "";
   if (f.name === "about") return `<span class="b">Dylan Burns</span>  <span class="d">passionate technologist and explorer</span>\n\nI have never believed you have to choose between range and depth. The people I admire most went deep in more than one place, and each new depth made the earlier ones more valuable.\n\nThat is why my interests run so wide: healthcare, fintech, satellite data, infrastructure, agriculture, and software that keeps working when the internet doesn't. Each began as a field I knew nothing about, and I stayed with each one until I had built something real in it.\n\nThat is the pattern I trust. Not knowing how is rarely a reason to stop. More often it is the reason to begin, and finishing is what turns curiosity into skill. The thirst behind it has never been limited to software. I want to be properly good at everything I take on.\n\n${cmdLink("open about.txt", "read the whole thing")}   ${cmdLink("cat principles.txt", "principles")}   ${cmdLink("stack")}`;
   if (f.name === "principles") return `<span class="b">Principles</span>  <span class="d">what I try to live by</span>\n\n<span class="b">01  Create more than you consume</span>\nThe world is built to be consumed, and making things is the way out of it. I only use social media if I am there to post and take part.\n\n<span class="b">02  Leave it better than you found it</span>\nA codebase, a team, a campsite, a conversation. You don't have to fix everything. You have to leave one thing better than it was when you arrived.\n\n<span class="b">03  Aggressive, persistent action toward your goals</span>\nPlans are cheap and motion is rare. Most goals are lost to waiting long before they are lost to failure. Move today, and again tomorrow.\n\n<span class="b">04  Size the decision</span>\nDecisions rarely come out simply good or bad. More often the payoff is lopsided: ten parts upside to one part downside, or the reverse. Some choices are easy to undo and should be made fast for exactly that reason. Others can't be taken back. Every decision carries a weight, and knowing its ratio of cost to benefit tells you how much risk it holds and how much time it deserves.\n\n<span class="b">05  Be a beginner on purpose</span>\nThe feeling of not knowing what you are doing is the feeling of learning. Go looking for it before you get comfortable.\n\n<span class="b">06  Measure it, or you're guessing</span>\nIf I can't put a number on whether something works, I don't yet know that it does.\n\n<span class="b">07  Own the whole thing</span>\nThe interesting problems live between the layers. You only find them if you are willing to work on every layer.\n\n<span class="b">08  Curiosity compounds</span>\nEach thing I learn makes the next one cheaper to learn. Range has turned out to be a shortcut to depth.\n\n${cmdLink("open principles.txt", "open the page")}`;
   if (f.name === "dispatch") return `<span class="b">Dispatch</span>  <span class="d">short essays, thoughts and writings</span>\n\n${DISPATCH.length ? DISPATCH.map((d) => `<span class="b">${stamp(d.at)}</span>  ${esc(d.title)}\n${esc(d.body)}`).join("\n\n") : "total 0\n<span class=\"d\">no current entries</span>"}`;
@@ -1097,8 +1171,11 @@ const HELP = [["ls", "list the files"], ["cat <file>", "read a file here"], ["op
   ["fullscreen", "bigger screen"], ["history, clear, top", "the usual"], ["exit", "step back"]];
 const COMMANDS = {
   help: () => print(`<span class="d">tab completes, up arrow recalls</span>\n` + HELP.map(([c, d]) => `${c.split(", ").map((x) => cmdLink(x.split(" ")[0], x)).join(", ").padEnd(0)}${" ".repeat(Math.max(2, 20 - c.length))}<span class="d">${d}</span>`).join("\n")),
-  ls: (a) => { if (a[0] === "-l" || a[0] === "-la") print(FILES.map((f, i) => `-r--r--r--  dylan  ${(P[i] ? P[i].period : "2026").padEnd(14)} ${cmdLink("cat " + f.label, f.label)}`).join("\n") + `\n-r-xr-xr-x  dylan  ${"1976, 1972".padEnd(14)} ${cmdLink("snake")}  ${cmdLink("pong")}`); else setMode("list"); },
-  cat: (a) => { const i = findFile(a[0]); if (i < 0) return print(a[0] ? `cat: ${esc(a[0])}: no such file. Try ${cmdLink("ls")}.` : "usage: cat &lt;file&gt;"); selectFile(i, true); print(fileText(i)); },
+  ls: (a) => { if (/^-[la]+$/.test(a[0] || "")) print((a[0].includes("a") ? `-r--------  dylan  ${"2026".padEnd(14)} ${cmdLink("cat .plan", ".plan")}\n` : "") + FILES.map((f, i) => `-r--r--r--  dylan  ${(P[i] ? P[i].period : "2026").padEnd(14)} ${cmdLink("cat " + f.label, f.label)}`).join("\n") + `\n-r-xr-xr-x  dylan  ${"1976, 1972".padEnd(14)} ${cmdLink("snake")}  ${cmdLink("pong")}`); else setMode("list"); },
+  cat: (a) => {
+    if (a[0] === ".plan") return print(PLAN);
+    if (/^\/etc\/(passwd|shadow)$/.test(a[0] || "")) return print(`root:x:0:0:nice try:/root:/bin/nope\ndylan:x:1000:1000:Dylan Burns:/home/dylan:/bin/burnsh\nguest:x:1001:1001:you:/tmp:/bin/curiosity`);
+    const i = findFile(a[0]); if (i >= 0 && FILES[i].name === "env") return go("env"); if (i < 0) return print(a[0] ? `cat: ${esc(a[0])}: no such file. Try ${cmdLink("ls")}.` : "usage: cat &lt;file&gt;"); selectFile(i, true); print(fileText(i)); },
   open: (a) => { if (/^https?:\/\//.test(a[0] || "")) { print(`opening ${esc(a[0])} in a new tab`); return openTab(a[0]); } const i = findFile(a[0]); if (i < 0) return print(a[0] ? `open: ${esc(a[0])}: no such file. Try ${cmdLink("ls")}.` : "usage: open &lt;file&gt;"); go(FILES[i].name); },
   browse: (a) => {
     const i = findFile(a[0]), p = P[i];
@@ -1124,18 +1201,44 @@ const COMMANDS = {
   whoami: () => print("guest"), pwd: () => print("/home/dylan"), date: () => print(esc(new Date().toString())),
   uname: () => print("burnsOS 2.0 js-shell  (not Linux: a shell written for this page)"),
   echo: (a) => print(esc(a.join(" "))),
-  sudo: () => print("guest is not in the sudoers file."),
-  rm: () => print("rm: read-only file system. The projects stay."),
+  sudo: (a) => print(a.join(" ") === "make me a sandwich" ? "okay." : "guest is not in the sudoers file. This incident will be reported."),
+  make: (a) => print(a.join(" ") === "me a sandwich" ? "what? make it yourself." : "make: *** No targets specified and no makefile found.  Stop."),
+  rm: (a) => {
+    tOut.innerHTML = "";                                    // a clean screen, so the clip is never pushed out of view
+    const id = ++loadId, row = print(`<span class="d">$ rm ${esc(a.join(" "))}</span>
+rm: removing ${esc(a.filter((x) => !x.startsWith("-")).pop() || "everything")} ...`);
+    const v = document.createElement("video");              // made inside the key press, so browsers allow its sound
+    Object.assign(v, { className: "meme", src: "/burnsos/evil-dog.mp4", loop: true, playsInline: true, preload: "auto", disablePictureInPicture: true });
+    v.setAttribute("aria-label", "A small dog slowly breaking into a sinister grin");
+    shell.quiet = true;                                     // no particles behind the clip
+    setTimeout(() => {
+      if (id !== loadId || shell.mode !== "out") return;
+      row.innerHTML += ` <span class="d">permission denied</span>`;
+      const box = print(`<span class="d">read-only file system.</span>`); box.prepend(v);
+      const p = v.play(); if (p) p.catch(() => { v.muted = true; v.play().catch(() => {}); });      // if sound is refused, play it silent
+    }, reduce ? 0 : 700);
+  },
+  vim: () => { shell.inVim = true; shell.vimTries = 0; print(`${"~\n".repeat(5)}<span class="d">"untitled" [New File]                      0,0-1  All</span>\n\n<span class="d">you are now in vim. good luck.</span>`); },
+  emacs: () => print("emacs: a great operating system, lacking only a decent editor."),
+  nano: () => print("nano: a sensible choice. not installed."),
+  uptime: () => print(`up ${Math.max(1, Math.round(performance.now() / 60000))} min,  1 user,  load average: ${N.toLocaleString("en-US")} particles, 0 complaints`),
+  ssh: (a) => print(`ssh: connect to host ${esc(a[0] || "anywhere")} port 22: Connection refused\n<span class="d">this machine is older than the internet you are using</span>`),
+  ping: (a) => print(`PING ${esc(a[0] || "1978")}: 64 bytes, time=${new Date().getFullYear() - 1978} years`),
+  xyzzy: () => print("Nothing happens."),
+  ":q": () => print("you are not in vim. yet."),
   exit: () => { growTo = 0; $("fsBtn").textContent = "full screen"; setMode("list"); zoomOut(); },
 };
-const ALIAS = { dir: "ls", ll: "ls", less: "cat", more: "cat", lynx: "browse", w3m: "browse", curl: "browse", cd: "open", email: "mail", contact: "mail", form: "particles", full: "fullscreen", f11: "fullscreen", cls: "clear", logout: "exit", man: "help", "?": "help" };
+// the hidden file: only `ls -a` shows it
+const PLAN = `<span class="b">.plan</span>  <span class="d">hidden, so hello</span>\n\nYou ran ls -a on a stranger's computer. I like that.\n\nMost of what I know I learned by looking one flag past the default: reading the source when the docs ran out, opening the file nobody mentioned.\n\nIf you found this, tell me when you write. ${cmdLink("cat contact.txt", "contact.txt")} has the address.\n\n<span class="d">there is more in here. try the things you would try on a real machine.</span>`;
+const ALIAS = { vi: "vim", nvim: "vim", dir: "ls", ll: "ls", less: "cat", more: "cat", lynx: "browse", w3m: "browse", curl: "browse", cd: "open", email: "mail", contact: "mail", form: "particles", full: "fullscreen", f11: "fullscreen", cls: "clear", logout: "exit", man: "help", "?": "help" };
 function run(line) {
-  line = line.trim(); setBuf(""); shell.hi = -1;
+  line = line.trim(); setBuf(""); shell.hi = -1; shell.quiet = false;
   if (!line) return;
   if (shell.hist[shell.hist.length - 1] !== line) shell.hist.push(line);
+  if (shell.inVim && shell.mode === "out") return vimInput(line);
   const [c0, ...args] = line.split(/\s+/), c = c0.toLowerCase().replace(/^\.\//, ""), name = ALIAS[c] || c;
   if (name === "open" && (args[0] === ".." || args[0] === "~" || !args[0]) && c === "cd") return setMode("list");
-  if (!["ls", "clear", "close", "snake", "pong", "open", "fullscreen", "exit", "particles"].includes(name)) print(`<span class="d">$ ${esc(line)}</span>`);
+  if (!["ls", "clear", "close", "snake", "pong", "open", "fullscreen", "exit", "particles", "rm"].includes(name)) print(`<span class="d">$ ${esc(line)}</span>`);
   if (COMMANDS[name]) return COMMANDS[name](name === "ls" && c === "ll" ? ["-l"] : args);
   const i = findFile(c0); if (i >= 0) return go(FILES[i].name);     // a bare file name opens it
   print(`${esc(c0)}: command not found. Try ${cmdLink("help")}.`);
@@ -1239,6 +1342,11 @@ addEventListener("keydown", (e) => {
     return;
   }
   if (e.key === " " && !shell.buf && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); zoomTo = zoomTo ? 0 : 1; return; }
+  if (shell.mode === "video" && !shell.buf && atKb) {
+    if (e.key === "Escape") { e.preventDefault(); return setMode("list"); }
+    if (e.key === "Enter") { e.preventDefault(); return vToggle(); }
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); return vSeek(vid.t + (e.key === "ArrowRight" ? 10 : -10)); }
+  }
   if (shell.mode === "page" && !shell.buf && atKb) {
     if (e.key === "Escape") { e.preventDefault(); return go(""); }
     if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); return go(FILES[(pageIdx + (e.key === "ArrowRight" ? 1 : -1) + FILES.length) % FILES.length].name); }
@@ -1253,7 +1361,7 @@ addEventListener("keydown", (e) => {
     else if (shell.hist.length) { shell.hi = clamp(shell.hi < 0 ? (dn ? -1 : shell.hist.length - 1) : shell.hi + (dn ? 1 : -1), -1, shell.hist.length - 1); setBuf(shell.hi < 0 || shell.hi >= shell.hist.length ? "" : shell.hist[shell.hi]); }
   }
   else if (e.key === "Enter") { e.preventDefault(); if (!atKb) return toKeyboard(); if (listNav) go(FILES[pickd].name); else run(shell.buf); }
-  else if (e.key === "Escape") { if (shell.buf) setBuf(""); else if (growTo) COMMANDS.fullscreen(); else setMode("list"); }
+  else if (e.key === "Escape") { if (shell.inVim && shell.mode === "out" && !shell.buf) print(`<span class="d">-- NORMAL --   esc does not quit vim</span>`); else if (shell.buf) setBuf(""); else if (growTo) COMMANDS.fullscreen(); else setMode("list"); }
   else if (e.key === "Backspace") { e.preventDefault(); setBuf(shell.buf.slice(0, -1)); }
   else if (e.key === "Tab" && atKb && shell.buf) { e.preventDefault(); complete(); }
   else if (e.key.length === 1) { if (!atKb) toKeyboard(); e.preventDefault(); setBuf(shell.buf + e.key); }
@@ -1264,7 +1372,7 @@ const stageRect = (el) => { const r = el.getBoundingClientRect(); return { cx: r
 let last = performance.now(), frames = 0, fpsAt = last, gain = 1, screenOn = false, onAt = 0, power = 0, legendKey = "", wasMoving = false, g1 = null, lastXf = "", lastLegendOp = -1;
 const glassEl = $("g1"), termEl = $("t1"), legendEl = $("legend");
 const lg = (rows) => rows.map(([k, l]) => `<span>${k.split("/").map((x) => `<b>${x}</b>`).join("<i>/</i>")}<i>&mdash;</i>${l}</span>`).join("");
-const LEGEND = { r: lg([["space", "zoom in"]]), z: lg([["up/down", "navigate"], ["enter", "open"], ["space", "zoom out"]]), tr: lg([["tap", "zoom in"]]), tz: lg([["tap a file", "open"], ["tap outside", "zoom out"]]) };
+const LEGEND = { r: lg([["space", "zoom in"]]), z: lg([["up/down", "navigate"], ["enter", "open"], ["space", "zoom out"], ["esc", "back"]]), tr: lg([["tap", "zoom in"]]), tz: lg([["tap a file", "open"], ["tap outside", "zoom out"]]) };
 const scrim = $("scrim"), progress = $("progress"), mq1 = $("mq1"), mq2 = $("mq2");
 
 function frame(now) {
@@ -1302,7 +1410,7 @@ function frame(now) {
     T = { cx: g1.cx + g1.w * 0.25 * tb, cy: pinTop + g1.cy - g1.h * 0.07 * tb, r: Math.min(Math.min(g1.w, g1.h) * lerp(0.36, 0.26, tb), cap) };
     form = formOverride || FILES[pickd].form; phos = 1 - smooth(clamp(((zt - zs) / (1 - zs) - 0.35) / 0.65)); exact = true;
     // behind command output the particles stay as a ghost image; during a game they step aside
-    gainTo = shell.mode === "list" ? 1 : shell.mode === "out" ? 0.2 : 0;
+    gainTo = shell.mode === "list" ? 1 : shell.mode === "out" && !shell.quiet ? 0.2 : 0;
     const stg = shell.mode === "page" ? $("tPage").querySelector(".pg-stage") : null;
     if (stg) {   // on a page the form moves to its stage and takes on full colour, as long as the stage is on screen
       const sr = stageRect(stg), k2 = smooth(grow), gy = pinTop + g1.cy;

@@ -130,3 +130,28 @@ test("ask endpoint: off by default, guarded", async ({ request, baseURL }) => {
   expect((await request.post("/api/ask", { data: { question: "x" }, headers: { origin: "https://evil.example" } })).status()).toBe(403);
   expect((await request.get("/api/ask")).status()).toBe(405);
 });
+
+test("easter eggs: a hidden file, the rm clip, the vim trap and the video player", async ({ page }) => {
+  await page.goto("/");
+  await page.keyboard.press("Space");
+  await screenOn(page);
+  const run = async (cmd: string) => { await page.keyboard.type(cmd); await page.keyboard.press("Enter"); };
+  await expect(page.locator('#files a[href="#env"]')).toHaveText(/\.env$/);
+  await run("ls -a");
+  await expect(page.locator("#tOut")).toContainText(".plan");
+  await run("cat .plan");
+  await expect(page.locator("#tOut")).toContainText("ls -a");
+  await run("rm -rf /");
+  await expect(page.locator("#tOut video.meme")).toBeVisible();
+  await run("vim");
+  await run("exit");
+  await expect(page.locator("#tOut")).toContainText("Not an editor command");
+  await run(":q");
+  await expect(page.locator("#tOut")).toContainText("you got out");
+  await run("cat .env");
+  await expect(page.locator("#tVideo")).toBeVisible();
+  await expect(page.locator("#vFrame iframe")).toHaveAttribute("src", /player\.vimeo\.com/);
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#files")).toBeVisible();
+  await expect(page.locator("#vFrame iframe")).toHaveCount(0);
+});
