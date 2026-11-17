@@ -2,7 +2,7 @@ import { buildCorpus } from "./corpus";
 import { classify, REPLIES } from "./intent";
 import type { AnswerProvider } from "./provider";
 import { retrieve, SCORE_FLOOR } from "./retrieve";
-import { normalizeKey, sanitizeQuestion } from "./text";
+import { sanitizeQuestion, stripInvisible } from "./text";
 import { MODEL_ID, PROMPT_VERSION } from "./types";
 import type { AskReply, Chunk, Corpus, ModelAnswer, Source } from "./types";
 import { ANSWER_MAX_CHARS, validateAnswer } from "./validate";
@@ -41,9 +41,13 @@ function truncate(text: string, max: number): string {
   return (space > 0 ? head.slice(0, space) : head).replace(/[\s,;:]+$/, "") + ".";
 }
 
+function copyOf(r: AskReply): AskReply {
+  return { kind: r.kind, text: r.text, sources: r.sources.map((s) => ({ ...s })) };
+}
+
 function remember(cache: Map<string, AskReply> | undefined, key: string, r: AskReply): void {
   if (!cache) return;
-  cache.set(key, r);
+  cache.set(key, copyOf(r));
   while (cache.size > CACHE_MAX) {
     const oldest = cache.keys().next().value;
     if (oldest === undefined) break;
@@ -61,9 +65,9 @@ async function run(raw: unknown, deps: AskDeps): Promise<AskReply> {
   if (intent.kind === "refuse") return reply("refuse", REPLIES.refuse);
 
   const corpus = deps.corpus ?? buildCorpus();
-  const key = `${normalizeKey(clean.q)}|${corpus.hash}|${PROMPT_VERSION}|${MODEL_ID}`;
+  const key = `${clean.q.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()}|${corpus.hash}|${PROMPT_VERSION}|${MODEL_ID}`;
   const cached = deps.cache?.get(key);
-  if (cached) return cached;
+  if (cached) return copyOf(cached);
 
   const { hits, best } = retrieve(clean.q, corpus, intent.projects);
   if (hits.length === 0 || best < SCORE_FLOOR) return reply("refuse", REPLIES.notFound);
@@ -90,7 +94,7 @@ async function run(raw: unknown, deps: AskDeps): Promise<AskReply> {
   if (verdict.ok) {
     const byId = new Map(chunks.map((c) => [c.id, c]));
     const cited = answer.citations.map((id) => byId.get(id)).filter((c): c is Chunk => !!c);
-    result = reply("answer", answer.answer.trim(), sourcesFor(cited));
+    result = reply("answer", stripInvisible(answer.answer.normalize("NFKC")).trim(), sourcesFor(cited));
   } else if (verdict.reason === "unanswerable" && answer?.answerable === false) {
     return reply("refuse", REPLIES.notFound);
   } else {

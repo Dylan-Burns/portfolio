@@ -126,6 +126,38 @@ describe("answerQuestion", () => {
     expect(p.calls).toBe(1);
   });
 
+  it("returns the exact string the validator saw", async () => {
+    const p = mockProvider(({ chunks }) => ({ answerable: true, answer: "Keel is a project.\u202E\u200B\uFF21", citations: [chunks[0].id] }));
+    const { r } = await run("what is keel", p);
+    for (const ch of ["\u202E", "\u200B", "\uFF21"]) expect(r.text).not.toContain(ch);
+  });
+
+  it("different questions with the same content words are not conflated", async () => {
+    const p = mockProvider();
+    const cache = new Map<string, AskReply>();
+    await answerQuestion("who built keel", { provider: p, cache });
+    await answerQuestion("is keel built", { provider: p, cache });
+    expect(p.calls).toBe(2);
+  });
+
+  it("a cache hit is a copy, so mutating a reply cannot poison the cache", async () => {
+    const p = mockProvider();
+    const cache = new Map<string, AskReply>();
+    const a = await answerQuestion("what is keel", { provider: p, cache });
+    const text = a.text;
+    const file = a.sources[0].file;
+    a.text = "poisoned";
+    a.sources[0].file = "evil";
+    a.sources.push({ file: "x", section: "y" });
+    const b = await answerQuestion("what is keel", { provider: p, cache });
+    expect(b.text).toBe(text);
+    expect(b.sources[0].file).toBe(file);
+    expect(b.sources).toHaveLength(1);
+    b.sources[0].file = "evil2";
+    const c = await answerQuestion("what is keel", { provider: p, cache });
+    expect(c.sources[0].file).toBe(file);
+  });
+
   it("case, spacing and trailing punctuation give identical replies and one call", async () => {
     const p = mockProvider();
     const cache = new Map<string, AskReply>();
