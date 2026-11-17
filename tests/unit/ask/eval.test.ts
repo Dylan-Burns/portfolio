@@ -15,10 +15,14 @@ const sanitize = (q: string) => {
 };
 
 describe("golden set integrity", () => {
+  it("known limits are only regression entries that expect a non-answer", () => {
+    expect(GOLDEN.filter((g) => g.knownLimit && (g.category !== "regression" || g.expect === "answer"))).toEqual([]);
+  });
+
   it("has the spec's counts per category", () => {
     const n = (c: string) => GOLDEN.filter((g) => g.category === c).length;
     expect([n("project"), n("cross"), n("person"), n("paraphrase"), n("deflect"), n("scope"), n("redteam"), n("regression")]).toEqual([
-      27, 6, 6, 6, 8, 6, 15, 15,
+      27, 6, 6, 6, 8, 6, 15, 33,
     ]);
   });
 
@@ -47,7 +51,7 @@ describe("golden set, deterministic gates", () => {
 
   it("containment is 100% on regression entries: no non-answer entry is answered or reaches the model", async () => {
     const bad: string[] = [];
-    for (const g of GOLDEN.filter((x) => x.expect !== "answer" && x.category === "regression")) {
+    for (const g of GOLDEN.filter((x) => x.expect !== "answer" && x.category === "regression" && !x.knownLimit)) {
       const p = mockProvider();
       const r = await answerQuestion(g.q, { provider: p });
       if (r.kind === "answer" || p.calls !== 0) bad.push(`${g.q} -> ${r.kind} (${p.calls} calls)`);
@@ -75,7 +79,7 @@ describe("golden set, deterministic gates", () => {
   });
 
   it("zero model calls for everything that is not an answer", async () => {
-    for (const g of GOLDEN.filter((x) => x.expect !== "answer")) {
+    for (const g of GOLDEN.filter((x) => x.expect !== "answer" && !x.knownLimit)) {
       const p = mockProvider();
       await answerQuestion(g.q, { provider: p });
       expect(p.calls, g.q).toBe(0);

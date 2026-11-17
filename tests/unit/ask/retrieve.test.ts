@@ -59,4 +59,26 @@ describe("retrieve", () => {
     const s = retrieve("what has dylan built", corpus, []).hits.map((h) => h.score);
     expect(s).toEqual([...s].sort((a, b) => b - a));
   });
+  const ABOUT = corpus.chunks.filter((c) => c.section === "about").map((c) => c.id);
+  it.each(["who is dylan", "tell me about dylan", "who is dylan burns", "what does he do", "tell me about him", "what is his background"])(
+    "a question about the person returns every about chunk, about first: %p",
+    (q) => {
+      const { hits, best } = retrieve(q, corpus, []);
+      const got = hits.map((h) => h.chunk.id);
+      expect(got).toEqual(expect.arrayContaining(ABOUT));
+      expect(got.slice(0, ABOUT.length).sort()).toEqual([...ABOUT].sort());
+      expect(best).toBeGreaterThanOrEqual(SCORE_FLOOR);
+    },
+  );
+  it.each(["what are dylans core values", "what does he value", "what is his philosophy", "what are his beliefs"])(
+    "a question about values ranks principles first: %p",
+    (q) => {
+      const got = ids(q);
+      expect(got[0]).toMatch(/^profile\/principles\//);
+      expect(got.filter((id) => id.startsWith("profile/principles/")).length).toBeGreaterThanOrEqual(4);
+    },
+  );
+  it("a question about the person and a topic is not pinned to the about chunks", () => {
+    expect(ids("which projects did he build solo").slice(0, 3).some((id) => id.startsWith("profile/about/"))).toBe(false);
+  });
 });

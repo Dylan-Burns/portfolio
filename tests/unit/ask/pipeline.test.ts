@@ -3,6 +3,7 @@ import { buildCorpus } from "@/lib/ask/corpus";
 import { REPLIES } from "@/lib/ask/intent";
 import { answerQuestion, sourcesFor } from "@/lib/ask/pipeline";
 import { mockProvider } from "@/lib/ask/provider";
+import { FALLBACK_FLOOR, retrieve, SCORE_FLOOR } from "@/lib/ask/retrieve";
 import type { AskReply } from "@/lib/ask/types";
 
 const run = (q: unknown, p = mockProvider(), extra = {}) =>
@@ -73,6 +74,27 @@ describe("answerQuestion", () => {
     expect(r.text.startsWith("From ")).toBe(true);
     expect(buildCorpus().chunks.some((c) => r.text.includes(c.text.slice(0, 60)))).toBe(true);
     expect(r.sources).toHaveLength(1);
+  });
+
+  it("an answer that fails validation on a deflect topic becomes the deflect reply, not a fallback", async () => {
+    const cache = new Map<string, AskReply>();
+    const bad = mockProvider(({ chunks }) => ({ answerable: true, answer: "He works at Keel.", citations: [chunks[0].id] }));
+    const { r, p } = await run("what is keel", bad, { cache });
+    expect(r).toEqual({ kind: "deflect", text: REPLIES.deflect, sources: [] });
+    expect(p.calls).toBe(1);
+    expect(cache.size).toBe(0);
+  });
+
+  it("a weak top passage is not offered as a fallback answer: not found instead", async () => {
+    expect(retrieve("what is remoteretros.org built with", buildCorpus(), ["remoteretros"]).hits[0].score).toBeLessThan(FALLBACK_FLOOR);
+    const bad = mockProvider(() => ({ answerable: true, answer: "Fine.", citations: ["nope/1"] }));
+    const { r, p } = await run("what is remoteretros.org built with", bad);
+    expect(r).toEqual({ kind: "refuse", text: REPLIES.notFound, sources: [] });
+    expect(p.calls).toBe(1);
+  });
+
+  it("the fallback floor sits above the retrieval floor", () => {
+    expect(FALLBACK_FLOOR).toBeGreaterThan(SCORE_FLOOR);
   });
 
   it("a foreign citation also falls back", async () => {

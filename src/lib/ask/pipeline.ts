@@ -1,7 +1,7 @@
 import { buildCorpus } from "./corpus";
 import { classify, REPLIES } from "./intent";
 import type { AnswerProvider } from "./provider";
-import { retrieve, SCORE_FLOOR } from "./retrieve";
+import { FALLBACK_FLOOR, retrieve, SCORE_FLOOR } from "./retrieve";
 import { inScope } from "./scope";
 import { sanitizeQuestion, stripInvisible } from "./text";
 import { MODEL_ID, PROMPT_VERSION } from "./types";
@@ -98,6 +98,11 @@ async function run(raw: unknown, deps: AskDeps): Promise<AskReply> {
     const cited = answer.citations.map((id) => byId.get(id)).filter((c): c is Chunk => !!c);
     result = reply("answer", stripInvisible(answer.answer.normalize("NFKC")).trim(), sourcesFor(cited));
   } else if (verdict.reason === "unanswerable" && answer?.answerable === false) {
+    return reply("refuse", REPLIES.notFound);
+  } else if (verdict.reason === "deflect_topic") {
+    return reply("deflect", REPLIES.deflect);
+  } else if (hits[0].score < FALLBACK_FLOOR) {
+    // Too weak a match to show verbatim as if it answered the question.
     return reply("refuse", REPLIES.notFound);
   } else {
     const top = chunks[0];
