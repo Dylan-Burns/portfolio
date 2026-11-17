@@ -65,8 +65,8 @@ model call, validated citations, refusals that cost nothing, and a golden set th
   merged with all deterministic gates green and `ask` replies that it is not switched on yet.
   It is switched on only after the live eval passes its gates. Tuning against graded answers
   therefore needs the credentials below.
-- **The daily global cap needs shared state too**, exactly like the rate limit. Both use the
-  same mechanism (see Security).
+- **No shared state.** There is no daily global cap and no shared store; the Firewall rule and the
+  monthly Gateway cap are the controls (see Security).
 
 ## Constraints
 
@@ -170,15 +170,28 @@ public text, and its output is discarded unless the validator passes it.
 | Fabricated or off-scope claims | Score floor, `answerable` flag, citation and number validation, deflect list |
 | Content injected into the page (XSS) | Server returns plain text; the terminal renders it as text nodes, never as HTML; source links are built by code from an allowlist |
 | Link or contact injection | Validator rejects any URL or email in the answer |
-| Cost and abuse | Per-IP rate limit, a daily global cap that flips `ask` to a "resting" reply, a hard spend cap on the provider account, input and output size caps, zero-call refusals |
+| Cost and abuse | Firewall rate-limit rule (primary), monthly Gateway spend cap, a per-instance in-memory per-IP limiter as a second layer, input and output size caps, zero-call refusals |
 | Cross-site use of the endpoint | Same-origin `Origin` check, POST and JSON only |
 | Secrets exposure | Credentials are server-only; nothing sensitive is sent to the client or logged |
 | Denial of service by slow requests | Request timeout, with a fixed "try again" reply |
 
-Rate limiting needs a store shared across instances to be exact. The plan must pick one of:
-a Vercel Firewall rate-limit rule on `/api/ask` (no code, platform-enforced) as the primary
-control with an in-memory limiter as a second layer, or a small shared store. The builder
-chooses after reading the current platform docs.
+Rate limiting decision (no shared store). Abuse control has three layers, and the first two are
+the real controls:
+
+1. A Vercel Firewall rate-limit rule on `/api/ask`, enforced by the platform before the function runs.
+2. A monthly spend cap on the AI Gateway (proposed: $5).
+3. A small in-memory per-IP limiter in the route (8 requests per minute per client address). It is
+   per server instance and resets on a cold start, so it is not exact and not shared across
+   instances. It only blunts bursts that reach one instance; it is not relied on to stop abuse.
+
+Both of the first two are configured in the Vercel dashboard, outside the code. No KV, Redis or
+other shared store is used. The daily global cap that earlier drafts described is dropped for the
+same reason; the monthly Gateway cap bounds spend instead, and the route's reply when the provider
+refuses or fails is the fixed "resting" message.
+
+Route behaviour that is not a limit: the endpoint is off unless `ASK_ENABLED=1` (it then replies
+that ask is not switched on, with no provider constructed and no model call), and no question or
+answer text is logged or stored.
 
 Honest limit: no design makes injection impossible. This one bounds the worst case to "the
 visitor sees a refusal or a quoted passage from the public site".
@@ -258,10 +271,11 @@ eval is a separate script run by hand, because it needs credentials and costs mo
 2. **Unconfirmed facts.** `projects.ts` marks the role and period of Remote Retro, Syene and
    Keel, and Keel's private-equity context, as `TODO(owner): confirm`. Proposed: hold those
    fields out of the corpus until confirmed, so `ask` cannot state them as fact.
-3. **A shared store.** An exact rate limit and daily cap need state shared across server
-   instances. Proposed: a free-tier Redis store from the Vercel Marketplace, unless the plan's
-   Firewall rate-limit rule covers it.
-4. **A monthly spend cap** on the provider account. Proposed: $5.
+3. **A Vercel Firewall rate-limit rule** on `/api/ask`, set in the dashboard. This replaces the
+   shared store: none is used. The in-memory limiter in the route is per instance and resets on a
+   cold start, so this rule is the real rate control.
+4. **A monthly spend cap** on the AI Gateway. Proposed: $5. With the Firewall rule, this is the
+   real cost control.
 5. **Question logging.** Proposed default: store nothing but counts. Keeping question text
    (without IP addresses) would make tuning easier after launch, but it is visitors' input,
    so it is the owner's call.

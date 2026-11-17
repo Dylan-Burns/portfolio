@@ -120,3 +120,13 @@ test("on a phone, a tap zooms in and every file fits on the glass", async ({ bro
   for (const f of FILES) await expect(page.locator(`.file[href="#${f}"]`)).toBeInViewport();
   await ctx.close();
 });
+
+test("ask endpoint: off by default, guarded", async ({ request, baseURL }) => {
+  const ok = await request.post("/api/ask", { data: { question: "what is keel" }, headers: { origin: baseURL! } });
+  expect(ok.status()).toBe(200);
+  expect(await ok.json()).toMatchObject({ kind: "off", sources: [] });
+  expect(ok.headers()["cache-control"]).toContain("no-store");
+  expect(ok.headers()["x-content-type-options"]).toBe("nosniff");
+  expect((await request.post("/api/ask", { data: { question: "x" }, headers: { origin: "https://evil.example" } })).status()).toBe(403);
+  expect((await request.get("/api/ask")).status()).toBe(405);
+});
