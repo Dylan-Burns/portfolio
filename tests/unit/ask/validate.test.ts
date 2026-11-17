@@ -124,9 +124,7 @@ describe("validateAnswer", () => {
     });
   });
 
-  // KNOWN FAILURE: six chunks trip DEFLECT_TOPIC in intent.ts (bare "phone", "lives in"). See task-6 report.
-  // Marked it.fails so the suite stays green; once intent.ts is fixed this flips to a failure, so change it.fails to it.
-  it.fails("never rejects corpus text for deflect_topic", () => {
+  it("never rejects corpus text for deflect_topic", () => {
     const failing = buildCorpus().chunks.filter((c) => touchesDeflectTopic(c.text)).map((c) => c.id);
     expect(failing).toEqual([]);
   });

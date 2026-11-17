@@ -74,6 +74,19 @@ describe("touchesDeflectTopic", () => {
   ])("does not fire on corpus sentence %p", (t) => {
     expect(touchesDeflectTopic(t)).toBe(false);
   });
+  it.each([
+    "It verifies benefits with an automated AI phone call to the insurer.",
+    "Every phone and laptop on the network can read it.",
+    "The knowledge lives in spreadsheets and paper logs.",
+  ])("does not fire on product prose %p", (t) => {
+    expect(touchesDeflectTopic(t)).toBe(false);
+  });
+  it.each(["His phone number is 555-0100.", "He lives in Austin.", "Dylan is located in Texas.", "Call him at noon."])(
+    "fires on personal fact %p",
+    (t) => {
+      expect(touchesDeflectTopic(t)).toBe(true);
+    },
+  );
   it.each(["He works at Google.", "He is based in Austin.", "He is available for hire."])("fires on %p", (t) => {
     expect(touchesDeflectTopic(t)).toBe(true);
   });
