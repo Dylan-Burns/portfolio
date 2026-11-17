@@ -171,9 +171,9 @@ public text, and its output is discarded unless the validator passes it.
 | Content injected into the page (XSS) | Server returns plain text; the terminal renders it as text nodes, never as HTML; source links are built by code from an allowlist |
 | Link or contact injection | Validator rejects any URL or email in the answer |
 | Cost and abuse | Firewall rate-limit rule (primary), monthly Gateway spend cap, a per-instance in-memory per-IP limiter as a second layer, input and output size caps, zero-call refusals |
-| Cross-site use of the endpoint | Same-origin `Origin` check, POST and JSON only |
+| Cross-site use of the endpoint | The `Origin` check, POST and JSON only. This stops only browser-driven cross-site use; any script can forge the header, so the Firewall rule and the Gateway cap are the controls against scripted abuse |
 | Secrets exposure | Credentials are server-only; nothing sensitive is sent to the client or logged |
-| Denial of service by slow requests | Request timeout, with a fixed "try again" reply |
+| Denial of service by slow requests | The provider call has an 8 s timeout, after which the reply is the fixed "try again" message. The route's `maxDuration = 15` s bounds the whole function. Request bodies are capped at 1 KB while being read. Nothing else is timed out in code; connection-level slowness is the platform's to handle |
 
 Rate limiting decision (no shared store). Abuse control has three layers, and the first two are
 the real controls:
@@ -189,9 +189,9 @@ other shared store is used. The daily global cap that earlier drafts described i
 same reason; the monthly Gateway cap bounds spend instead, and the route's reply when the provider
 refuses or fails is the fixed "resting" message.
 
-Route behaviour that is not a limit: the endpoint is off unless `ASK_ENABLED=1` (it then replies
-that ask is not switched on, with no provider constructed and no model call), and no question or
-answer text is logged or stored.
+Route behaviour that is not a limit: the endpoint is off unless `ASK_ENABLED=1` (otherwise it replies
+that ask is not switched on, with no provider constructed and no model call). Nothing is logged:
+no question, no answer and no counts.
 
 Honest limit: no design makes injection impossible. This one bounds the worst case to "the
 visitor sees a refusal or a quoted passage from the public site".
@@ -276,6 +276,9 @@ eval is a separate script run by hand, because it needs credentials and costs mo
    cold start, so this rule is the real rate control.
 4. **A monthly spend cap** on the AI Gateway. Proposed: $5. With the Firewall rule, this is the
    real cost control.
-5. **Question logging.** Proposed default: store nothing but counts. Keeping question text
+5. **Question logging.** The code logs nothing at all (no question, no answer, no counts). Keeping question text
    (without IP addresses) would make tuning easier after launch, but it is visitors' input,
    so it is the owner's call.
+6. **Confirm client-IP handling.** Check the current Vercel docs that the platform overwrites a
+   client-supplied `X-Forwarded-For`. The in-memory limiter keys on its first hop, and this could
+   not be verified from the code.

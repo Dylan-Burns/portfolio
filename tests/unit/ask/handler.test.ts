@@ -114,7 +114,7 @@ describe("handleAsk", () => {
     const res = await handleAsk(req({ question: "what is keel" }, h), deps);
     expect(res.status).toBe(429);
     expect(await res.json()).toEqual({ kind: "busy", text: REPLIES.busy, sources: [] });
-    expect(p.calls).toBeLessThanOrEqual(1);
+    expect(p.calls).toBe(1);
     const other = await handleAsk(req({ question: "what is keel" }, { "x-forwarded-for": "5.6.7.8" }), deps);
     expect(other.status).toBe(200);
   });

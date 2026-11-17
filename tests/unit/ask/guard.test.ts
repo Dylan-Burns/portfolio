@@ -44,11 +44,14 @@ describe("createLimiter", () => {
     t = 60_001;
     expect(ok("a")).toBe(true);
   });
-  it("stays bounded under many distinct keys", () => {
-    const t = 0;
-    const ok = createLimiter(1, () => t, 50);
+  it("never tracks more than the cap, however many keys arrive", () => {
+    const cap = 50;
+    const ok = createLimiter(1, () => 0, cap);
     for (let i = 0; i < 500; i++) ok(`k${i}`);
-    expect(ok("k499")).toBe(false); // recent keys are still tracked
+    // Walk from the newest key back: refused means still tracked. The first allowed key was evicted.
+    let tracked = 0;
+    for (let i = 499; i >= 0 && !ok(`k${i}`); i--) tracked++;
+    expect(tracked).toBe(cap);
   });
 });
 
