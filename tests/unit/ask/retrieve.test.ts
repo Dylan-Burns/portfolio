@@ -32,6 +32,29 @@ describe("retrieve", () => {
   it("is deterministic", () => {
     expect(ids("what is parahealth")).toEqual(ids("what is parahealth"));
   });
+  it.each([
+    ["what is parahealth", ["parahealth"]],
+    ["tell me about keel", ["keel"]],
+    ["what is remoteretros.org built with", ["remoteretros"]],
+  ])("a named project always brings its card and summary: %p", (q, p) => {
+    const got = ids(q, p);
+    expect(got).toEqual(expect.arrayContaining([`${p[0]}/card/1`, `${p[0]}/summary/1`]));
+  });
+  it("every named project gets its card when many are named", () => {
+    const all = [...new Set(corpus.chunks.map((c) => c.project))].filter((p) => p !== "profile");
+    expect(all.length).toBeGreaterThan(TOP_K);
+    const got = ids("compare them all", all);
+    expect(got).toHaveLength(TOP_K);
+    expect(new Set(got.map((id) => id.split("/")[0])).size).toBe(TOP_K);
+  });
+  it("fills every slot when three projects are named", () => {
+    const { hits } = retrieve("what stack and architecture do they use", corpus, ["keel", "syene", "watchtower"]);
+    expect(hits).toHaveLength(TOP_K);
+    expect(new Set(hits.map((h) => h.chunk.project))).toEqual(new Set(["keel", "syene", "watchtower"]));
+  });
+  it("finds principles by their section name", () => {
+    expect(ids("what are his principles").some((id) => id.startsWith("profile/principles/"))).toBe(true);
+  });
   it("returns hits best first", () => {
     const s = retrieve("what has dylan built", corpus, []).hits.map((h) => h.score);
     expect(s).toEqual([...s].sort((a, b) => b - a));

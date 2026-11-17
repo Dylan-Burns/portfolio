@@ -5,18 +5,23 @@ import { tokenize } from "./text";
  * Names, slugs and domains first, then topical aliases. Extended during retrieval tuning.
  */
 const PROJECT_ALIASES: Record<string, string[]> = {
+  // "medical" and "clinic" also occur in Outpost's text, so they expand (SYNONYMS) rather than detect.
   parahealth: [
     "parahealth", "parahealth.ai", "prior authorization", "prior auth", "healthcare", "pharmacy", "prescription",
-    "payer", "medical", "clinic", "patient",
+    "payer", "patient",
   ],
-  watchtower: ["watchtower", "incident", "outage", "oncall", "monitoring", "alert"],
-  remoteretros: ["remoteretros", "remoteretros.org", "remote retro", "retro", "retrospective", "agile", "scrum"],
+  // "alert" is too generic (Syene has an alerts room; markup like alert(1)).
+  watchtower: ["watchtower", "incident", "outage", "oncall", "monitoring"],
+  remoteretros: ["remoteretros", "remoteretros.org", "remote retro", "retro", "retrospective", "agile", "scrum", "sprint"],
   outpost: ["outpost", "projectoutpost", "projectoutpost.org", "offline", "survival", "wikipedia", "kiwix"],
   syene: ["syene", "syene.ai", "commodity", "commodities", "oil", "satellite", "energy"],
-  keel: ["keel", "keeldd", "keeldd.com", "sec", "10-k", "filing", "rag"],
+  // "sec" alone misfires ("10 sec"); "filing" already covers SEC filings.
+  keel: ["keel", "keeldd", "keeldd.com", "10-k", "filing", "rag"],
   claruss: ["claruss", "claruss.app", "ios", "iphone", "screen time"],
-  cartlords: ["cartlords", "cartlords.com", "grocery", "cart", "price"],
-  steamhouse: ["steamhouse", "steamhouse.app", "cultivation", "grow", "crop"],
+  // "price" alone also detects Cartlords on "what's the price of claruss pro".
+  cartlords: ["cartlords", "cartlords.com", "grocery", "cart", "grocery price"],
+  // "grow" alone misfires ("how did remote retro grow").
+  steamhouse: ["steamhouse", "steamhouse.app", "cultivation", "grower", "crop", "hydroponic", "fertilizer"],
 };
 
 /** Trigger phrase -> words that actually occur in src/content/projects.ts. */
@@ -51,6 +56,14 @@ const SYNONYMS: Record<string, string[]> = {
   grow: ["cultivation", "crop"],
   crops: ["crop"],
   plants: ["plant", "crop"],
+  sprint: ["retro", "agile"],
+  "look back": ["retro", "retrospective"],
+  build: ["built"],
+  long: ["month", "week", "day", "minute", "second"],
+  value: ["principles"],
+  belief: ["principles"],
+  believe: ["principles"],
+  philosophy: ["principles"],
 };
 
 type Rule = { need: string[]; targets: string[] };
@@ -68,9 +81,16 @@ function matches(have: Set<string>, need: string[]): boolean {
   return need.length > 0 && need.every((t) => have.has(t));
 }
 
+/** Base forms for "-ing" and "-ed" words ("measuring" -> "measur", "measure"), so they meet the corpus's other forms. */
+function baseForms(t: string): string[] {
+  const m = /^(.{3,}?)(ing|ed)$/.exec(t);
+  return m ? [m[1], m[1] + "e"] : [];
+}
+
 export function expandTokens(tokens: string[]): string[] {
   const have = new Set(tokens);
   const out = [...tokens];
+  for (const t of tokens) for (const b of baseForms(t)) if (!out.includes(b)) out.push(b);
   for (const r of synonymRules) {
     if (!matches(have, r.need)) continue;
     for (const t of r.targets) if (!out.includes(t)) out.push(t);

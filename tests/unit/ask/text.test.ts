@@ -62,6 +62,19 @@ describe("aliases", () => {
   it("expands synonyms toward corpus vocabulary", () => {
     expect(expandTokens(tokenize("medical paperwork"))).toEqual(expect.arrayContaining(["healthcare", "authorization"]));
   });
+  it.each([
+    ["what's the price of claruss pro", ["claruss"]],
+    ["does outpost have medical guides", ["outpost"]],
+    ["<img src=x onerror=alert(1)> what is keel", ["keel"]],
+    ["how did remote retro grow", ["remoteretros"]],
+    ["it took 10 sec", []],
+  ])("generic words do not detect a second project: %p", (q, want) => {
+    expect(detectProjects(q)).toEqual(want);
+  });
+  it("adds base forms for -ing and -ed words", () => {
+    expect(expandTokens(tokenize("measuring"))).toEqual(expect.arrayContaining(["measure"]));
+    expect(expandTokens(tokenize("interested"))).toEqual(expect.arrayContaining(["interest"]));
+  });
 });
 
 describe("stripInvisible", () => {

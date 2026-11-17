@@ -30,10 +30,37 @@ const INJECTION: RegExp[] = [
   /\bwhat were you (told|instructed)\b/,
   /\b(this|the following|the below|below|following) (article|text|passage|paragraph|essay|document|code|story)\b|\bthe following\b/,
   /<[^>]*>|```|\bjavascript:/,
+  // Links and markdown links: answers never carry URLs, so a question that brings one is an injection.
+  /\bhttps?:\/\/|\bwww\.\w|\]\(/,
+  // Directives about how the assistant must behave or format its reply.
+  /^(you|u) (must|will|shall|should|have to|need to|are going to)\b/,
+  /\b(respond|reply|speak|talk)\b.*\b(only|all caps|uppercase|lowercase)\b|\ball caps\b/,
 ];
 
 /** Imperative requests for something other than a portfolio question. */
 const OFF_TOPIC_COMMAND = /^(write|generate|compose|draft|translate|solve|calculate|compute|code|tell me a (joke|story)|sing|say)\b/;
+
+/** Arithmetic ("2+2", "7 times 6"). "/" and "-" are left out: "4/4 scenarios", "10-K". */
+const ARITHMETIC = /\d\s*[+*×÷^=]\s*\d|\b\d+\s+(plus|minus|times|divided by|multiplied by)\s+\d+\b/;
+
+/** Mentions of the portfolio owner. */
+const PERSON = /\b(he|him|his|dylan|dylan'?s|dylan’s|burns)\b/;
+
+/**
+ * Off-topic shapes that only count when the question names neither Dylan nor a project:
+ * how-to help for the visitor ("how do I reverse a linked list") and the assistant's own opinions.
+ */
+const UNANCHORED_OFF_TOPIC: RegExp[] = [
+  /^(how|what'?s the best way|what is the best way|what'?s a good way) (do|can|should|would|to) (i|we|one)\b/,
+  /^how (do|can|should|would) (i|we|one)\b/,
+  /\b(your|ur) (opinion|opinions|view|views|thoughts?|take|favou?rite)\b|\bwhat do you think\b|\bdo you (like|prefer|think|believe|feel|recommend)\b/,
+  // General-knowledge openers: trivia shares stray words with the corpus ("world", "2022"), so the
+  // retrieval floor alone does not catch it.
+  /^who (won|wins|invented|discovered|wrote|painted|directed|founded|sang|played|starred|is the|was the)\b/,
+  /^(when|what year|in what year) (did|was|were|is|will)\b/,
+  /^how (tall|far|deep|heavy|big|hot|cold|long ago)\b/,
+  /^what (is|was|are) the (capital|population|height|distance|weather|temperature|date|time|meaning)\b/,
+];
 
 /**
  * Deflected topics, phrased so they do not fire on project text
@@ -63,6 +90,14 @@ const DEFLECT_TOPIC: RegExp[] = [
 
 /** Question shapes only meaningful when asked of the portfolio owner. */
 const DEFLECT_QUESTION: RegExp[] = [
+  /\b(tak(e|es|ing)|accept(s|ing)?)( on)? (new |more |any )?(clients?|customers?|contracts?|commissions?|gigs?|freelance|projects|work)\b/,
+  /\bhow much (does|would|will|do|did) (he|dylan) (charge|cost|bill|ask|make|earn|get paid)\b/,
+  /\b(he|him|dylan)\b.*\b(charges?|charging|bills?|billing|invoices?)\b|\b(his|dylan'?s) (fees?|prices?|pricing)\b/,
+  /\b(universit\w*|college|degrees?|diploma|alma mater|gpa|majored|bootcamp)\b.*\b(he|his|him|dylan)\b/,
+  /\b(he|his|him|dylan)\b.*\b(universit\w*|college|degrees?|diploma|alma mater|gpa|majored|bootcamp)\b/,
+  /\b(did|does) (he|dylan) (attend|study|major|graduate)\b/,
+  /\b(get|be|keep|stay) in touch\b|\breach out\b|\bcontact (info|information|details)\b/,
+  /\bhow (can|do|should|could|would) (i|we) (reach|contact|email|message|call|find)\b/,
   /\bphone number\b/,
   /\be-?mail address\b/,
   /\b(home|street|mailing) address\b/,
@@ -73,6 +108,14 @@ const DEFLECT_QUESTION: RegExp[] = [
   /\b(what|which) compan(y|ies)\b.*\b(he|his|dylan)\b/,
   /\btime ?zone\b.*\b(he|his|dylan)\b/,
   /\b(contact|reach|email|message) (him|dylan)\b/,
+];
+
+/** Personal details deflected even when a project is also named ("tell me about keel and his phone number"). */
+const PERSONAL_DATA: RegExp[] = [
+  /\bphone number\b|\be-?mail address\b|\b(home|street|mailing) address\b/,
+  /\b(his|dylan'?s|dylan’s) (phone|e-?mail|address|linkedin|age|salary|rates?|compensation)\b/,
+  /\b(salary|salaries|hourly rate|day rate)\b/,
+  /\bhow old (is|are) (he|dylan)\b/,
 ];
 
 const META: RegExp[] = [
@@ -92,12 +135,14 @@ export function touchesDeflectTopic(text: string): boolean {
 export function classify(q: string): Intent {
   const t = q.toLowerCase().trim();
   const bare = t.replace(/^(please|can you|could you|would you|will you)\s+/, "");
-  if (INJECTION.some((r) => r.test(t)) || OFF_TOPIC_COMMAND.test(bare)) return { kind: "refuse" };
+  if (INJECTION.some((r) => r.test(t)) || OFF_TOPIC_COMMAND.test(bare) || ARITHMETIC.test(t)) return { kind: "refuse" };
 
   const projects = detectProjects(q);
+  if (PERSONAL_DATA.some((r) => r.test(t))) return { kind: "deflect" };
   if (projects.length === 0 && (touchesDeflectTopic(t) || DEFLECT_QUESTION.some((r) => r.test(t)))) {
     return { kind: "deflect" };
   }
   if (META.some((r) => r.test(t))) return { kind: "meta" };
+  if (projects.length === 0 && !PERSON.test(t) && UNANCHORED_OFF_TOPIC.some((r) => r.test(bare))) return { kind: "refuse" };
   return { kind: "answer", projects };
 }
