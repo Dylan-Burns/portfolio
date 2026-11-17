@@ -949,7 +949,7 @@ const FILES = [...P.map((p, i) => ({ name: p.slug, label: LABEL[p.slug], title: 
   { name: "principles", label: "principles.txt", title: "Principles", form: "compass", metric: "principles", what: "what I try to live by" },
   { name: "dispatch", label: "dispatch.txt", title: "Dispatch", form: "plane", metric: "dispatch", what: "short essays, thoughts and writings" },
   { name: "contact", label: "contact.txt", title: "Contact", form: "envelope", metric: "contact", what: "say hello" },
-  { name: "secrets", label: "secrets.txt", title: "API Keys", form: "key", metric: "secrets", what: "do not open" }];
+  { name: "env", label: ".env", title: "API Keys", form: "key", metric: "secrets", what: "do not open" }];
 const filesEl = $("files");
 filesEl.innerHTML = FILES.map((f, i) => `<a class="file" href="#${f.name}" data-i="${i}"><span class="pre">&gt;</span><span>${f.label}</span></a>`).join("");
 let pickd = -1, selAt = 0, touched = false, formOverride = "";
@@ -1068,7 +1068,7 @@ function route(name, instant) {
   const i = FILES.findIndex((f) => f.name === name);
   loadId++;
   if (i < 0) return closePage();
-  if (name === "secrets") {
+  if (name === "env") {
     routing = true; pageIdx = -1; selectFile(i, true);
     if (instant || reduce) { zoomTo = 1; if (instant) zk = 1; playVideo(); } else { toKeyboard(); download(i, playVideo); }
     routing = false; return;
@@ -1102,7 +1102,7 @@ const vSay = (method, value) => { if (vid.el && vid.el.contentWindow) vid.el.con
 const vClock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
 function vPaint(note) {
   const W = 14, n = Math.round(clamp(vid.t / vid.dur) * W);
-  $("vTitle").innerHTML = `<span class="d">$ cat secrets.txt</span>   ${note || (vid.playing ? "API_KEY=never-gonna-give-you-up" : vid.ready ? "paused" : "decrypting ...")}`;
+  $("vTitle").innerHTML = `<span class="d">$ cat .env</span>   ${note || (vid.playing ? "API_KEY=never-gonna-give-you-up" : vid.ready ? "paused" : "decrypting ...")}`;
   $("vPlay").textContent = vid.playing ? "[pause]" : "[play]";
   $("vProg").innerHTML = `${"#".repeat(n)}<span class="d">${"-".repeat(W - n)}</span>`;
   $("vTime").textContent = `${vClock(vid.t)}/${vClock(vid.dur)}`;
@@ -1160,7 +1160,7 @@ const findFile = (arg) => { const a = (arg || "").toLowerCase().replace(/^\.\//,
 function fileText(i) {
   const f = FILES[i], p = P[i];
   if (p) return `<span class="b">${esc(p.name)}</span>  <span class="d">${esc(p.cat)}, ${esc(p.role.toLowerCase())}, ${esc(p.period)}</span>\n${esc(p.tag)}\n\n<span class="b">${esc(p.metric)}</span>  ${esc(p.label)}\n\n${p.out.map((o) => "- " + esc(o)).join("\n")}\n\n<span class="d">stack</span>  ${esc(p.stack.join(", "))}\n\n${cmdLink("open " + f.label, "open the page")}${p.links.map((l) => `   <a href="${l[1]}" target="_blank" rel="noopener">${esc(l[0].toLowerCase())}</a>`).join("")}`;
-  if (f.name === "secrets") return "";
+  if (f.name === "env") return "";
   if (f.name === "about") return `<span class="b">Dylan Burns</span>  <span class="d">passionate technologist and explorer</span>\n\nI have never believed you have to choose between range and depth. The people I admire most went deep in more than one place, and each new depth made the earlier ones more valuable.\n\nThat is why my interests run so wide: healthcare, fintech, satellite data, infrastructure, agriculture, and software that keeps working when the internet doesn't. Each began as a field I knew nothing about, and I stayed with each one until I had built something real in it.\n\nThat is the pattern I trust. Not knowing how is rarely a reason to stop. More often it is the reason to begin, and finishing is what turns curiosity into skill. The thirst behind it has never been limited to software. I want to be properly good at everything I take on.\n\n${cmdLink("open about.txt", "read the whole thing")}   ${cmdLink("cat principles.txt", "principles")}   ${cmdLink("stack")}`;
   if (f.name === "principles") return `<span class="b">Principles</span>  <span class="d">what I try to live by</span>\n\n<span class="b">01  Create more than you consume</span>\nThe world is built to be consumed, and making things is the way out of it. I only use social media if I am there to post and take part.\n\n<span class="b">02  Leave it better than you found it</span>\nA codebase, a team, a campsite, a conversation. You don't have to fix everything. You have to leave one thing better than it was when you arrived.\n\n<span class="b">03  Aggressive, persistent action toward your goals</span>\nPlans are cheap and motion is rare. Most goals are lost to waiting long before they are lost to failure. Move today, and again tomorrow.\n\n<span class="b">04  Size the decision</span>\nDecisions rarely come out simply good or bad. More often the payoff is lopsided: ten parts upside to one part downside, or the reverse. Some choices are easy to undo and should be made fast for exactly that reason. Others can't be taken back. Every decision carries a weight, and knowing its ratio of cost to benefit tells you how much risk it holds and how much time it deserves.\n\n<span class="b">05  Be a beginner on purpose</span>\nThe feeling of not knowing what you are doing is the feeling of learning. Go looking for it before you get comfortable.\n\n<span class="b">06  Measure it, or you're guessing</span>\nIf I can't put a number on whether something works, I don't yet know that it does.\n\n<span class="b">07  Own the whole thing</span>\nThe interesting problems live between the layers. You only find them if you are willing to work on every layer.\n\n<span class="b">08  Curiosity compounds</span>\nEach thing I learn makes the next one cheaper to learn. Range has turned out to be a shortcut to depth.\n\n${cmdLink("open principles.txt", "open the page")}`;
   if (f.name === "dispatch") return `<span class="b">Dispatch</span>  <span class="d">short essays, thoughts and writings</span>\n\n${DISPATCH.length ? DISPATCH.map((d) => `<span class="b">${stamp(d.at)}</span>  ${esc(d.title)}\n${esc(d.body)}`).join("\n\n") : "total 0\n<span class=\"d\">no current entries</span>"}`;
@@ -1176,7 +1176,7 @@ const COMMANDS = {
   cat: (a) => {
     if (a[0] === ".plan") return print(PLAN);
     if (/^\/etc\/(passwd|shadow)$/.test(a[0] || "")) return print(`root:x:0:0:nice try:/root:/bin/nope\ndylan:x:1000:1000:Dylan Burns:/home/dylan:/bin/burnsh\nguest:x:1001:1001:you:/tmp:/bin/curiosity`);
-    const i = findFile(a[0]); if (i >= 0 && FILES[i].name === "secrets") return go("secrets"); if (i < 0) return print(a[0] ? `cat: ${esc(a[0])}: no such file. Try ${cmdLink("ls")}.` : "usage: cat &lt;file&gt;"); selectFile(i, true); print(fileText(i)); },
+    const i = findFile(a[0]); if (i >= 0 && FILES[i].name === "env") return go("env"); if (i < 0) return print(a[0] ? `cat: ${esc(a[0])}: no such file. Try ${cmdLink("ls")}.` : "usage: cat &lt;file&gt;"); selectFile(i, true); print(fileText(i)); },
   open: (a) => { if (/^https?:\/\//.test(a[0] || "")) { print(`opening ${esc(a[0])} in a new tab`); return openTab(a[0]); } const i = findFile(a[0]); if (i < 0) return print(a[0] ? `open: ${esc(a[0])}: no such file. Try ${cmdLink("ls")}.` : "usage: open &lt;file&gt;"); go(FILES[i].name); },
   browse: (a) => {
     const i = findFile(a[0]), p = P[i];
