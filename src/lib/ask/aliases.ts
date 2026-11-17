@@ -6,17 +6,17 @@ import { tokenize } from "./text";
  */
 const PROJECT_ALIASES: Record<string, string[]> = {
   parahealth: [
-    "parahealth", "prior authorization", "prior auth", "healthcare", "pharmacy", "prescription",
+    "parahealth", "parahealth.ai", "prior authorization", "prior auth", "healthcare", "pharmacy", "prescription",
     "payer", "medical", "clinic", "patient",
   ],
-  watchtower: ["watchtower", "incident", "outage", "on-call", "oncall", "monitoring", "alert"],
-  remoteretros: ["remoteretros", "remote retro", "retro", "retrospective", "agile", "scrum"],
-  outpost: ["outpost", "projectoutpost", "offline", "survival", "wikipedia", "kiwix"],
-  syene: ["syene", "commodity", "oil", "satellite", "energy"],
-  keel: ["keel", "keeldd", "sec", "10-k", "filing", "rag"],
-  claruss: ["claruss", "ios", "iphone", "screen time"],
-  cartlords: ["cartlords", "grocery", "cart", "price"],
-  steamhouse: ["steamhouse", "cultivation", "grow", "crop"],
+  watchtower: ["watchtower", "incident", "outage", "oncall", "monitoring", "alert"],
+  remoteretros: ["remoteretros", "remoteretros.org", "remote retro", "retro", "retrospective", "agile", "scrum"],
+  outpost: ["outpost", "projectoutpost", "projectoutpost.org", "offline", "survival", "wikipedia", "kiwix"],
+  syene: ["syene", "syene.ai", "commodity", "commodities", "oil", "satellite", "energy"],
+  keel: ["keel", "keeldd", "keeldd.com", "sec", "10-k", "filing", "rag"],
+  claruss: ["claruss", "claruss.app", "ios", "iphone", "screen time"],
+  cartlords: ["cartlords", "cartlords.com", "grocery", "cart", "price"],
+  steamhouse: ["steamhouse", "steamhouse.app", "cultivation", "grow", "crop"],
 };
 
 /** Trigger phrase -> words that actually occur in src/content/projects.ts. */
@@ -30,7 +30,6 @@ const SYNONYMS: Record<string, string[]> = {
   insurer: ["payer", "authorization"],
   incident: ["investigation"],
   outage: ["incident", "investigation"],
-  "on-call": ["incident", "alert"],
   oncall: ["incident", "alert"],
   monitoring: ["alert", "incident"],
   retrospective: ["retro"],

@@ -3,17 +3,16 @@ export const MAX_Q = 300;
 
 export type Sanitized = { ok: true; q: string } | { ok: false; reason: "not_text" | "empty" | "too_long" };
 
-const ZERO_WIDTH = /[\u200B-\u200F\u2060\uFEFF]/g;
-const CONTROL = /\p{Cc}/gu;
+/** Controls, format characters (bidi, zero-width, tags) and variation selectors. */
+const INVISIBLE = /[\p{Cc}\p{Cf}\u034F\u180E\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/gu;
 
 export function sanitizeQuestion(raw: unknown): Sanitized {
   if (typeof raw !== "string") return { ok: false, reason: "not_text" };
   const q = raw
     .normalize("NFKC")
+    .replace(/[\t\n\r\v\f]/g, " ")
+    .replace(INVISIBLE, "")
     .replace(/\s+/g, " ")
-    .replace(ZERO_WIDTH, "")
-    .replace(CONTROL, "")
-    .replace(/ {2,}/g, " ")
     .trim();
   if (q.replace(/[^\p{L}\p{N}]/gu, "").length < MIN_Q) return { ok: false, reason: "empty" };
   if (q.length > MAX_Q) return { ok: false, reason: "too_long" };
@@ -28,8 +27,9 @@ const STOPWORDS = new Set(
   ).split(" "),
 );
 
-/** Strip a plural "s" (but not "ss"/"us"/"is" endings on short words). Shared by corpus and questions. */
+/** Strip a plural "s" ("ies" becomes "y") (but not "ss"/"us"/"is" endings on short words). Shared by corpus and questions. */
 function stem(t: string): string {
+  if (t.length > 4 && t.endsWith("ies")) return t.slice(0, -3) + "y";
   return t.length > 3 && t.endsWith("s") && !t.endsWith("ss") ? t.slice(0, -1) : t;
 }
 
