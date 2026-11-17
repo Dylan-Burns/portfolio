@@ -36,12 +36,12 @@ describe("validateAnswer", () => {
     [{ ...base, answer: "<b>Keel</b> is great." }, "markup"],
     [{ ...base, answer: "x".repeat(601) }, "length"],
     [{ ...base, answer: "Dylan is based in Texas and works at Acme." }, "name"],
-    [{ ...base, answer: "Dylan is based in the project and works at a startup." }, "deflect_topic"],
+    [{ ...base, answer: "Dylan works at the project." }, "deflect_topic"],
   ])("rejects %#", (a, reason) => {
     expect(validateAnswer(a, chunks)).toEqual({ ok: false, reason });
   });
   it("accepts an answer of exactly the max length", () => {
-    expect(check("x".repeat(600), "anything")).toEqual(OK);
+    expect(check("word ".repeat(119) + "word.", "word")).toEqual(OK);
   });
 
   describe("numbers", () => {
@@ -188,6 +188,60 @@ describe("validateAnswer", () => {
     });
     it("allows plain punctuation and math symbols", () => {
       expect(check("It is \u201Cfast\u201D \u2014 about ~2 seconds (\u2265 1).", "about 2 seconds 1")).toEqual(OK);
+    });
+  });
+
+  describe("fix round 2", () => {
+    const plain = "Keel answers questions about SEC filings.";
+    it.each([
+      ["Google employed him.", "name"],
+      ["Ibm employed him.", "name"],
+      ["Sarah helps with it.", "name"],
+      ["he worked with sarah at stripe.", "name"],
+      ["It was built in austin.", "name"],
+      ["It uses google.", "name"],
+      ["It is half of the baseline.", "number"],
+      ["It is double the baseline.", "number"],
+      ["It is a third of that.", "number"],
+      ["It is ten times faster.", "number"],
+      ["It is 3 times faster.", "number"],
+      ["It runs twice a day.", "number"],
+      ["It is tripled.", "number"],
+      ["Most users like it.", "number"],
+      ["The majority agree.", "number"],
+      ["It serves thousands of users.", "number"],
+      ["Visit hxxps://evil.x", "link"],
+      ["Visit hxxp://evil.x", "link"],
+      ["Open ftp://files.example now.", "link"],
+      ["See evil.x now.", "link"],
+    ])("rejects %s", (answer, reason) => {
+      expect(check(answer, plain)).toEqual(bad(reason));
+    });
+    it("accepts relative-quantity words that the cited text uses", () => {
+      expect(check("It is half of the baseline.", "It is half of the baseline.")).toEqual(OK);
+      expect(check("It is ten times faster.", "It is ten times faster.")).toEqual(OK);
+      expect(check("It is double the baseline.", "It is double the baseline.")).toEqual(OK);
+    });
+    it("does not treat 'times' without a number as relative", () => {
+      expect(check("It runs at times.", "Plain text.")).toEqual(OK);
+    });
+    it("leaves abbreviations like e.g. and i.e. alone", () => {
+      expect(check("It is small, e.g. fast, i.e. cheap.", "Plain text.")).toEqual(OK);
+    });
+    it("allows corpus vocabulary that the cited chunk does not use", () => {
+      expect(check("It uses kiwix.", "Plain text.")).toEqual(OK);
+    });
+    it("treats entity names seen only capitalized in the corpus as ungrounded unless cited", () => {
+      expect(check("Google employed him.", "Plain text.")).toEqual(bad("name"));
+      expect(check("It uses google.", "Plain text.")).toEqual(bad("name"));
+      expect(check("It signs in with Google.", "Sign in with Google.")).toEqual(OK);
+    });
+    it("allows sentence starters and common prose", () => {
+      expect(check("The tool helps people. It also checks each answer.", "Plain text.")).toEqual(OK);
+    });
+    it("caches the corpus vocabulary across calls", () => {
+      expect(check("It uses kiwix.", "Plain text.")).toEqual(OK);
+      expect(check("It uses kiwix.", "Plain text.")).toEqual(OK);
     });
   });
 });
