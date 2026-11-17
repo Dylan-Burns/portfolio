@@ -31,6 +31,21 @@ describe("answerQuestion", () => {
     expect(r.sources).toEqual([]);
   });
 
+  it.each(["who won the world cup in 2022", "what is the capital of france", "what's the weather today"])(
+    "the scope gate refuses %p as not found, with zero calls",
+    async (q) => {
+      const { r, p } = await run(q);
+      expect(r).toEqual({ kind: "refuse", text: REPLIES.notFound, sources: [] });
+      expect(p.calls).toBe(0);
+    },
+  );
+
+  it("the scope gate runs after classify: a deflect topic still deflects", async () => {
+    const { r, p } = await run("what's dylan's twitter handle");
+    expect(r.kind).toBe("deflect");
+    expect(p.calls).toBe(0);
+  });
+
   it.each([[undefined], [null], [42], [{}], [["what is keel"]], ["x".repeat(5000)]])(
     "non-text or oversized input %p is refused with zero calls",
     async (q) => {

@@ -82,7 +82,7 @@ function matches(have: Set<string>, need: string[]): boolean {
 }
 
 /** Base forms for "-ing" and "-ed" words ("measuring" -> "measur", "measure"), so they meet the corpus's other forms. */
-function baseForms(t: string): string[] {
+export function baseForms(t: string): string[] {
   const m = /^(.{3,}?)(ing|ed)$/.exec(t);
   return m ? [m[1], m[1] + "e"] : [];
 }
@@ -104,3 +104,9 @@ export function detectProjects(q: string): string[] {
   for (const r of projectRules) if (matches(have, r.need)) found.add(r.slug);
   return [...found].sort();
 }
+
+/** Every token the alias and synonym maps know: trigger phrases, project slugs and synonym targets. */
+export const ALIAS_VOCABULARY: ReadonlySet<string> = new Set([
+  ...projectRules.flatMap((r) => [...r.need, r.slug]),
+  ...synonymRules.flatMap((r) => [...r.need, ...r.targets]),
+]);

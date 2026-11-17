@@ -2,6 +2,7 @@ import { buildCorpus } from "./corpus";
 import { classify, REPLIES } from "./intent";
 import type { AnswerProvider } from "./provider";
 import { retrieve, SCORE_FLOOR } from "./retrieve";
+import { inScope } from "./scope";
 import { sanitizeQuestion, stripInvisible } from "./text";
 import { MODEL_ID, PROMPT_VERSION } from "./types";
 import type { AskReply, Chunk, Corpus, ModelAnswer, Source } from "./types";
@@ -65,6 +66,7 @@ async function run(raw: unknown, deps: AskDeps): Promise<AskReply> {
   if (intent.kind === "refuse") return reply("refuse", REPLIES.refuse);
 
   const corpus = deps.corpus ?? buildCorpus();
+  if (!inScope(clean.q, intent.projects, corpus)) return reply("refuse", REPLIES.notFound);
   const key = `${clean.q.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()}|${corpus.hash}|${PROMPT_VERSION}|${MODEL_ID}`;
   const cached = deps.cache?.get(key);
   if (cached) return copyOf(cached);

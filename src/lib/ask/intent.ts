@@ -38,7 +38,7 @@ const INJECTION: RegExp[] = [
 ];
 
 /** Imperative requests for something other than a portfolio question. */
-const OFF_TOPIC_COMMAND = /^(write|generate|compose|draft|translate|solve|calculate|compute|code|tell me a (joke|story)|sing|say)\b/;
+const OFF_TOPIC_COMMAND = /^(write|generate|compose|draft|translate|solve|calculate|compute|code)\b/;
 
 /** Arithmetic ("2+2", "7 times 6"). "/" and "-" are left out: "4/4 scenarios", "10-K". */
 const ARITHMETIC = /\d\s*[+*×÷^=]\s*\d|\b\d+\s+(plus|minus|times|divided by|multiplied by)\s+\d+\b/;
@@ -54,12 +54,6 @@ const UNANCHORED_OFF_TOPIC: RegExp[] = [
   /^(how|what'?s the best way|what is the best way|what'?s a good way) (do|can|should|would|to) (i|we|one)\b/,
   /^how (do|can|should|would) (i|we|one)\b/,
   /\b(your|ur) (opinion|opinions|view|views|thoughts?|take|favou?rite)\b|\bwhat do you think\b|\bdo you (like|prefer|think|believe|feel|recommend)\b/,
-  // General-knowledge openers: trivia shares stray words with the corpus ("world", "2022"), so the
-  // retrieval floor alone does not catch it.
-  /^who (won|wins|invented|discovered|wrote|painted|directed|founded|sang|played|starred|is the|was the)\b/,
-  /^(when|what year|in what year) (did|was|were|is|will)\b/,
-  /^how (tall|far|deep|heavy|big|hot|cold|long ago)\b/,
-  /^what (is|was|are) the (capital|population|height|distance|weather|temperature|date|time|meaning)\b/,
 ];
 
 /**
@@ -118,6 +112,19 @@ const PERSONAL_DATA: RegExp[] = [
   /\bhow old (is|are) (he|dylan)\b/,
 ];
 
+/**
+ * About the owner rather than the work, so deflected even when a project is named. Each needs a
+ * mention of Dylan (PERSON): employment around a project ("what did he do before keel"),
+ * employment status, and social or contact handles.
+ */
+const ABOUT_THE_PERSON: RegExp[] = [
+  /\b(he|him|his|dylan|dylan'?s|dylan’s)\b.*\b(work\w*|jobs?|careers?|employ\w*|do|doing)\b.*\b(before|after|prior to|besides|outside|apart from|other than)\b/,
+  /\b(un)?employ(ed|ers?|ment)\b/,
+  /\b(twitter|instagram|insta|tiktok|facebook|bluesky|mastodon|snapchat|youtube|github|socials)\b/,
+  /\b(on|his|dylan'?s|dylan’s) x\b|\bx (handle|account)s?\b/,
+  /\b(his|dylan'?s|dylan’s) (\w+ ){0,2}(handles?|usernames?|accounts?)\b/,
+];
+
 const META: RegExp[] = [
   /\bhow (does|do) (ask|this (command|bot|assistant|thing|work))\b/,
   /\bhow (was|is) (this|the) (site|website|portfolio|page) (built|made|created)\b/,
@@ -138,7 +145,9 @@ export function classify(q: string): Intent {
   if (INJECTION.some((r) => r.test(t)) || OFF_TOPIC_COMMAND.test(bare) || ARITHMETIC.test(t)) return { kind: "refuse" };
 
   const projects = detectProjects(q);
-  if (PERSONAL_DATA.some((r) => r.test(t))) return { kind: "deflect" };
+  if (PERSONAL_DATA.some((r) => r.test(t)) || (PERSON.test(t) && ABOUT_THE_PERSON.some((r) => r.test(t)))) {
+    return { kind: "deflect" };
+  }
   if (projects.length === 0 && (touchesDeflectTopic(t) || DEFLECT_QUESTION.some((r) => r.test(t)))) {
     return { kind: "deflect" };
   }

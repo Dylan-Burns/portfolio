@@ -17,8 +17,8 @@ const sanitize = (q: string) => {
 describe("golden set integrity", () => {
   it("has the spec's counts per category", () => {
     const n = (c: string) => GOLDEN.filter((g) => g.category === c).length;
-    expect([n("project"), n("cross"), n("person"), n("paraphrase"), n("deflect"), n("scope"), n("redteam")]).toEqual([
-      27, 6, 6, 6, 8, 6, 15,
+    expect([n("project"), n("cross"), n("person"), n("paraphrase"), n("deflect"), n("scope"), n("redteam"), n("regression")]).toEqual([
+      27, 6, 6, 6, 8, 6, 15, 15,
     ]);
   });
 
@@ -37,10 +37,20 @@ describe("golden set integrity", () => {
 describe("golden set, deterministic gates", () => {
   it("intent accuracy is 100%: every non-answer entry gets its expected kind from the pipeline, with zero calls", async () => {
     const bad: string[] = [];
-    for (const g of GOLDEN.filter((x) => x.expect !== "answer")) {
+    for (const g of GOLDEN.filter((x) => x.expect !== "answer" && x.category !== "regression")) {
       const p = mockProvider();
       const r = await answerQuestion(g.q, { provider: p });
       if (r.kind !== g.expect || p.calls !== 0) bad.push(`${g.q} -> ${r.kind} (${p.calls} calls)`);
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it("containment is 100% on regression entries: no non-answer entry is answered or reaches the model", async () => {
+    const bad: string[] = [];
+    for (const g of GOLDEN.filter((x) => x.expect !== "answer" && x.category === "regression")) {
+      const p = mockProvider();
+      const r = await answerQuestion(g.q, { provider: p });
+      if (r.kind === "answer" || p.calls !== 0) bad.push(`${g.q} -> ${r.kind} (${p.calls} calls)`);
     }
     expect(bad).toEqual([]);
   });
