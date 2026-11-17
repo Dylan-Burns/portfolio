@@ -22,7 +22,7 @@ describe("golden set integrity", () => {
   it("has the spec's counts per category", () => {
     const n = (c: string) => GOLDEN.filter((g) => g.category === c).length;
     expect([n("project"), n("cross"), n("person"), n("paraphrase"), n("deflect"), n("scope"), n("redteam"), n("regression")]).toEqual([
-      27, 6, 6, 6, 8, 6, 15, 33,
+      27, 6, 6, 6, 8, 6, 15, 48,
     ]);
   });
 

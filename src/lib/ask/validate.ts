@@ -146,7 +146,7 @@ const STARTERS = new Set(
 
 // Very common English function and general words, so ordinary connective prose passes the grounding rule.
 // No proper nouns, places, companies or personal names belong here.
-const COMMON_WORDS = [
+export const COMMON_WORDS = [
   "about", "above", "across", "actually", "added", "adding", "adopted", "after", "again", "against", "aimed",
   "allow", "allows", "almost", "also", "although", "always", "among", "another", "answer", "answers",
   "anyone", "anything", "applies", "approach", "around", "aside", "asked", "asks", "aspect", "available",

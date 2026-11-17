@@ -68,4 +68,22 @@ describe("inScope", () => {
     expect(inScope("which cup final results archive", [], other)).toBe(true);
     expect(inScope("which cup final results archive", [], C)).toBe(false);
   });
+
+  it("common English and conversational filler never count as unknown", () => {
+    expect(inScope("hey can u pls give me the quick rundown on him, thanks", [], C)).toBe(true);
+    expect(inScope("honestly what is the most impressive hybrid search thing here", [], C)).toBe(true);
+  });
+
+  it("with a person anchor, refuses only when two or more unknown topic words outnumber the known ones", () => {
+    expect(inScope("why does he jump between filings", [], C)).toBe(true);
+    expect(inScope("what does he think about quantum gravity", [], C)).toBe(false);
+  });
+
+  it("the person behind the site is an anchor", () => {
+    expect(inScope("who is the guy behind this", [], C)).toBe(true);
+  });
+
+  it("a question with only filler and no anchor or project is still out of scope", () => {
+    expect(inScope("hey thanks", [], C)).toBe(false);
+  });
 });

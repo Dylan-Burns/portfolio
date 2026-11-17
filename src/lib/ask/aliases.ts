@@ -64,6 +64,9 @@ const SYNONYMS: Record<string, string[]> = {
   belief: ["principles"],
   believe: ["principles"],
   philosophy: ["principles"],
+  // The about text says "field" and names the fields; visitors say "industry" or "sector".
+  industry: ["field"],
+  sector: ["field"],
 };
 
 type Rule = { need: string[]; targets: string[] };

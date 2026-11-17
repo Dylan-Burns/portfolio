@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildCorpus } from "@/lib/ask/corpus";
+import { buildCorpus, hasDomainShape } from "@/lib/ask/corpus";
 import { REPLIES } from "@/lib/ask/intent";
 import { answerQuestion, sourcesFor } from "@/lib/ask/pipeline";
 import { mockProvider } from "@/lib/ask/provider";
 import { FALLBACK_FLOOR, retrieve, SCORE_FLOOR } from "@/lib/ask/retrieve";
-import type { AskReply } from "@/lib/ask/types";
+import type { AskReply, Chunk, Corpus } from "@/lib/ask/types";
 
 const run = (q: unknown, p = mockProvider(), extra = {}) =>
   answerQuestion(q, { provider: p, ...extra }).then((r) => ({ r, p }));
@@ -95,6 +95,33 @@ describe("answerQuestion", () => {
 
   it("the fallback floor sits above the retrieval floor", () => {
     expect(FALLBACK_FLOOR).toBeGreaterThan(SCORE_FLOOR);
+  });
+
+  it("the fallback names the page in plain words and never carries a domain", async () => {
+    const bad = mockProvider(() => ({ answerable: true, answer: "Fine.", citations: ["nope/1"] }));
+    const { r } = await run("what is keel", bad);
+    expect(r.text.startsWith("From the Keel page: ")).toBe(true);
+    const o = await run("how can anyone check that outpost releases match the source", mockProvider(() => ({ answerable: true, answer: "Fine.", citations: ["nope/1"] })));
+    expect(o.r.kind).toBe("answer");
+    expect(hasDomainShape(o.r.text)).toBe(false);
+  });
+
+  const filler = Array.from({ length: 40 }, (_, i) => ({ id: `other/x/${i + 1}`, project: "other", section: "x", file: "other", text: `Unrelated filler passage number ${i}.` }));
+  const fake = (chunks: Chunk[]): Corpus => ({ hash: `fake-${chunks.map((c) => c.id).join()}`, chunks: [...filler, ...chunks] });
+  const keelCard = { id: "keel/card/1", project: "keel", section: "card", file: "keeldd.com", slug: "keel", text: "Keel keel keel keel lives at keel.example today." };
+  const keelSummary = { id: "keel/summary/1", project: "keel", section: "summary", file: "keeldd.com", slug: "keel", text: "Keel keel keel keel summary passage." };
+
+  it("the fallback skips a passage holding a domain and uses the next one", async () => {
+    const bad = mockProvider(() => ({ answerable: true, answer: "Fine.", citations: ["nope/1"] }));
+    const { r } = await run("what is keel", bad, { corpus: fake([keelCard, keelSummary]) });
+    expect(r.text).toBe("From the Keel page: Keel keel keel keel summary passage.");
+  });
+
+  it("with only domain-holding passages, the fallback is not found", async () => {
+    const bad = mockProvider(() => ({ answerable: true, answer: "Fine.", citations: ["nope/1"] }));
+    const { r, p } = await run("what is keel", bad, { corpus: fake([keelCard]) });
+    expect(r).toEqual({ kind: "refuse", text: REPLIES.notFound, sources: [] });
+    expect(p.calls).toBe(1);
   });
 
   it("a foreign citation also falls back", async () => {

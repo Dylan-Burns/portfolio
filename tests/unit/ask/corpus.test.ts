@@ -1,5 +1,5 @@
-import { it, expect } from "vitest";
-import { buildCorpus } from "@/lib/ask/corpus";
+import { describe, it, expect } from "vitest";
+import { buildCorpus, hasDomainShape, pageName } from "@/lib/ask/corpus";
 import { projects } from "@/content/projects";
 import { profile } from "@/content/profile";
 import { readFileSync } from "node:fs";
@@ -36,3 +36,22 @@ it("profile text matches the terminal page word for word", () => {
   const html = readFileSync("public/burnsos.html", "utf8");
   for (const p of [...profile.about, ...profile.principles.flatMap((x) => [x.title, x.body])]) expect(html).toContain(p);
 });
+
+describe("fallback labels and domain-shaped text", () => {
+  const corpus = buildCorpus();
+  it("lists the chunks whose own text holds a domain-shaped string", () => {
+    expect(corpus.chunks.filter((c) => hasDomainShape(c.text)).map((c) => c.id)).toEqual([
+      "outpost/outcomes/2",
+      "steamhouse/architecture/2",
+    ]);
+  });
+  it("names pages by plain project or section name, never a domain-shaped label", () => {
+    const byId = new Map(corpus.chunks.map((c) => [c.id, c]));
+    expect(pageName(byId.get("outpost/summary/1")!)).toBe("the Outpost page");
+    expect(pageName(byId.get("keel/card/1")!)).toBe("the Keel page");
+    expect(pageName(byId.get("profile/about/1")!)).toBe("the about page");
+    expect(pageName(byId.get("profile/principles/1")!)).toBe("the principles page");
+    expect(corpus.chunks.filter((c) => hasDomainShape(pageName(c))).map((c) => c.id)).toEqual([]);
+  });
+});
+

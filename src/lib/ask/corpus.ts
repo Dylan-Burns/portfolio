@@ -75,3 +75,25 @@ export function buildCorpus(): Corpus {
     .digest("hex");
   return { chunks, hash };
 }
+
+/**
+ * Domain-shaped text, the same shape the answer validator rejects as a bare link: a dotted name whose
+ * last part is two or more letters, all lower or all upper case, and not a code-file extension
+ * ("projectoutpost.org", "mongoose.models"; not "Next.js").
+ */
+const CODE_EXT = "js|ts|jsx|tsx|mjs|cjs|json|md|py|css|png|jpg|jpeg|gif|svg|webp|pdf|txt|html|csv";
+const DOMAIN_SHAPED = new RegExp(
+  String.raw`\b[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.(?!(?:${CODE_EXT})\b)(?:[a-z]{2,}|[A-Z]{2,})\b`,
+);
+
+export function hasDomainShape(text: string): boolean {
+  return DOMAIN_SHAPED.test(text);
+}
+
+const NAME = new Map(projects.map((p) => [p.slug, p.name]));
+
+/** A chunk's page in plain words ("the Outpost page", "the about page"), never a domain-shaped label. */
+export function pageName(c: Chunk): string {
+  return `the ${c.project === "profile" ? c.section : (NAME.get(c.project) ?? c.project)} page`;
+}
+

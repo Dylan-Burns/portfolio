@@ -32,6 +32,21 @@ const ANSWER_SHAPING: RegExp[] = [
   /\bin the (style|voice|tone|manner) of\b/,
 ];
 
+/**
+ * References to the assistant's own output or instructions. A portfolio question never talks about
+ * the answer itself ("the final word of your answer", "every sentence", "the rules you were given").
+ */
+const OWN_OUTPUT: RegExp[] = [
+  /\b(your|ur) (answers?|repl(y|ies)|responses?|outputs?|messages?|sentences?|words?|lines?|paragraphs?|text|rules|instructions|prompts?|guidelines|system)\b/,
+  /\bthe (answer|reply|response|output)\s+(must|should|has to|have to|needs? to|will|is to|ought to)\b/,
+  /\bevery (sentence|word|line|paragraph|reply|answer|response)\b/,
+  /\b(first|last|final|closing|opening) (words?|lines?|sentences?|letters?|paragraphs?|characters?)\b/,
+  /\b(before|after) (that|this|answering|you answer|responding|you respond)\b.*\b(tell|say|show|list|print|give|repeat|reveal|write)\b/,
+  /(^|[\s.,;:!?])p\.s\.?(?=[\s:,]|$)/,
+  /\b(also|and|but|ps)\b[^?.!]*\b(must|should|need to|needs to|has to|have to|got to|gotta)\s+(\w+\s+)?(mention|include|contain|end|start|say|begin|use|add|state)\b/,
+  /\b(rules|instructions|guidelines|directives|prompts?)\b[^?.!]*\b(were|are|have) you\b|\byou (were|are|have been) (given|told)\b/,
+];
+
 const INJECTION: RegExp[] = [
   /\b(ignore|disregard|forget|override|bypass)\b.*\b(instructions?|rules?|prompts?|previous|prior|above|guidelines?|system)\b/,
   /\byou are now\b/,
@@ -53,6 +68,7 @@ const INJECTION: RegExp[] = [
   /^(you|u) (must|will|shall|should|have to|need to|are going to)\b/,
   /\b(respond|reply|speak|talk)\b.*\b(only|all caps|uppercase|lowercase)\b|\ball caps\b/,
   ...ANSWER_SHAPING,
+  ...OWN_OUTPUT,
 ];
 
 /** Imperative requests for something other than a portfolio question. */
@@ -127,27 +143,67 @@ const PERSONAL_DATA: RegExp[] = [
   /\bphone number\b|\be-?mail address\b|\b(home|street|mailing) address\b/,
   /\b(his|dylan'?s|dylan’s) (phone|e-?mail|address|linkedin|age|salary|rates?|compensation)\b/,
   /\b(salary|salaries|hourly rate|day rate)\b/,
-  /\bhow old (is|are) (he|dylan)\b/,
 ];
 
 /**
  * About the owner rather than the work. Each needs a mention of Dylan (PERSON): employment around a
- * project ("what did he do before keel"), employment status, leaving a job, relocation, notice period
- * and start date, visas, family, birth date, and social or contact handles.
+ * project ("what did he do before keel"), employment status, leaving a job, and social or contact handles.
  */
 const ABOUT_THE_PERSON: RegExp[] = [
   /\b(he|him|his|dylan|dylan'?s|dylan’s)\b.*\b(work\w*|jobs?|careers?|employ\w*|do|doing)\b.*\b(before|after|prior to|besides|outside|apart from|other than)\b/,
   /\b(un)?employ(ed|ers?|ment)\b/,
   /\b(quit|quitting|left|leave|leaving|fired|laid off|resign\w*)\b.*\b(jobs?|position|company|employer)\b/,
-  /\brelocat\w*\b|\b(would|will|could|can|does|is) (he|dylan) (move|moving|commute|travel)\b/,
-  /\bnotice( period)?\b|\bstart(ing)? date\b|\bwhen (can|could|would|will) (he|dylan) (start|begin|join)\b/,
-  /\bvisas?\b|\bsponsor\w*\b|\bwork (permit|authori[sz]ation)\b|\bcitizen\w*\b|\bgreen card\b|\bimmigra\w*\b|\bnationality\b/,
-  /\b(married|marital|marry|wife|husband|spouse|girlfriend|boyfriend|fianc\w*|kids?|children|family|dating|divorced)\b/,
-  /\b(born|birthday|birth ?(year|date|place))\b/,
   /\b(twitter|instagram|insta|tiktok|facebook|bluesky|mastodon|snapchat|youtube|github|socials)\b/,
   /\b(on|his|dylan'?s|dylan’s) x\b|\bx (handle|account)s?\b/,
   /\b(his|dylan'?s|dylan’s) (\w+ ){0,2}(handles?|usernames?|accounts?)\b/,
 ];
+
+/** References to Dylan, as words. SUBJECT is the subset that can be the subject of "lives"/"is based". */
+const PERSON_REF = /\b(he|him|his|himself|dylan|dylans|burns)\b/g;
+const SUBJECT_REF = /\b(he|dylan|dylans|burns)\b/g;
+const MONTH = "january|february|march|april|june|july|august|september|october|november|december";
+const WHEN = `${MONTH}|monday|tuesday|wednesday|thursday|friday|asap|immediately|soon|tomorrow|next (week|month|year)|right away`;
+
+/**
+ * Personal topics, by word stem in any tense, that deflect when Dylan is mentioned within `gap`
+ * words on either side (or anywhere, for gap Infinity). `subjectBefore` topics need "he"/"dylan"
+ * just before them ("he lives", not "his projects are live").
+ */
+const PERSON_TOPICS: { topic: RegExp; gap: number; subjectBefore?: boolean }[] = [
+  { topic: /\b(hire|hired|hires|hiring|hirable|hireable)\b/g, gap: 3 },
+  { topic: /\b(contract\w*|freelanc\w*|gigs?|consult\w*)\b/g, gap: 3 },
+  { topic: new RegExp(String.raw`\b(start\w*|join\w*|begin\w*|began)\s+(\w+\s+){0,2}(${WHEN})\b|\bstart(ing)? date\b|\bwhen (can|could|would|will) (he|dylan) (start|begin|join)\b`, "g"), gap: 4 },
+  { topic: /\bnotice\b/g, gap: Infinity },
+  { topic: /\b(old|age|aged|born|birthday|birth ?(year|date|place))\b/g, gap: 3 },
+  { topic: /\b(relocat\w*|mov(e|es|ed|ing) to|commut\w*|hometown|based (in|out of|near))\b/g, gap: 3 },
+  { topic: /\b(live|lives|lived|living|reside\w*)\b/g, gap: 2, subjectBefore: true },
+  { topic: /\b(salary|salaries|rates?|pay|pays|paid|paying|charg(e|es|ed|ing)|compensat\w*|earn\w*|income|wages?)\b/g, gap: 3 },
+  { topic: /\b(visas?|sponsor\w*|citizen\w*|immigra\w*|nationality|green card|work (permit|authori[sz]ation))\b/g, gap: Infinity },
+  { topic: /\b(degrees?|school\w*|universit\w*|college\w*|graduat\w*|bootcamp|diploma|gpa|alma mater|major(ed|ing)?)\b|(?<!case )\bstud(y|ied|ies|ying)\b/g, gap: 4 },
+  { topic: /\b(married|marry|marital|wife|husband|spouse|girlfriend|boyfriend|fianc\w*|kids?|children|family|dating|divorced)\b/g, gap: 2 },
+];
+
+/** Word index of each match of a global regex. */
+function wordPositions(t: string, re: RegExp): { start: number; end: number }[] {
+  const wordAt = (i: number) => (t.slice(0, i).match(/[\p{L}\p{N}']+/gu) ?? []).length;
+  return [...t.matchAll(re)].map((m) => {
+    const start = wordAt(m.index);
+    return { start, end: start + Math.max(0, (m[0].match(/[\p{L}\p{N}']+/gu) ?? []).length - 1) };
+  });
+}
+
+function nearPerson(t: string): boolean {
+  const people = wordPositions(t, PERSON_REF);
+  if (people.length === 0) return false;
+  const subjects = wordPositions(t, SUBJECT_REF);
+  return PERSON_TOPICS.some(({ topic, gap, subjectBefore }) =>
+    wordPositions(t, topic).some((m) =>
+      subjectBefore
+        ? subjects.some((p) => p.start < m.start && m.start - p.start - 1 <= gap)
+        : people.some((p) => (p.start > m.end ? p.start - m.end - 1 : m.start - p.end - 1) <= gap),
+    ),
+  );
+}
 
 /**
  * The only thing a named project exempts: a work/role/job phrase whose object is the project itself
@@ -173,7 +229,8 @@ function isPersonTopic(t: string): boolean {
   return (
     touchesDeflectTopic(p) ||
     DEFLECT_QUESTION.some((r) => r.test(p)) ||
-    (PERSON.test(p) && ABOUT_THE_PERSON.some((r) => r.test(p)))
+    (PERSON.test(p) && ABOUT_THE_PERSON.some((r) => r.test(p))) ||
+    nearPerson(p)
   );
 }
 

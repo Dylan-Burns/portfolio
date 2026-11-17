@@ -1,4 +1,4 @@
-import { buildCorpus } from "./corpus";
+import { buildCorpus, hasDomainShape, pageName } from "./corpus";
 import { classify, REPLIES } from "./intent";
 import type { AnswerProvider } from "./provider";
 import { FALLBACK_FLOOR, retrieve, SCORE_FLOOR } from "./retrieve";
@@ -101,12 +101,12 @@ async function run(raw: unknown, deps: AskDeps): Promise<AskReply> {
     return reply("refuse", REPLIES.notFound);
   } else if (verdict.reason === "deflect_topic") {
     return reply("deflect", REPLIES.deflect);
-  } else if (hits[0].score < FALLBACK_FLOOR) {
-    // Too weak a match to show verbatim as if it answered the question.
-    return reply("refuse", REPLIES.notFound);
   } else {
-    const top = chunks[0];
-    result = reply("answer", truncate(`From ${top.file}: ${top.text}`, ANSWER_MAX_CHARS), sourcesFor([top]));
+    // Show the first passage without a domain-shaped string, and only if it is a strong enough match
+    // to stand verbatim as if it answered the question.
+    const top = hits.find((h) => !hasDomainShape(h.chunk.text));
+    if (!top || top.score < FALLBACK_FLOOR) return reply("refuse", REPLIES.notFound);
+    result = reply("answer", truncate(`From ${pageName(top.chunk)}: ${top.chunk.text}`, ANSWER_MAX_CHARS), sourcesFor([top.chunk]));
   }
   remember(deps.cache, key, result);
   return result;

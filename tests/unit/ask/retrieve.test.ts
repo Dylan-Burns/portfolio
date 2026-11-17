@@ -81,4 +81,15 @@ describe("retrieve", () => {
   it("a question about the person and a topic is not pinned to the about chunks", () => {
     expect(ids("which projects did he build solo").slice(0, 3).some((id) => id.startsWith("profile/about/"))).toBe(false);
   });
+  it.each(["what kind of engineer is he", "what drives him", "why does he jump between so many different industries", "can u give me the quick rundown on dylan"])(
+    "when the subject is the person, the about chunks come first: %p",
+    (q) => {
+      const got = ids(q);
+      expect(got.slice(0, ABOUT.length).sort()).toEqual([...ABOUT].sort());
+    },
+  );
+  it("motivation words also bring principles after the about chunks", () => {
+    const got = ids("what drives him");
+    expect(got.slice(ABOUT.length).some((id) => id.startsWith("profile/principles/"))).toBe(true);
+  });
 });

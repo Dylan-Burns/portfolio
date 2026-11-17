@@ -46,3 +46,7 @@ export function tokenize(s: string): string[] {
 export function normalizeKey(q: string): string {
   return tokenize(q).join(" ");
 }
+
+/** "the guy behind this", "the person who built it": the owner, named without a name. */
+export const PERSON_BEHIND = /\b(guy|person|man|dev|developer|engineer|designer|creator|author|owner)\b.*\b(behind|who (made|built|created|wrote|runs|owns))\b/;
+

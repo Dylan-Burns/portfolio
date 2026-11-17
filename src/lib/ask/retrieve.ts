@@ -1,5 +1,5 @@
 import { expandTokens } from "./aliases";
-import { tokenize } from "./text";
+import { PERSON_BEHIND, tokenize } from "./text";
 import type { Chunk, Corpus } from "./types";
 
 export const TOP_K = 8;
@@ -38,20 +38,33 @@ function indexTokens(c: Chunk): string[] {
 
 /** Words that only point at the owner, and words that ask for an introduction rather than a topic. */
 const PERSON_WORDS = new Set(tokenize("dylan burns he him his himself"));
-const INTRO_WORDS = new Set(
-  tokenize("background bio biography story overview introduction introduce person explain describe summarize give s"),
+
+/** Words that make the question about his work rather than about him ("which projects did he build solo"). */
+const WORK_WORDS = new Set(
+  tokenize("project projects app apps product products built build make made ship shipped stack tool tools code language languages tech technology framework"),
 );
+/** Words asking what moves him, answered by the about chunks and then the principles. */
+const MOTIVE_WORDS = /\b(drive|drives|driven|motivat\w*|passion\w*|inspir\w*|cares?|why)\b/;
 
 /**
- * With no project named, a question about the person as a whole ("who is dylan", "tell me about him",
- * "his background": only owner and introduction words) is answered from the about chunks; a question
- * whose terms reach "principles" (values, beliefs, philosophy) from the principles chunks.
+ * Profile sections to put first, in order, when no project is named:
+ * - terms reaching "principles" (values, beliefs, philosophy): the principles;
+ * - the person as the subject (an owner word or "the guy behind this", and no work word:
+ *   "what kind of engineer is he", "who is dylan"): the about chunks, then the principles when motive words appear ("what drives him").
  */
-function profileFocus(raw: string[], terms: string[], projects: string[]): string | undefined {
-  if (projects.length > 0) return undefined;
-  if (terms.includes("principle")) return "principles";
-  if (raw.some((t) => PERSON_WORDS.has(t)) && raw.every((t) => PERSON_WORDS.has(t) || INTRO_WORDS.has(t))) return "about";
-  return undefined;
+function profileFocus(q: string, raw: string[], terms: string[], projects: string[]): string[] {
+  if (projects.length > 0) return [];
+  if (terms.includes("principle")) return ["principles"];
+  const aboutHim = raw.some((t) => PERSON_WORDS.has(t)) || PERSON_BEHIND.test(q.toLowerCase());
+  if (aboutHim && !raw.some((t) => WORK_WORDS.has(t))) {
+    return MOTIVE_WORDS.test(q.toLowerCase()) ? ["about", "principles"] : ["about"];
+  }
+  return [];
+}
+
+/** The per-project quota counts the profile's about and principles pages separately. */
+function quotaKey(c: Chunk): string {
+  return c.project === PROFILE ? `${PROFILE}/${c.section}` : c.project;
 }
 
 /** Sections every named project always contributes, in priority order. */
@@ -84,8 +97,8 @@ function byScore(a: Hit, b: Hit): number {
 export function retrieve(q: string, corpus: Corpus, projects: string[]): { hits: Hit[]; best: number } {
   const stats = statsFor(corpus);
   const raw = tokenize(q);
-  const focus = profileFocus(raw, [...new Set(expandTokens(raw))], projects);
-  const terms = [...new Set([...expandTokens(raw), ...(focus ? ["dylan"] : [])])];
+  const focus = profileFocus(q, raw, [...new Set(expandTokens(raw))], projects);
+  const terms = [...new Set([...expandTokens(raw), ...(focus.length ? ["dylan"] : [])])];
   const n = corpus.chunks.length;
   const scope = new Set(projects);
 
@@ -111,11 +124,15 @@ export function retrieve(q: string, corpus: Corpus, projects: string[]): { hits:
   // A named project always brings its card and summary, even when the question shares few words
   // with them ("what is parahealth"). Cards of every named project come before any summary.
   const pinned: Hit[] = [];
-  // A question about the person or his values brings that whole profile section, ahead of everything.
-  const focused: Hit[] = corpus.chunks
-    .filter((c) => focus !== undefined && c.project === PROFILE && c.section === focus)
-    .slice(0, TOP_K)
-    .map((chunk) => ({ chunk, score: scoreOf.get(chunk.id) ?? 0 }));
+  // A question about the person or his values brings those profile sections, ahead of everything.
+  const focused: Hit[] = focus
+    .flatMap((section) =>
+      corpus.chunks
+        .filter((c) => c.project === PROFILE && c.section === section)
+        .map((chunk) => ({ chunk, score: scoreOf.get(chunk.id) ?? 0 }))
+        .sort(byScore),
+    )
+    .slice(0, TOP_K);
   pinned.push(...focused);
   for (const section of ALWAYS_FOR_NAMED)
     for (const chunk of corpus.chunks)
@@ -125,17 +142,17 @@ export function retrieve(q: string, corpus: Corpus, projects: string[]): { hits:
 
   const hits: Hit[] = [...pinned];
   const taken = new Map<string, number>();
-  for (const h of pinned) taken.set(h.chunk.project, (taken.get(h.chunk.project) ?? 0) + 1);
+  for (const h of pinned) taken.set(quotaKey(h.chunk), (taken.get(quotaKey(h.chunk)) ?? 0) + 1);
   const rest = scored.filter((h) => !pinnedIds.has(h.chunk.id));
   const take = (h: Hit) => {
-    taken.set(h.chunk.project, (taken.get(h.chunk.project) ?? 0) + 1);
+    taken.set(quotaKey(h.chunk), (taken.get(quotaKey(h.chunk)) ?? 0) + 1);
     hits.push(h);
   };
 
   if (scope.size === 0) {
     for (const h of rest) {
       if (hits.length >= TOP_K) break;
-      if ((taken.get(h.chunk.project) ?? 0) < PER_PROJECT_QUOTA) take(h);
+      if ((taken.get(quotaKey(h.chunk)) ?? 0) < PER_PROJECT_QUOTA) take(h);
     }
   } else {
     // Each named project gets a fair share (at least one slot); leftover slots go by score.
@@ -143,7 +160,7 @@ export function retrieve(q: string, corpus: Corpus, projects: string[]): { hits:
     const chosen = new Set<string>();
     for (const h of rest) {
       if (hits.length >= TOP_K) break;
-      if ((taken.get(h.chunk.project) ?? 0) < share) {
+      if ((taken.get(quotaKey(h.chunk)) ?? 0) < share) {
         take(h);
         chosen.add(h.chunk.id);
       }
@@ -155,8 +172,9 @@ export function retrieve(q: string, corpus: Corpus, projects: string[]): { hits:
   }
   hits.sort(byScore);
   if (focused.length > 0) {
-    const ids = new Set(focused.map((h) => h.chunk.id));
-    hits.sort((a, b) => Number(ids.has(b.chunk.id)) - Number(ids.has(a.chunk.id)));
+    const rank = new Map(focused.map((h, i) => [h.chunk.id, i]));
+    const r = (h: Hit) => rank.get(h.chunk.id) ?? TOP_K;
+    hits.sort((a, b) => r(a) - r(b));
   }
 
   // Over the budget, drop the weakest passages first, pinned ones last.
