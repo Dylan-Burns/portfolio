@@ -5,7 +5,7 @@ import type { Chunk, ModelAnswer } from "@/lib/ask/types";
 import { ANSWER_MAX_CHARS, validateAnswer } from "@/lib/ask/validate";
 
 const chunk = (id: string, text: string): Chunk => ({ id, project: "keel", section: "outcomes", file: "keeldd.com", text });
-const chunks = [chunk("keel/outcomes/1", "Faithfulness 0.94, citation precision 1.00, about $0.09 per question.")];
+const chunks = [chunk("keel/outcomes/1", "Keel faithfulness 0.94, citation precision 1.00, about $0.09 per question.")];
 const base: ModelAnswer = {
   answerable: true,
   answer: "Keel scores 0.94 on faithfulness at about $0.09 per question.",
@@ -35,7 +35,8 @@ describe("validateAnswer", () => {
     [{ ...base, answer: "Email a@b.co for details." }, "link"],
     [{ ...base, answer: "<b>Keel</b> is great." }, "markup"],
     [{ ...base, answer: "x".repeat(601) }, "length"],
-    [{ ...base, answer: "Dylan is based in Texas and works at Acme." }, "deflect_topic"],
+    [{ ...base, answer: "Dylan is based in Texas and works at Acme." }, "name"],
+    [{ ...base, answer: "Dylan is based in the project and works at a startup." }, "deflect_topic"],
   ])("rejects %#", (a, reason) => {
     expect(validateAnswer(a, chunks)).toEqual({ ok: false, reason });
   });
@@ -127,5 +128,66 @@ describe("validateAnswer", () => {
   it("never rejects corpus text for deflect_topic", () => {
     const failing = buildCorpus().chunks.filter((c) => touchesDeflectTopic(c.text)).map((c) => c.id);
     expect(failing).toEqual([]);
+  });
+
+  describe("fix round 1: evasions", () => {
+    const k = "Keel answers questions about SEC filings.";
+    it.each([
+      ["fullwidth digits", "Keel scores \uFF19\uFF17% on it.", "number"],
+      ["fullwidth decimal", "It scores \uFF10\uFF0E\uFF19\uFF17 overall.", "number"],
+      ["arabic-indic digits", "It scores \u0669\u0667 overall.", "number"],
+      ["superscripts", "It scores \u2079\u2077 overall.", "number"],
+      ["circled digit", "It has \u2460 overall.", "number"],
+      ["spelled hyphenated", "It is ninety-seven percent accurate.", "number"],
+      ["spelled hundred", "It costs a hundred dollars and twelve cents.", "number"],
+      ["spaced dot", "Visit evil dot com now.", "link"],
+      ["spaced domain", "Visit evil . com now.", "link"],
+      ["fullwidth dot", "Visit evil\uFF0Ecom now.", "link"],
+      ["zero-width in domain", "Visit evil\u200B.com now.", "link"],
+      ["zero-width in scheme", "Visit ht\u200Btp://evil.x now.", "link"],
+      ["at dot words", "Mail a at b dot co now.", "link"],
+      ["bracketed at dot", "Mail a [at] b [dot] co now.", "link"],
+      ["any tld", "Please see evil.de now.", "link"],
+      ["uppercase tld", "Please see evil.DE now.", "link"],
+      ["empty", "", "unanswerable"],
+      ["whitespace only", "   \n\t ", "unanswerable"],
+      ["foreign name Google", "Keel was built at Google.", "name"],
+      ["foreign name Austin", "It was built in Austin.", "name"],
+      ["curly brace", "It uses {x} here.", "markup"],
+      ["pipe", "It uses a | b here.", "markup"],
+      ["underscore", "It uses a_b here.", "markup"],
+      ["emoji", "It is great \u{1F642}.", "markup"],
+    ])("rejects %s", (_n, answer, reason) => {
+      expect(check(answer, k)).toEqual(bad(reason));
+    });
+    it("allows a number word that the text uses, and unchecked small ones", () => {
+      expect(check("It has twenty-five signals.", "Twenty-five energy signals.")).toEqual(OK);
+      expect(check("It has two signals and ten more.", "Some signals.")).toEqual(OK);
+      expect(check("It has twenty signals.", "Twenty-five energy signals.")).toEqual(bad("number"));
+    });
+    it("does not flag a sentence boundary without a space", () => {
+      expect(check("It works.Then it ships.", "It works. Then it ships.")).toEqual(OK);
+    });
+    it("allows .js and .ts names", () => {
+      expect(check("It uses Next.js and node.ts.", "Next.js and node.ts")).toEqual(OK);
+    });
+    it("normalizes cited text too", () => {
+      expect(check("It scores 97 overall.", "It scores \uFF19\uFF17 overall.")).toEqual(OK);
+    });
+    it("passes names present in the cited chunk and ignores sentence-initial words", () => {
+      expect(check("Keel answers questions about SEC filings.", k)).toEqual(OK);
+      expect(check("Grounded answers are cited.", "Plain text.")).toEqual(OK);
+      expect(check("It is useful. Grounded answers help.", "Plain text.")).toEqual(OK);
+    });
+    it("always allows Dylan, Burns and I", () => {
+      expect(check("So I think Dylan Burns built it.", "Plain text.")).toEqual(OK);
+    });
+    it("compares hyphenated and dotted names whole", () => {
+      expect(check("It uses Remote Retros and Cloudflare.", "Remote Retros runs on Cloudflare.")).toEqual(OK);
+      expect(check("It uses Next.js.", "It uses Next and js.")).toEqual(bad("name"));
+    });
+    it("allows plain punctuation and math symbols", () => {
+      expect(check("It is \u201Cfast\u201D \u2014 about ~2 seconds (\u2265 1).", "about 2 seconds 1")).toEqual(OK);
+    });
   });
 });

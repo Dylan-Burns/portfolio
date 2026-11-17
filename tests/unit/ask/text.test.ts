@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sanitizeQuestion, tokenize, normalizeKey } from "@/lib/ask/text";
+import { sanitizeQuestion, stripInvisible, tokenize, normalizeKey } from "@/lib/ask/text";
 import { expandTokens, detectProjects } from "@/lib/ask/aliases";
 
 describe("sanitizeQuestion", () => {
@@ -61,5 +61,11 @@ describe("aliases", () => {
   });
   it("expands synonyms toward corpus vocabulary", () => {
     expect(expandTokens(tokenize("medical paperwork"))).toEqual(expect.arrayContaining(["healthcare", "authorization"]));
+  });
+});
+
+describe("stripInvisible", () => {
+  it("removes zero-width and control characters and turns newlines into spaces", () => {
+    expect(stripInvisible("a\u200Bb\u0000c\nd")).toBe("abc d");
   });
 });

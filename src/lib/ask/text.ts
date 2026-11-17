@@ -6,12 +6,14 @@ export type Sanitized = { ok: true; q: string } | { ok: false; reason: "not_text
 /** Controls, format, private-use and unassigned code points, the Tags block and variation selectors. */
 const INVISIBLE = /[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Cs}\u{E0000}-\u{E007F}\u034F\u180E\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/gu;
 
+/** Turns tab/newline-style whitespace into spaces and removes every invisible or format character. */
+export function stripInvisible(s: string): string {
+  return s.replace(/[\t\n\r\v\f]/g, " ").replace(INVISIBLE, "");
+}
+
 export function sanitizeQuestion(raw: unknown): Sanitized {
   if (typeof raw !== "string") return { ok: false, reason: "not_text" };
-  const q = raw
-    .normalize("NFKC")
-    .replace(/[\t\n\r\v\f]/g, " ")
-    .replace(INVISIBLE, "")
+  const q = stripInvisible(raw.normalize("NFKC"))
     .replace(/\s+/g, " ")
     .trim();
   if (q.replace(/[^\p{L}\p{N}]/gu, "").length < MIN_Q) return { ok: false, reason: "empty" };
