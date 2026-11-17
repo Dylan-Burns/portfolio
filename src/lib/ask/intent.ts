@@ -23,11 +23,17 @@ const INJECTION: RegExp[] = [
   /\b(role-?play|jailbreak|developer mode|dan mode)\b/,
   /\b(system|hidden|initial) (prompt|message|instructions?)\b/,
   /\b(repeat|print|reveal|show|output|display|echo)\b.*\b(prompt|instructions|rules|text above|everything above|above)\b/,
+  /\bfrom now on\b/,
+  /\bnew (instructions?|rules?|task)\b/,
+  /\b(do not|don'?t) follow\b/,
+  /\bforget (everything|all|that)\b/,
+  /\bwhat were you (told|instructed)\b/,
+  /\b(this|the following|the below|below|following) (article|text|passage|paragraph|essay|document|code|story)\b|\bthe following\b/,
   /<[^>]*>|```|\bjavascript:/,
 ];
 
 /** Imperative requests for something other than a portfolio question. */
-const OFF_TOPIC_COMMAND = /^(write|generate|compose|draft|translate|solve|calculate|compute|code|tell me a (joke|story)|sing)\b/;
+const OFF_TOPIC_COMMAND = /^(write|generate|compose|draft|translate|solve|calculate|compute|code|tell me a (joke|story)|sing|say)\b/;
 
 /**
  * Deflected topics, phrased so they do not fire on project text
@@ -48,6 +54,9 @@ const DEFLECT_TOPIC: RegExp[] = [
   /\b(salary|salaries|compensation|hourly rate|day rate)\b/,
   /\bhow old\b|\b(his|dylan'?s) age\b|\b\d+ years old\b/,
   /\b(go|went|goes) to (school|college|university)\b|\b(studied|graduated|attended)\b|\b(his|dylan'?s) (degree|university|college|school)\b/,
+  /\b(his|dylan'?s|dylan’s) (current |previous |past |former |day )?jobs?\b|\bday job\b|\bwork history\b|\bwho pays\b/,
+  /\b(his|dylan'?s|dylan’s) (rates?|pay|linkedin)\b/,
+  /\blooking for (a |new )?(job|work|roles?|opportunit\w*)\b|\b(free|available) for freelance\b/,
   /\bphone( number)?\b/,
   /\b(his|dylan'?s) e-?mail\b|\be-?mail address\b/,
   /\b(home|street|mailing) address\b|\b(his|dylan'?s) address\b/,
@@ -55,10 +64,12 @@ const DEFLECT_TOPIC: RegExp[] = [
 
 /** Question shapes only meaningful when asked of the portfolio owner. */
 const DEFLECT_QUESTION: RegExp[] = [
-  /\bwhere\b.*\b(work|works|worked|working|based|located|live|lives|from)\b/,
+  /\bwhere\b.*\b(he|his|him|dylan|she)\b.*\b(work|works|worked|working|based|located|live|lives|study|studied)\b/,
+  /\bwhere (is|was) (he|dylan|she) from\b/,
   /\bwhat (city|country|state|town)\b/,
-  /\bwhat compan(y|ies)\b/,
-  /\bage\b/,
+  /\b(what|which) compan(y|ies)\b.*\b(he|his|dylan)\b/,
+  /\btime ?zone\b.*\b(he|his|dylan)\b/,
+  /\b(contact|reach|email|message) (him|dylan)\b/,
 ];
 
 const META: RegExp[] = [
