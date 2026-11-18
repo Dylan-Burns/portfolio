@@ -173,7 +173,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .v-port iframe { position: absolute; left: calc(50% - 210px); top: calc(50% - 150px); width: 420px; height: 300px; border: 0; }
 .v-port .v-shield { pointer-events: none; }
 .v-port.show { opacity: 1; pointer-events: auto; border: 1px solid rgba(125, 255, 166, 0.45); border-radius: 6px; background: #000; }
-.v-port.show .v-shield { pointer-events: auto; }
+.v-port.show .v-shield { pointer-events: auto; } .v-port.show.tap .v-shield { pointer-events: none; }
 .v-port.show iframe { left: 50%; top: -18%; height: 136%; aspect-ratio: 16 / 9; width: auto; transform: translateX(-50%); filter: grayscale(1) sepia(1) hue-rotate(70deg) saturate(2.4) contrast(1.15) brightness(0.9); }
 .v-mid { position: relative; flex: 1; min-height: 0; }
 .v-mid > a { position: absolute; left: 0; top: 0; white-space: nowrap; pointer-events: none; will-change: transform; }   /* they ride the track and cannot be clicked */
@@ -1174,7 +1174,12 @@ function vPaint(note) {
   $("vMute").textContent = vid.muted ? "[unmute]" : "[mute]";
 }
 function playVideo() {
-  if (vid.port === "hold") { setMode("video"); vid.port = "show"; $("vPort").className = "v-port show"; vPaint(); vLayout(true); return; }   // already playing, started by the tap itself
+  if (vid.port === "hold") {                               // unlocked by the tap itself: start picture and sound together now
+    setMode("video"); vid.port = "show"; $("vPort").className = "v-port show"; vid.t = 0; vPaint(); vLayout(true); vSay("setCurrentTime", 0); vSay("play");
+    const el = vid.el; clearTimeout(vid.timer);
+    vid.timer = setTimeout(() => { if (vid.el !== el || vid.port !== "show" || vid.playing) return; vid.needTap = true; $("vPort").classList.add("tap"); vPaint("tap the picture to start"); }, 1800);   // a browser that refuses: one tap on the picture starts it
+    return;
+  }
   setMode("video"); stopVideo();
   const el = document.createElement("iframe");
   el.src = `${VIMEO}/video/${VIDEO_ID}?autoplay=1&playsinline=1&title=0&byline=0&portrait=0&dnt=1&pip=0&controls=0&transparent=0`;
@@ -1234,7 +1239,8 @@ addEventListener("message", (e) => {
     $("vShield").style.pointerEvents = "none"; $("vHint").hidden = false; vid.playing = false; vid.muted = false; vid.t = 0;
   } else if (vid.needTap && d.event === "play") {
     vid.needTap = false; $("vShield").style.pointerEvents = ""; $("vHint").hidden = true;
-    if (vid.port === "armed") { vid.port = "hold"; vid.held = performance.now(); $("vPort").className = "v-port hold"; go("env"); }   // the tap on .env was a tap on the player
+    $("vPort").classList.remove("tap");
+    if (vid.port === "armed") { vSay("pause"); vSay("setCurrentTime", 0); vid.playing = false; vid.port = "hold"; vid.held = performance.now(); $("vPort").className = "v-port hold"; go("env"); }   // the tap on .env was a tap on the player: it is unlocked now, and waits
   }
   vPaint();
 });
