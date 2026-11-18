@@ -11,7 +11,9 @@ test.use({ contextOptions: { reducedMotion: "reduce" } });
 const WORK_SLUGS = ["parahealth", "watchtower", "remoteretros", "outpost", "syene", "keel", "claruss", "cartlords", "steamhouse"];
 // Everything on the home page happens on the computer's screen. With reduced motion (set above) the
 // zoom, the power-on and the "download" before a page opens are instant, so these stay deterministic.
-const FILES = [...WORK_SLUGS, "about", "principles", "dispatch", "contact"];
+// The disk has two folders and one file at the top: the projects live in /apps, the text files in /usr.
+const APPS = [...WORK_SLUGS, "mario"];
+const USR = ["about", "principles", "dispatch", "contact"];
 const screenOn = (page: import("@playwright/test").Page) => expect(page.locator("#g1")).toHaveClass(/\bon\b/);
 
 test("landing is the room and a powered-off computer (no console errors)", async ({ page }) => {
@@ -35,7 +37,25 @@ test("space zooms in, the screen powers on and lists every file", async ({ page 
   await page.goto("/");
   await page.keyboard.press("Space");
   await screenOn(page);
-  for (const f of FILES) await expect(page.locator(`.file[href="#${f}"]`)).toBeVisible();
+  await expect(page.locator("#files .file")).toHaveText([/\/apps$/, /\/usr$/, /\/games$/, /\.env$/]);
+  await page.keyboard.press("Enter");                                  // into /apps
+  for (const f of APPS) await expect(page.locator(`.file[href="#${f}"]`)).toBeVisible();
+  await expect(page.locator(".t-prompt")).toContainText("~/apps$");
+  await page.keyboard.press("Escape");                                 // back to the top
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");                                  // into /usr
+  for (const f of USR) await expect(page.locator(`.file[href="#${f}"]`)).toBeVisible();
+  await page.locator('#files a[data-dir=".."]').click();
+  await expect(page.locator("#files .file")).toHaveCount(4);
+  await page.locator('#files a[data-dir="games"]').click();            // into /games
+  await expect(page.locator("#files .file")).toHaveText([/\.\.\/$/, /snake$/, /pong$/]);
+  await page.locator('#files a[data-game="snake"]').click();
+  await expect(page.locator("#tGame")).toBeVisible();
+  await page.keyboard.press("Escape");                                 // quits the game, back in /games
+  await expect(page.locator(".t-prompt")).toContainText("~/games$");
+  await page.keyboard.type("cd apps");
+  await page.keyboard.press("Enter");
+  await expect(page.locator('.file[href="#keel"]')).toBeVisible();
   await page.keyboard.press("Space");
   await expect(page.locator("#g1")).toHaveClass(/\boff\b/);
 });
@@ -44,6 +64,8 @@ test("arrows select, enter opens the project on the CRT, escape returns to the f
   await page.goto("/");
   await page.keyboard.press("Space");
   await screenOn(page);
+  await page.keyboard.press("Enter");                                  // /apps
+  await page.keyboard.press("ArrowDown");
   await page.keyboard.press("ArrowDown");
   await expect(page.locator(".file.sel")).toHaveText(/watchtower/);
   await page.keyboard.press("Enter");
@@ -52,6 +74,7 @@ test("arrows select, enter opens the project on the CRT, escape returns to the f
   await page.keyboard.press("Escape");
   await expect(page.locator("#files")).toBeVisible();
   await expect(page).not.toHaveURL(/#watchtower$/);
+  await expect(page.locator(".file.sel")).toHaveText(/watchtower/);    // back in /apps, where it was opened from
 });
 
 test("a #name deep link opens straight onto that page", async ({ page }) => {
@@ -117,7 +140,11 @@ test("on a phone, a tap zooms in and every file fits on the glass", async ({ bro
   await page.goto("/");
   await page.locator("#m1").tap();
   await screenOn(page);
-  for (const f of FILES) await expect(page.locator(`.file[href="#${f}"]`)).toBeInViewport();
+  await page.locator('#files a[data-dir="apps"]').tap();
+  for (const f of APPS) await expect(page.locator(`.file[href="#${f}"]`)).toBeInViewport();
+  await page.locator('#files a[data-dir=".."]').tap();
+  await page.locator('#files a[data-dir="usr"]').tap();
+  for (const f of USR) await expect(page.locator(`.file[href="#${f}"]`)).toBeInViewport();
   await ctx.close();
 });
 
@@ -338,4 +365,40 @@ test.describe("ask command, animated", () => {
     await run(page, "ask what is keel");
     await expect(page.locator("#tOut")).toContainText("ask couldn't reach the server");
   });
+});
+
+test("developer easter eggs, and the video player's controls cannot be clicked", async ({ page }) => {
+  await page.goto("/");
+  await page.keyboard.press("Space");
+  await screenOn(page);
+  const run = async (cmd: string) => { await page.keyboard.type(cmd); await page.keyboard.press("Enter"); };
+  await run("git log");
+  await expect(page.locator("#tOut")).toContainText("create more than you consume");
+  await run("man dylan");
+  await expect(page.locator("#tOut")).toContainText("DYLAN(1)");
+  await run("cowsay <img src=x onerror=alert(1)>");
+  await expect(page.locator("#tOut img")).toHaveCount(0);
+  await run("curl parrot.live");
+  await expect(page.locator("#tOut")).toContainText("party parrot");
+  await run("cat .env");
+  await expect(page.locator("#tVideo")).toBeVisible();
+  const before = await page.locator("#vPlay").boundingBox();
+  for (const sel of ["#vPlay", "#vMute", '#vSide [data-cmd="ls"]']) {
+    const box = (await page.locator(sel).boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 4 });
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  }
+  await expect(page.locator("#tVideo")).toBeVisible();          // close never landed
+  expect((await page.locator("#vPlay").boundingBox())!.x).not.toBe(before!.x);   // it slid along its track instead
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#files")).toBeVisible();
+});
+
+test("super mario bros is listed like the other projects and opens its page", async ({ page }) => {
+  await page.goto("/#mario");
+  await expect(page.locator("#tPage h2")).toHaveText("Super Mario Bros");
+  await expect(page.locator('#tPage a[href="https://github.com/Dylan-Burns/Super-Mario-Bros"]')).toBeVisible();
+  await expect(page.locator("#tPage .pg-shot img")).toHaveJSProperty("complete", true);
+  await page.keyboard.press("Escape");
+  await expect(page.locator('#files a[href="#mario"]')).toHaveText(/supermariobros\.jar$/);
 });
