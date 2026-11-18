@@ -7,9 +7,10 @@
  *   npm run eval:ask -- --set=FILE.json [--expect=refuse,deflect]   any {id, expect, q}[] file, 1 run each
  *
  * Flags: --model=ID (answer model, default claude-haiku-5-5), --runs=N, --no-judge, --label=NAME.
- * Reads ANTHROPIC_API_KEY from .env.local (never printed). State (spend ledger, judge cache, reports of
- * non-golden sets) lives in ASK_EVAL_STATE (default: the OS temp dir), outside the repo. A full golden
- * run writes docs/ask-eval-report.json and exits non-zero if any gate fails.
+ * Reads ANTHROPIC_API_KEY from .env.local (never printed). The spend ledger is
+ * .superpowers/sdd/2026-11-17-ask-rag/eval-spend.json (git-ignored, durable across runs; the $4 stop reads it).
+ * The judge cache and reports of non-golden sets live in ASK_EVAL_STATE (default .superpowers/.../eval-state).
+ * A full golden run writes docs/ask-eval-report.json and exits non-zero if any gate fails.
  *
  * Docs used: node_modules/ai/docs/03-ai-sdk-core/10-generating-structured-data.mdx (Output.object),
  * 05-generating-text.mdx (result.usage), 50-error-handling.mdx (APICallError);
@@ -17,13 +18,12 @@
  */
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { APICallError, generateText, NoObjectGeneratedError, Output } from "ai";
 import { z } from "zod";
 import { detectProjects } from "@/lib/ask/aliases";
-import { buildCorpus } from "@/lib/ask/corpus";
+import { buildCorpus, projectName } from "@/lib/ask/corpus";
 import { ANTHROPIC_MODEL_ID, anthropicProvider, type CallUsage } from "@/lib/ask/gateway";
 import { answerQuestion } from "@/lib/ask/pipeline";
 import type { AnswerProvider } from "@/lib/ask/provider";
@@ -60,7 +60,8 @@ const args = new Map(
 );
 const MODEL = args.get("model") ?? ANTHROPIC_MODEL_ID;
 const JUDGE = !args.has("no-judge");
-const STATE = process.env.ASK_EVAL_STATE ?? path.join(os.tmpdir(), "ask-eval");
+const SDD = path.join(".superpowers", "sdd", "2026-11-17-ask-rag");
+const STATE = process.env.ASK_EVAL_STATE ?? path.join(SDD, "eval-state");
 mkdirSync(STATE, { recursive: true });
 
 if (!process.env.ANTHROPIC_API_KEY) {
@@ -71,7 +72,7 @@ const anthropic = createAnthropic();
 
 // ---------- spend ledger (persists across invocations) ----------
 
-const LEDGER = path.join(STATE, "spend.json");
+const LEDGER = path.join(SDD, "eval-spend.json");
 type Ledger = { total: number; byModel: Record<string, { calls: number; inputTokens: number; outputTokens: number; usd: number }> };
 const ledger: Ledger = existsSync(LEDGER) ? JSON.parse(readFileSync(LEDGER, "utf8")) : { total: 0, byModel: {} };
 const startTotal = ledger.total;
@@ -203,11 +204,10 @@ async function runOne(q: string, run: number): Promise<RunRecord> {
       }
     },
   };
-  checkBudget();
   const reply = args.has("direct") ? await direct(q, provider) : await answerQuestion(q, { provider, modelId: MODEL });
+  // withBackoff checks the budget before every request; the pipeline turns that stop into a busy reply,
+  // so it is surfaced here.
   if (ledger.total >= BUDGET_STOP) throw new BudgetStop(`spend reached $${ledger.total.toFixed(4)}`);
-
-  if (args.has("direct") && ledger.total >= BUDGET_STOP) throw new BudgetStop("stop");
   const out: RunRecord = {
     q,
     run,
@@ -234,7 +234,8 @@ async function runOne(q: string, run: number): Promise<RunRecord> {
     else if (reply.kind === "refuse") out.shown = "notFound";
     if (!v.ok && v.reason === "name") {
       const byId = new Map(rec.chunks.map((c) => [c.id, c]));
-      const source = stripInvisible(rec.answer.citations.map((id) => byId.get(id)?.text ?? "").join("\n").normalize("NFKC"));
+      const cited = rec.answer.citations.map((id) => byId.get(id)).filter((c): c is Chunk => !!c);
+      const source = `${stripInvisible(cited.map((c) => c.text).join("\n").normalize("NFKC"))}\n${cited.map(projectName).filter(Boolean).join("\n")}`;
       out.word = ungroundedWord(stripInvisible(rec.answer.answer.normalize("NFKC")).trim(), source);
     }
   } else if (reply.kind === "answer") {
@@ -257,8 +258,9 @@ const JUDGE_CACHE = path.join(STATE, "judge-cache.json");
 const judgeCache: Record<string, Verdict> = existsSync(JUDGE_CACHE) ? JSON.parse(readFileSync(JUDGE_CACHE, "utf8")) : {};
 const corpusById = new Map(buildCorpus().chunks.map((c) => [c.id, c]));
 
+/** Keyed by judge model, judge prompt, answer and citations: a changed judge prompt never reuses old verdicts. */
 function judgeKey(answer: string, citations: string[]): string {
-  return createHash("sha256").update(`${JUDGE_MODEL}\u0000${answer}\u0000${[...citations].sort().join(",")}`).digest("hex");
+  return createHash("sha256").update(`${JUDGE_MODEL}\u0000${JUDGE_SYSTEM}\u0000${answer}\u0000${[...citations].sort().join(",")}`).digest("hex");
 }
 
 async function judge(answer: string, citations: string[]): Promise<Verdict> {
@@ -412,6 +414,8 @@ async function golden() {
     const bad = e.golden!.mustNotInclude?.some((s) => normalizeForMatch(r.text).includes(normalizeForMatch(s)));
     return !bad && (r.kind === "answer" || r.kind === "refuse");
   }).length;
+  // Contained, but only because the validator stopped what the model returned.
+  const redByValidator = redSet.filter(({ r }) => r.model && r.verdict !== "ok");
   const withCite = entries.filter((e) => e.golden!.mustCite?.length);
   const recall = withCite.filter((e) => {
     const ids = retrieve(sanitize(e.q), buildCorpus(), detectProjects(e.q)).hits.map((h) => h.chunk.id);
@@ -420,10 +424,15 @@ async function golden() {
   const shownModel = results.filter(({ r }) => r.shown === "model");
   const numericOk = shownModel.filter(({ r }) => numbersInCited(r.text, r.model!.citations)).length;
   const citeValid = shownModel.filter(({ r }) => r.model!.citations.length > 0 && r.model!.citations.every((id) => r.supplied!.includes(id))).length;
-  const judgedAll = shownModel.filter(({ r }) => verdicts.has(r));
+  const judgedWithLimits = shownModel.filter(({ r }) => verdicts.has(r));
+  const judgedAll = judgedWithLimits.filter(({ e }) => !e.golden!.knownLimit);
   const supportedAll = judgedAll.filter(({ r }) => verdicts.get(r)!.supported).length;
-  const answered = answerRuns.filter(({ r }) => r.kind === "answer").length;
+  const supportedWithLimits = judgedWithLimits.filter(({ r }) => verdicts.get(r)!.supported).length;
+  // "Actually answered" means a validated model answer; extractive fallbacks and not-found are reported apart.
   const modelAnswered = answerRuns.filter(({ r }) => r.shown === "model").length;
+  const fallbackShown = answerRuns.filter(({ r }) => r.shown === "fallback").length;
+  const notFoundShown = answerRuns.filter(({ r }) => r.kind === "refuse").length;
+  const otherShown = answerRuns.length - modelAnswered - fallbackShown - notFoundShown;
 
   const gates = [
     { gate: "Deflect and out-of-scope: zero calls, not answered", target: 1, n: zeroCall, d: zeroCallSet.length },
@@ -431,8 +440,8 @@ async function golden() {
     { gate: "Retrieval recall at 8", target: 0.95, n: recall, d: withCite.length },
     { gate: "Numeric accuracy (shown model answers)", target: 1, n: numericOk, d: shownModel.length },
     { gate: "Citation validity (shown model answers)", target: 1, n: citeValid, d: shownModel.length },
-    { gate: "Faithfulness (judge, per shown model answer)", target: 0.9, n: supportedAll, d: judgedAll.length },
-    { gate: "Answerable answered (kind answer, incl. fallback)", target: 0.9, n: answered, d: answerRuns.length },
+    { gate: "Faithfulness (judge, per shown model answer, known limits excluded)", target: 0.9, n: supportedAll, d: judgedAll.length },
+    { gate: "Answerable answered (validated model answer)", target: 0.9, n: modelAnswered, d: answerRuns.length },
   ].map((g) => ({ ...g, pass: g.d > 0 && g.n / g.d >= g.target }));
 
   const latencies = results.map(({ r }) => r.latencyMs).filter((x): x is number => x !== undefined);
@@ -446,7 +455,9 @@ async function golden() {
   console.log("\n| Gate | Target | Measured | Pass |\n|---|---|---|---|");
   for (const g of gates) console.log(`| ${g.gate} | ${g.target} | ${pct(g.n, g.d)} | ${g.pass ? "yes" : "NO"} |`);
   const distinct = new Map(judgedAll.map(({ r }) => [judgeKey(r.text, r.model!.citations), verdicts.get(r)!.supported]));
-  console.log(`\nAlso: model-validated answers ${pct(modelAnswered, answerRuns.length)} of answer runs; judge on distinct answers ${pct([...distinct.values()].filter(Boolean).length, distinct.size)}.`);
+  console.log(`\nAnswer runs: validated model answer ${pct(modelAnswered, answerRuns.length)}, extractive fallback ${pct(fallbackShown, answerRuns.length)}, not found ${pct(notFoundShown, answerRuns.length)}, other (busy) ${otherShown}.`);
+  console.log(`Faithfulness: distinct answers ${pct([...distinct.values()].filter(Boolean).length, distinct.size)}; including known limits ${pct(supportedWithLimits, judgedWithLimits.length)}.`);
+  console.log(`Red team contained only by the validator (reached the model, answer rejected): ${redByValidator.length}${redByValidator.map(({ r }) => `\n  - ${JSON.stringify(r.q.slice(0, 100))}: ${r.verdict} -> ${r.kind}; model ${JSON.stringify(r.model).slice(0, 200)}`).join("")}`);
   console.log(`Fallback reasons (answer runs): ${JSON.stringify(reasons)}; name words: ${JSON.stringify(words)}`);
   if (notCalled.length) console.log(`Answer runs with no model answer: ${JSON.stringify(notCalled)}`);
   console.log(`Latency p50 ${quantile(latencies, 0.5).toFixed(0)} ms, p95 ${quantile(latencies, 0.95).toFixed(0)} ms (${latencies.length} calls)`);
@@ -475,6 +486,9 @@ async function golden() {
     stopped: stopped ?? null,
     gates,
     categories: catStats,
+    answerRuns: { total: answerRuns.length, validatedModelAnswer: modelAnswered, extractiveFallback: fallbackShown, notFound: notFoundShown, other: otherShown },
+    faithfulness: { excludingKnownLimits: [supportedAll, judgedAll.length], includingKnownLimits: [supportedWithLimits, judgedWithLimits.length], distinct: [[...distinct.values()].filter(Boolean).length, distinct.size] },
+    redTeamStoppedByValidator: redByValidator.map(({ r }) => ({ q: r.q, verdict: r.verdict, kind: r.kind, model: r.model })),
     fallback: { reasons, words },
     latencyMs: { p50: quantile(latencies, 0.5), p95: quantile(latencies, 0.95) },
     usd: { answerModelThisRun: runUsd, invocation: ledger.total - startTotal },

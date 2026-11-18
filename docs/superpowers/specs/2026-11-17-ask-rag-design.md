@@ -16,7 +16,10 @@ model call, validated citations, refusals that cost nothing, and a golden set th
 ## Goals
 
 - Answers come only from the portfolio's own published text. Every answer names its sources.
-- Deterministic everywhere except the single answer call. Same question, same answer.
+- Deterministic everywhere except the single answer call: sanitizing, the rules, the scope gate,
+  retrieval, the validator and the choice of fallback are pure functions of the question and the corpus.
+  The wording of a model answer is not deterministic; a repeated question gets the same reply only from
+  a per-instance cache that is lost on a cold start (see Determinism).
 - Out-of-scope and deflected questions are handled by code with **zero** model calls.
 - Injection, abuse and runaway cost are contained by design, not by trusting the model.
 - A graded question set measures accuracy and safety, and the pipeline is tuned against it
@@ -65,8 +68,9 @@ model call, validated citations, refusals that cost nothing, and a golden set th
   merged with all deterministic gates green and `ask` replies that it is not switched on yet.
   It is switched on only after the live eval passes its gates. Tuning against graded answers
   therefore needs the credentials below.
-- **No shared state.** There is no daily global cap and no shared store; the Firewall rule and the
-  monthly Gateway cap are the controls (see Security).
+- **No shared state.** There is no global cap and no shared store; the Firewall rule and the
+  provider-side spend limit (the AI Gateway budget, or the Anthropic workspace limit on the direct
+  path) are the controls (see Security).
 
 ## Constraints
 
@@ -134,7 +138,8 @@ The owner handed over the how; B is the builder's call, with C as the measured f
    cannot crowd out a comparison. If the best score is under a floor, **refuse with no model
    call**.
 5. **Assemble.** Selected chunks with their IDs, under a fixed token budget (about 1,500).
-6. **Generate (the only model call).** Temperature 0, a hard output cap, and a structured
+6. **Generate (the only model call).** No sampling control (the current Claude models reject
+   `temperature`; see Determinism), thinking off, a hard output cap, and a structured
    output schema: `{ answerable: boolean, answer: string, citations: string[] }` where
    `citations` may only contain the IDs that were supplied. The system prompt is fixed.
    Retrieved text and the visitor's question are passed as delimited data, never as instructions.
@@ -143,20 +148,23 @@ The owner handed over the how; B is the builder's call, with C as the measured f
    - Every number, percentage and dollar figure in the answer appears in a cited chunk.
    - No URLs, email addresses, markup or code in the answer text.
    - It is under the length cap and does not touch a deflect topic.
-   On any failure the reply falls back to an **extractive answer** (the top chunk quoted
-   verbatim with its source) or a refusal. A failed validation never retries the model.
+   On any failure the reply falls back to an **extractive answer** (the top chunk of a project the
+   question names, quoted verbatim with its source) or, when no project is named, the not-found
+   refusal. A failed validation never retries the model.
 8. **Respond.** `{ kind: "answer" | "deflect" | "refuse" | "meta" | "busy", text, sources }`.
    `sources` are terminal file labels and section names derived from the citations by code.
 
 ### Determinism
 
-- Stages 1 to 5 and 7 to 8 are pure functions of the question and the corpus.
-- The model call uses temperature 0, a pinned model ID and a versioned prompt.
-- An answer cache keyed by `(normalized question, corpusHash, promptVersion, model)` returns
-  the identical reply for a repeated question. It is in-memory per instance, so it is a
-  best-effort guarantee across instances; this is stated to the owner, not hidden.
-- Temperature 0 is not a formal guarantee of identical output. The eval reports answer
-  stability across repeated runs so the real figure is known.
+- Deterministic: stages 1 to 5 and 7 to 8 (sanitize, rules, scope gate, retrieval, assembly,
+  validator, fallback choice, response shape) are pure functions of the question and the corpus.
+- Not deterministic: the wording of the model's answer, and therefore whether it validates. The
+  call uses a pinned model ID and a versioned prompt but no temperature: Claude Haiku/Sonnet/Opus 5.5
+  reject sampling parameters, and the provider drops `temperature`. Measured in the live eval:
+  21 of 66 answerable golden questions gave identical text in three runs.
+- Repeats: an answer cache keyed by `(normalized question, corpusHash, promptVersion, model)` returns
+  the identical reply for a repeated question, but only on the same server instance and only until a
+  cold start. It is not a guarantee across instances or over time.
 
 ### Security
 
@@ -170,24 +178,31 @@ public text, and its output is discarded unless the validator passes it.
 | Fabricated or off-scope claims | Score floor, `answerable` flag, citation and number validation, deflect list |
 | Content injected into the page (XSS) | Server returns plain text; the terminal renders it as text nodes, never as HTML; source links are built by code from an allowlist |
 | Link or contact injection | Validator rejects any URL or email in the answer |
-| Cost and abuse | Firewall rate-limit rule (primary), monthly Gateway spend cap, a per-instance in-memory per-IP limiter as a second layer, input and output size caps, zero-call refusals |
-| Cross-site use of the endpoint | The `Origin` check, POST and JSON only. This stops only browser-driven cross-site use; any script can forge the header, so the Firewall rule and the Gateway cap are the controls against scripted abuse |
+| Cost and abuse | Firewall rate-limit rule (primary); a provider-side spend limit: the monthly AI Gateway budget on the gateway path, or the monthly spend limit of the Anthropic workspace that owns the key on the direct path (the gateway budget does not apply there); per-instance in code only: the per-IP limiter and a daily model-call ceiling; input and output size caps; zero-call refusals |
+| Cross-site use of the endpoint | The `Origin` check, POST and JSON only. This stops only browser-driven cross-site use; any script can forge the header, so the Firewall rule and the provider-side spend limit are the controls against scripted abuse |
 | Secrets exposure | Credentials are server-only; nothing sensitive is sent to the client or logged |
 | Denial of service by slow requests | The provider call has an 8 s timeout, after which the reply is the fixed "try again" message. The route's `maxDuration = 15` s bounds the whole function. Request bodies are capped at 1 KB while being read. Nothing else is timed out in code; connection-level slowness is the platform's to handle |
 
-Rate limiting decision (no shared store). Abuse control has three layers, and the first two are
+Rate limiting decision (no shared store). Abuse control has four layers, and the first two are
 the real controls:
 
 1. A Vercel Firewall rate-limit rule on `/api/ask`, enforced by the platform before the function runs.
-2. A monthly spend cap on the AI Gateway (proposed: $5).
+2. A provider-side monthly spend limit. Which one applies depends on the provider the route selects:
+   - `ANTHROPIC_API_KEY` set: the direct Anthropic provider. AI Gateway is bypassed, so **its budget
+     does not apply**. The only spend cap is the monthly limit of the Anthropic workspace that owns the
+     key, so the key must be a dedicated workspace key with a spend limit set.
+   - Otherwise: AI Gateway, with its monthly budget (proposed: $5).
 3. A small in-memory per-IP limiter in the route (8 requests per minute per client address). It is
    per server instance and resets on a cold start, so it is not exact and not shared across
    instances. It only blunts bursts that reach one instance; it is not relied on to stop abuse.
+4. A daily model-call ceiling in the route (`DAILY_CALL_CEILING`, 500 model calls per UTC day). After
+   it, the reply is the fixed "resting" message with zero model calls. It too is **per instance**: it
+   resets on a cold start and N instances allow N x 500 calls, so it bounds a runaway on one instance,
+   not total spend. Refusals and deflections do not count against it.
 
-Both of the first two are configured in the Vercel dashboard, outside the code. No KV, Redis or
-other shared store is used. The daily global cap that earlier drafts described is dropped for the
-same reason; the monthly Gateway cap bounds spend instead, and the route's reply when the provider
-refuses or fails is the fixed "resting" message.
+The first two are configured outside the code (Vercel dashboard, Anthropic console). No KV, Redis or
+other shared store is used, so there is no global cap in code; the provider-side limit bounds spend,
+and the route's reply when the provider refuses or fails is the fixed "resting" message.
 
 Route behaviour that is not a limit: the endpoint is off unless `ASK_ENABLED=1` (otherwise it replies
 that ask is not switched on, with no provider constructed and no model call). Nothing is logged:
@@ -198,10 +213,11 @@ visitor sees a refusal or a quoted passage from the public site".
 
 ### Model and provider
 
-- Vercel AI Gateway with a plain `provider/model` string, per current platform guidance.
-  First candidate: `anthropic/claude-haiku-5.5` (catalog price on 2026-11-17: $0.10 per million
-  input tokens, $0.50 per million output). At roughly 2,000 tokens in and 200 out, a question
-  costs on the order of $0.0003.
+- Two paths, chosen in the route: with `ANTHROPIC_API_KEY` set, the direct Anthropic provider
+  (`@ai-sdk/anthropic`, model `claude-haiku-5-5`); otherwise Vercel AI Gateway with a plain
+  `provider/model` string (`anthropic/claude-haiku-5.5`). Same prompt, schema and settings on both.
+  Price on 2026-11-17: $0.10 per million input tokens, $0.50 per million output. Measured: about
+  1,340 tokens in and 150 out, about $0.0002 a question.
 - The provider sits behind a small `AnswerProvider` interface. A mock implementation counts
   calls so tests can assert "exactly one call" and "zero calls on refusal".
 - Model choice is confirmed by the eval, not assumed. If the cheapest model fails a gate, the
@@ -271,11 +287,14 @@ eval is a separate script run by hand, because it needs credentials and costs mo
 2. **Unconfirmed facts.** `projects.ts` marks the role and period of Remote Retro, Syene and
    Keel, and Keel's private-equity context, as `TODO(owner): confirm`. Proposed: hold those
    fields out of the corpus until confirmed, so `ask` cannot state them as fact.
-3. **A Vercel Firewall rate-limit rule** on `/api/ask`, set in the dashboard. This replaces the
-   shared store: none is used. The in-memory limiter in the route is per instance and resets on a
+3. **A Vercel Firewall rate-limit rule** on `/api/ask`, set in the dashboard (required before
+   `ASK_ENABLED=1`). This replaces the shared store: none is used. The in-memory limiter in the route is per instance and resets on a
    cold start, so this rule is the real rate control.
-4. **A monthly spend cap** on the AI Gateway. Proposed: $5. With the Firewall rule, this is the
-   real cost control.
+4. **A monthly spend cap.** On the gateway path, the AI Gateway budget (proposed: $5). On the direct
+   path (`ANTHROPIC_API_KEY` set) the gateway budget does not apply: use **a dedicated Anthropic
+   workspace key with a monthly spend limit** set in the Anthropic console. With the Firewall rule,
+   this is the real cost control. **Both this limit and the Firewall rule (item 3) are required before
+   `ASK_ENABLED=1`.**
 5. **Question logging.** The code logs nothing at all (no question, no answer, no counts). Keeping question text
    (without IP addresses) would make tuning easier after launch, but it is visitors' input,
    so it is the owner's call.

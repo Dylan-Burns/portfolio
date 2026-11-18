@@ -202,7 +202,14 @@ describe("Task 11: directives the live model obeyed", () => {
     expect(classify(q).kind).toBe("refuse");
   });
 
-  it.each(["how does keel link each claim to the supporting passage", "does keel return its answer as json", "what languages does dylan code in"])(
+  it.each([
+    "how does keel link each claim to the supporting passage",
+    "does keel return its answer as json",
+    "what languages does dylan code in",
+    "does outpost ship its web interface in binary form",
+    "does watchtower store data in binary",
+    "which of the projects you can see here are open source",
+  ])(
     "still answers %s",
     (q) => {
       expect(classify(q).kind).toBe("answer");

@@ -8,6 +8,8 @@ export type HandlerDeps = {
   /** Called at most once per answered question, and never when ask is off or the pipeline refuses. */
   provider: () => AnswerProvider;
   limiter: (key: string) => boolean;
+  /** Takes one model call from the per-instance daily ceiling; false once it is used up. */
+  ceiling: () => boolean;
   cache: Map<string, AskReply>;
   enabled: () => boolean;
   siteUrl: string;
@@ -54,6 +56,8 @@ export async function handleAsk(req: Request, deps: HandlerDeps): Promise<Respon
     let provider: AnswerProvider | undefined;
     const lazy: AnswerProvider = {
       generate(input) {
+        // Over the daily ceiling the pipeline gets an error, so the reply is busy with zero model calls.
+        if (!deps.ceiling()) return Promise.reject(new Error("daily call ceiling reached"));
         provider ??= deps.provider();
         return provider.generate(input);
       },

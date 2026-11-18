@@ -104,9 +104,13 @@ async function run(raw: unknown, deps: AskDeps): Promise<AskReply> {
   } else if (verdict.reason === "deflect_topic") {
     return reply("deflect", REPLIES.deflect);
   } else {
-    // Show the first passage without a domain-shaped string, and only if it is a strong enough match
-    // to stand verbatim as if it answered the question.
-    const top = hits.find((h) => !hasDomainShape(h.chunk.text));
+    // Quote a passage only when the question names a project: the first passage of a named project
+    // without a domain-shaped string, and only if it is a strong enough match to stand verbatim as if it
+    // answered the question. With no project named, a quoted passage tends to be beside the point.
+    const top =
+      intent.projects.length > 0
+        ? hits.find((h) => intent.projects.includes(h.chunk.project) && !hasDomainShape(h.chunk.text))
+        : undefined;
     if (!top || top.score < FALLBACK_FLOOR) return reply("refuse", REPLIES.notFound);
     result = reply("answer", truncate(`From ${pageName(top.chunk)}: ${top.chunk.text}`, ANSWER_MAX_CHARS), sourcesFor([top.chunk]));
   }

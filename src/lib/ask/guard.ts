@@ -55,6 +55,30 @@ export function createLimiter(
   };
 }
 
+/** Model calls one server instance may make per UTC day (see createDailyCeiling). */
+export const DAILY_CALL_CEILING = 500;
+
+/**
+ * A per-instance ceiling on model calls per UTC day: each call takes one; once `max` are taken, it
+ * refuses until the UTC date changes. Per instance and in memory, so it resets on a cold start and N
+ * instances allow N x max: a cheap bound on a runaway, not a spend cap. The real controls are the
+ * provider's spend limit and the Vercel Firewall rule.
+ */
+export function createDailyCeiling(max: number = DAILY_CALL_CEILING, now: () => number = Date.now): () => boolean {
+  let day = "";
+  let used = 0;
+  return () => {
+    const today = new Date(now()).toISOString().slice(0, 10);
+    if (today !== day) {
+      day = today;
+      used = 0;
+    }
+    if (used >= max) return false;
+    used += 1;
+    return true;
+  };
+}
+
 type Read = { ok: true; question: unknown } | { ok: false; status: 400 | 413 | 415 };
 
 /** Reads at most MAX_BODY_BYTES; the stream is cancelled as soon as the cap is passed. */

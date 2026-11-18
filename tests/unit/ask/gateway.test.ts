@@ -13,5 +13,4 @@ describe("selectProvider", () => {
     expect(selectProvider({}).modelId).toBe(MODEL_ID);
     expect(selectProvider({ ANTHROPIC_API_KEY: "" }).modelId).toBe(MODEL_ID);
   });
-
 });

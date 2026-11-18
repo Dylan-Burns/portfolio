@@ -1,4 +1,5 @@
-import { buildCorpus } from "./corpus";
+import { buildCorpus, projectName } from "./corpus";
+import { ENGLISH_WORDS } from "./english-words";
 import { touchesDeflectTopic } from "./intent";
 import { stripInvisible } from "./text";
 import type { Chunk, ModelAnswer } from "./types";
@@ -87,16 +88,22 @@ function withoutCopiedEquals(answer: string, source: string): string {
 const ALLOWED_CHARS = /^[\p{Script=Latin}0-9\s.,;:!?'"()\-\u2013\u2014/%$&+\u00B7\u201C\u201D\u2018\u2019~\u2265\u00D7]*$/u;
 
 const TENS = "twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety";
-const ONES = "one|two|three|four|five|six|seven|eight|nine";
 const NUMBER_WORD = new RegExp(
-  String.raw`\b(?:(?:${TENS})(?:-(?:${ONES}))?|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|hundreds?|thousands?|millions?|billions?|trillions?|dozens?)\b`,
+  String.raw`\b(?:(?:${TENS})(?:-(?:one|two|three|four|five|six|seven|eight|nine))?|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|hundreds?|thousands?|millions?|billions?|trillions?|dozens?)\b`,
   "gi",
 );
 
+/**
+ * Each number word must appear in the cited text as the same whole token. A word joined to a compound
+ * ("million-barrel") must match the whole compound, so "a million barrels" is not grounded by
+ * "1.14 million-barrel", and "twenty" is not grounded by "twenty-five".
+ */
 function numberWordsGrounded(answer: string, source: string): boolean {
   const low = source.toLowerCase();
   for (const m of answer.matchAll(NUMBER_WORD)) {
-    if (!new RegExp(String.raw`(?<!\w)(?<!(?:${TENS})-)${m[0].toLowerCase()}(?!\w)(?!-(?:${ONES})\b)`).test(low)) return false;
+    const compound = answer.slice(m.index + m[0].length).match(/^(?:-[\p{L}]+)+/u)?.[0] ?? "";
+    const token = (m[0] + compound).toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (!new RegExp(String.raw`(?<![\w-])${token}(?![\w-])`, "u").test(low)) return false;
   }
   return true;
 }
@@ -121,21 +128,25 @@ function relativeQuantitiesGrounded(answer: string, source: string): boolean {
 const ALWAYS_OK_NAMES = new Set(["dylan", "burns", "i"]);
 const WORD = /[\p{L}][\p{L}\p{N}]*(?:[.'\u2019-][\p{L}\p{N}]+)*/gu;
 
-/** Light stemmer used only for membership tests, so "builds" and "built-in" style inflections still match. */
-function stem(w: string): string {
+/**
+ * Membership forms of a word, so inflections match: the word, the word without a regular suffix, and after
+ * -ed/-ing/-es the base plus "e" ("admired" -> "admire") and with a doubled final consonant undoubled
+ * ("plotted" -> "plot"). A bare word is never trimmed, so "plane" and "plan" stay different words.
+ */
+function forms(w: string): string[] {
   const x = w.toLowerCase().replace(/['\u2019]s$/, "");
-  if (x.length > 4 && x.endsWith("ies")) return x.slice(0, -3) + "y";
-  let y = x;
+  if (x.length > 4 && x.endsWith("ies")) return [x, x.slice(0, -3) + "y"];
+  if (x.length > 4 && x.endsWith("ied")) return [x, x.slice(0, -3) + "y"];
   for (const suf of ["ing", "ed", "es", "ly", "s"]) {
     if (x.length - suf.length >= 3 && x.endsWith(suf)) {
-      y = x.slice(0, -suf.length);
-      break;
+      const base = x.slice(0, -suf.length);
+      const out = [x, base];
+      if (suf === "ing" || suf === "ed" || suf === "es") out.push(base + "e");
+      if ((suf === "ing" || suf === "ed") && /([b-df-hj-np-tv-z])\1$/.test(base)) out.push(base.slice(0, -1));
+      return out;
     }
   }
-  // "plotted"/"plots" -> "plot", "admired"/"admires"/"admire" -> "admir".
-  if (y.length > 4 && /([b-df-hj-np-tv-z])\1$/.test(y)) y = y.slice(0, -1);
-  if (y.length > 4 && y.endsWith("e")) y = y.slice(0, -1);
-  return y;
+  return [x];
 }
 
 function parts(w: string): string[] {
@@ -143,16 +154,12 @@ function parts(w: string): string[] {
 }
 
 function addWord(set: Set<string>, w: string) {
-  set.add(w.toLowerCase());
-  set.add(stem(w));
-  for (const p of parts(w)) {
-    set.add(p.toLowerCase());
-    set.add(stem(p));
-  }
+  for (const f of forms(w)) set.add(f);
+  for (const p of parts(w)) for (const f of forms(p)) set.add(f);
 }
 
 function inSet(set: Set<string>, w: string): boolean {
-  return set.has(w.toLowerCase()) || set.has(stem(w));
+  return forms(w).some((f) => set.has(f));
 }
 
 const STARTERS = new Set(
@@ -230,6 +237,7 @@ function vocabulary(): Set<string> {
   if (!corpusVocab) {
     corpusVocab = new Set();
     for (const w of COMMON_WORDS) addWord(corpusVocab, w);
+    for (const w of ENGLISH_WORDS) addWord(corpusVocab, w);
     for (const c of buildCorpus().chunks) {
       const t = c.text.normalize("NFKC");
       for (const m of t.matchAll(WORD)) {
@@ -285,7 +293,10 @@ export function validateAnswer(a: ModelAnswer, supplied: Chunk[]): ValidationRes
   if (LINK.some((r) => r.test(answer))) return { ok: false, reason: "link" };
   if (MARKUP.some((r) => r.test(answer)) || !ALLOWED_CHARS.test(withoutCopiedEquals(answer, source))) return { ok: false, reason: "markup" };
   if (answer.length > ANSWER_MAX_CHARS) return { ok: false, reason: "length" };
-  if (!namesGrounded(answer, source)) return { ok: false, reason: "name" };
+  // A cited passage is grounded in its own project, so that project's name counts as cited text
+  // ("Designed, built, and shipped solo." is a Claruss passage). Names of uncited projects do not.
+  const names = (cited as Chunk[]).map(projectName).filter(Boolean).join("\n");
+  if (!namesGrounded(answer, `${source}\n${names}`)) return { ok: false, reason: "name" };
   if (touchesDeflectTopic(answer)) return { ok: false, reason: "deflect_topic" };
   return { ok: true };
 }

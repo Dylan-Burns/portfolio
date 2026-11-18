@@ -92,6 +92,11 @@ export function hasDomainShape(text: string): boolean {
 
 const NAME = new Map(projects.map((p) => [p.slug, p.name]));
 
+/** The display name of the project a chunk belongs to ("Claruss"), or undefined for the profile. */
+export function projectName(c: Chunk): string | undefined {
+  return c.project === "profile" ? undefined : NAME.get(c.project);
+}
+
 /** A chunk's page in plain words ("the Outpost page", "the about page"), never a domain-shaped label. */
 export function pageName(c: Chunk): string {
   return `the ${c.project === "profile" ? c.section : (NAME.get(c.project) ?? c.project)} page`;

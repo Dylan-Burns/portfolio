@@ -62,6 +62,17 @@ function profileFocus(q: string, raw: string[], terms: string[], projects: strin
   return [];
 }
 
+/** Words asking what he builds with ("what languages does he code in", "what tech does he use"). */
+const STACK_WORDS = new Set(tokenize("language languages stack stacks tech technology technologies framework frameworks tools"));
+
+/**
+ * With no project named, a stack question is answered by the project cards (each lists its stack), so
+ * every card is a candidate, strongest first, instead of the two or three whose text shares a word.
+ */
+function stackFocus(raw: string[], projects: string[]): boolean {
+  return projects.length === 0 && raw.some((t) => STACK_WORDS.has(t));
+}
+
 /** The per-project quota counts the profile's about and principles pages separately. */
 function quotaKey(c: Chunk): string {
   return c.project === PROFILE ? `${PROFILE}/${c.section}` : c.project;
@@ -134,6 +145,14 @@ export function retrieve(q: string, corpus: Corpus, projects: string[]): { hits:
     )
     .slice(0, TOP_K);
   pinned.push(...focused);
+  if (stackFocus(raw, projects))
+    pinned.push(
+      ...corpus.chunks
+        .filter((c) => c.section === "card")
+        .map((chunk) => ({ chunk, score: scoreOf.get(chunk.id) ?? 0 }))
+        .sort(byScore)
+        .slice(0, TOP_K - pinned.length),
+    );
   for (const section of ALWAYS_FOR_NAMED)
     for (const chunk of corpus.chunks)
       if (scope.has(chunk.project) && chunk.section === section && pinned.length < TOP_K)

@@ -268,3 +268,41 @@ describe("Task 11: false rejections seen with the live model", () => {
     expect(check("It is in keel/outcomes/1.", "It is in outcome 1 of keel.")).toEqual(bad("markup"));
   });
 });
+
+describe("Task 11 fix round 1: tighter morphology and compounds, wider plain English", () => {
+  it("does not equate different words that differ by a final e", () => {
+    // Made-up words, so neither the corpus nor the English list grounds them.
+    expect(check("It has a zorbe.", "It has a zorb.")).toEqual(bad("name"));
+  });
+  it("still equates real inflections", () => {
+    expect(check("The people he admires went deep.", "The people I admired most went deep.")).toEqual(OK);
+    expect(check("It plots the savings.", "The savings are plotted.")).toEqual(OK);
+    expect(check("He planned it.", "The plan was simple.")).toEqual(OK);
+  });
+  it("a number word joined to a compound must match the compound", () => {
+    expect(check("It has a 1.14 million-barrel error.", "a 1.14 million-barrel mean error")).toEqual(OK);
+    expect(check("It holds a million barrels.", "a 1.14 million-barrel mean error")).toEqual(bad("number"));
+  });
+  it("accepts ordinary English words the corpus never uses", () => {
+    expect(check("Watchtower uses D1 as its database.", "Stack: D1 (SQLite), Watchtower.")).toEqual(OK);
+  });
+  it("the English list never grounds proper nouns, places or personal-topic words", async () => {
+    const { ENGLISH_WORDS } = await import("@/lib/ask/english-words");
+    const set = new Set(ENGLISH_WORDS);
+    for (const w of ["google", "london", "texas", "paris", "chicago", "microsoft", "salary", "employer", "married", "email", "university"]) {
+      expect(set.has(w), w).toBe(false);
+    }
+    expect(check("He works at Google.", "He works on projects.")).toEqual(bad("name"));
+  });
+});
+
+describe("Task 11 fix round 1: the cited passage's project name", () => {
+  const claruss = buildCorpus().chunks.find((c) => c.id === "claruss/outcomes/2")!;
+  it("grounds the name of the project a cited passage belongs to", () => {
+    expect(claruss.text).not.toContain("Claruss");
+    expect(validateAnswer({ answerable: true, answer: "The solo project was Claruss.", citations: [claruss.id] }, [claruss])).toEqual(OK);
+  });
+  it("does not ground the name of a project that is not cited", () => {
+    expect(validateAnswer({ answerable: true, answer: "The solo project was Keel.", citations: [claruss.id] }, [claruss])).toEqual(bad("name"));
+  });
+});

@@ -124,6 +124,21 @@ describe("answerQuestion", () => {
     expect(p.calls).toBe(1);
   });
 
+  it("with no project named, a failed validation is not found, never a quoted passage", async () => {
+    const bad = mockProvider(() => ({ answerable: true, answer: "Fine.", citations: ["nope/1"] }));
+    const { r, p } = await run("rate limiting in FastAPI", bad);
+    expect(p.calls).toBe(1);
+    expect(r).toEqual({ kind: "refuse", text: REPLIES.notFound, sources: [] });
+  });
+
+  it("the fallback quotes only a passage of the named project", async () => {
+    const bad = mockProvider(() => ({ answerable: true, answer: "Fine.", citations: ["nope/1"] }));
+    const { r } = await run("how does outpost keep the admin dashboard safe", bad);
+    expect(r.kind).toBe("answer");
+    expect(r.text.startsWith("From the Outpost page: ")).toBe(true);
+    expect(r.sources.every((s) => s.slug === "outpost")).toBe(true);
+  });
+
   it("a foreign citation also falls back", async () => {
     const { r } = await run("what is keel", mockProvider(() => ({ answerable: true, answer: "Fine.", citations: ["nope/1"] })));
     expect(r.text).not.toBe("Fine.");

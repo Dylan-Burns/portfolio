@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkOrigin, createLimiter, MAX_BODY_BYTES, readQuestion } from "@/lib/ask/guard";
+import { checkOrigin, createDailyCeiling, createLimiter, DAILY_CALL_CEILING, MAX_BODY_BYTES, readQuestion } from "@/lib/ask/guard";
 
 const SITE = ["https://www.burnsdylan.com"];
 
@@ -103,5 +103,18 @@ describe("readQuestion", () => {
   });
   it("accepts a well-formed question", async () => {
     expect(await readQuestion(post(JSON.stringify({ question: "what is keel" })))).toEqual({ ok: true, question: "what is keel" });
+  });
+});
+
+describe("createDailyCeiling", () => {
+  it("defaults to 500 calls per UTC day", () => {
+    expect(DAILY_CALL_CEILING).toBe(500);
+  });
+  it("allows max calls per UTC day, then refuses until the next UTC day", () => {
+    let t = Date.UTC(2026, 10, 17, 23, 59, 0);
+    const take = createDailyCeiling(2, () => t);
+    expect([take(), take(), take()]).toEqual([true, true, false]);
+    t = Date.UTC(2026, 10, 18, 0, 0, 1);
+    expect([take(), take(), take()]).toEqual([true, true, false]);
   });
 });

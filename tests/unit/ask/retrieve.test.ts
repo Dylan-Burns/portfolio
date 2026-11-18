@@ -93,3 +93,15 @@ describe("retrieve", () => {
     expect(got.slice(ABOUT.length).some((id) => id.startsWith("profile/principles/"))).toBe(true);
   });
 });
+
+describe("Task 11 fix round 1: stack questions across projects", () => {
+  it("a languages/stack question with no project named brings the project cards", () => {
+    const hits = retrieve("what languages does dylan code in", corpus, []).hits;
+    const cards = hits.filter((h) => h.chunk.section === "card");
+    expect(cards.length).toBeGreaterThanOrEqual(6);
+    expect(new Set(cards.map((h) => h.chunk.project)).size).toBe(cards.length);
+  });
+  it("a named project keeps its own scope", () => {
+    expect(retrieve("what stack does keel use", corpus, ["keel"]).hits.every((h) => h.chunk.project === "keel")).toBe(true);
+  });
+});
