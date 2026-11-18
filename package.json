@@ -10,9 +10,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "eval:ask": "tsx scripts/eval-ask.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.106",
     "ai": "^7.0.176",
     "clsx": "^2.1.1",
     "motion": "^12.38.0",
@@ -31,6 +33,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^4.1.6"
   }

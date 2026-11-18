@@ -7,7 +7,7 @@
 import { site } from "@/content/site";
 import { createLimiter } from "@/lib/ask/guard";
 import { handleAsk, type HandlerDeps } from "@/lib/ask/handler";
-import { gatewayProvider } from "@/lib/ask/gateway";
+import { selectProvider } from "@/lib/ask/gateway";
 import type { AskReply } from "@/lib/ask/types";
 
 // Bounds the whole function; the provider call has its own 8 s timeout.
@@ -15,8 +15,12 @@ export const maxDuration = 15;
 
 // Per server instance: resets on a cold start. The Vercel Firewall rule and the Gateway budget cap are
 // the real abuse controls; this is a second layer.
+// ANTHROPIC_API_KEY present: the direct Anthropic provider; otherwise AI Gateway.
+const selected = selectProvider();
+
 const deps: HandlerDeps = {
-  provider: gatewayProvider,
+  provider: selected.provider,
+  modelId: selected.modelId,
   limiter: createLimiter(),
   cache: new Map<string, AskReply>(),
   enabled: () => process.env.ASK_ENABLED === "1",

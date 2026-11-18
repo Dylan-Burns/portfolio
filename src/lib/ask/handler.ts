@@ -11,6 +11,8 @@ export type HandlerDeps = {
   cache: Map<string, AskReply>;
   enabled: () => boolean;
   siteUrl: string;
+  /** The model the provider uses; part of the answer cache key. */
+  modelId?: string;
 };
 
 const HEADERS = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
@@ -56,7 +58,7 @@ export async function handleAsk(req: Request, deps: HandlerDeps): Promise<Respon
         return provider.generate(input);
       },
     };
-    const reply = await answerQuestion(read.question, { provider: lazy, cache: deps.cache, enabled: deps.enabled() });
+    const reply = await answerQuestion(read.question, { provider: lazy, cache: deps.cache, enabled: deps.enabled(), modelId: deps.modelId });
     return json(reply);
   } catch {
     return json(BUSY);

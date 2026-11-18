@@ -245,3 +245,26 @@ describe("validateAnswer", () => {
     });
   });
 });
+
+describe("Task 11: false rejections seen with the live model", () => {
+  it("accepts a number word joined to a hyphenated compound in both answer and text", () => {
+    const t = "tracks the level with a 1.14 million-barrel mean error.";
+    expect(check("It has a 1.14 million-barrel mean error.", t)).toEqual(OK);
+  });
+  it("still rejects twenty when the text only says twenty-five", () => {
+    expect(check("There are twenty signals.", "Twenty-five signals are published.")).toEqual(bad("number"));
+  });
+  it("matches inflections whose stems differ only by a final e or a doubled consonant", () => {
+    expect(check("The people he admires went deep.", "The people I admired most went deep.")).toEqual(OK);
+    expect(check("It plots the savings on a map.", "The savings are plotted on a map.")).toEqual(OK);
+  });
+  it("allows '=' only inside a span copied verbatim from the cited text", () => {
+    expect(check("It solves a linear system (Ax = b) for the fractions.", "It solves a linear system (Ax = b) for the fractions.")).toEqual(OK);
+    expect(check("Sessions are SameSite=Strict.", "HttpOnly, SameSite=Strict sessions.")).toEqual(OK);
+    expect(check("It solves x = y for the fractions.", "It solves a linear system (Ax = b) for the fractions.")).toEqual(bad("markup"));
+    expect(check("Sessions are SameSite=Lax.", "HttpOnly, SameSite=Strict sessions.")).toEqual(bad("markup"));
+  });
+  it("rejects passage IDs in the answer", () => {
+    expect(check("It is in keel/outcomes/1.", "It is in outcome 1 of keel.")).toEqual(bad("markup"));
+  });
+});

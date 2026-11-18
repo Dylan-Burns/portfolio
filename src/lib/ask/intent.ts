@@ -69,6 +69,11 @@ const INJECTION: RegExp[] = [
   /\b(respond|reply|speak|talk)\b.*\b(only|all caps|uppercase|lowercase)\b|\ball caps\b/,
   ...ANSWER_SHAPING,
   ...OWN_OUTPUT,
+  // The reply's language or persona ("all of it in french", "talk like a pirate"). Answers are English only.
+  /\b(in|into) (french|spanish|german|italian|portuguese|dutch|russian|chinese|mandarin|cantonese|japanese|korean|arabic|hindi|hebrew|turkish|polish|swedish|greek|latin|pig latin|klingon|elvish|morse|emojis?|leetspeak|binary|base64|hex)\b/,
+  /\b(talk|speak|sound|write|answer|reply|respond)(s|ing)? like (a|an)\b/,
+  // The assistant's own context: passage IDs, what it can see.
+  /\b(passage|chunk) ids?\b|\b(you|u) can see\b/,
 ];
 
 /** Imperative requests for something other than a portfolio question. */

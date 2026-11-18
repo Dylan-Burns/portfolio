@@ -13,6 +13,8 @@ export type AskDeps = {
   corpus?: Corpus;
   cache?: Map<string, AskReply>;
   enabled?: boolean;
+  /** The active model, part of the cache key. Defaults to the gateway model ID. */
+  modelId?: string;
 };
 
 const CACHE_MAX = 500;
@@ -67,7 +69,7 @@ async function run(raw: unknown, deps: AskDeps): Promise<AskReply> {
 
   const corpus = deps.corpus ?? buildCorpus();
   if (!inScope(clean.q, intent.projects, corpus)) return reply("refuse", REPLIES.notFound);
-  const key = `${clean.q.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()}|${corpus.hash}|${PROMPT_VERSION}|${MODEL_ID}`;
+  const key = `${clean.q.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()}|${corpus.hash}|${PROMPT_VERSION}|${deps.modelId ?? MODEL_ID}`;
   const cached = deps.cache?.get(key);
   if (cached) return copyOf(cached);
 

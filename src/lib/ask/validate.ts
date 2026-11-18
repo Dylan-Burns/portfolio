@@ -68,22 +68,35 @@ const LINK: RegExp[] = [
   /[\[(]\s*(?:dot|at)\s*[\])]/i,
 ];
 
-const MARKUP: RegExp[] = [/<\/?[a-z][^>]*>/i, /<[^<>\n]{1,40}>/, /!?\[[^\]]*\]\([^)]*\)/, /`/];
+// Tags, links, backticks, and passage IDs ("keel/outcomes/1": the model's own context, never prose).
+const MARKUP: RegExp[] = [/<\/?[a-z][^>]*>/i, /<[^<>\n]{1,40}>/, /!?\[[^\]]*\]\([^)]*\)/, /`/, /\b[a-z]+\/[a-z]+\/\d+\b/i];
+
+/**
+ * "=" is not an allowed character, except inside a span copied verbatim from the cited text
+ * ("(Ax = b)", "SameSite=Strict"). Such spans are blanked before the character check.
+ */
+function withoutCopiedEquals(answer: string, source: string): string {
+  return answer.replace(/\S*\s?=\s?\S*/g, (m) => {
+    const core = m.replace(/^[("'\u201C\u2018]+|[.,;:!?)"'\u201D\u2019]+$/gu, "");
+    return core.includes("=") && source.includes(core) ? m.replace(/=/g, " ") : m;
+  });
+}
 
 // Latin letters (incl. accented), ASCII digits, whitespace and plain punctuation or math symbols.
 // Markup-capable characters (< > ` [ ] { } | \ _ * # = @) are deliberately absent.
 const ALLOWED_CHARS = /^[\p{Script=Latin}0-9\s.,;:!?'"()\-\u2013\u2014/%$&+\u00B7\u201C\u201D\u2018\u2019~\u2265\u00D7]*$/u;
 
 const TENS = "twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety";
+const ONES = "one|two|three|four|five|six|seven|eight|nine";
 const NUMBER_WORD = new RegExp(
-  String.raw`\b(?:(?:${TENS})(?:-(?:one|two|three|four|five|six|seven|eight|nine))?|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|hundreds?|thousands?|millions?|billions?|trillions?|dozens?)\b`,
+  String.raw`\b(?:(?:${TENS})(?:-(?:${ONES}))?|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|hundreds?|thousands?|millions?|billions?|trillions?|dozens?)\b`,
   "gi",
 );
 
 function numberWordsGrounded(answer: string, source: string): boolean {
   const low = source.toLowerCase();
   for (const m of answer.matchAll(NUMBER_WORD)) {
-    if (!new RegExp(String.raw`(?<![\w-])${m[0].toLowerCase()}(?![\w-])`).test(low)) return false;
+    if (!new RegExp(String.raw`(?<!\w)(?<!(?:${TENS})-)${m[0].toLowerCase()}(?!\w)(?!-(?:${ONES})\b)`).test(low)) return false;
   }
   return true;
 }
@@ -112,10 +125,17 @@ const WORD = /[\p{L}][\p{L}\p{N}]*(?:[.'\u2019-][\p{L}\p{N}]+)*/gu;
 function stem(w: string): string {
   const x = w.toLowerCase().replace(/['\u2019]s$/, "");
   if (x.length > 4 && x.endsWith("ies")) return x.slice(0, -3) + "y";
+  let y = x;
   for (const suf of ["ing", "ed", "es", "ly", "s"]) {
-    if (x.length - suf.length >= 3 && x.endsWith(suf)) return x.slice(0, -suf.length);
+    if (x.length - suf.length >= 3 && x.endsWith(suf)) {
+      y = x.slice(0, -suf.length);
+      break;
+    }
   }
-  return x;
+  // "plotted"/"plots" -> "plot", "admired"/"admires"/"admire" -> "admir".
+  if (y.length > 4 && /([b-df-hj-np-tv-z])\1$/.test(y)) y = y.slice(0, -1);
+  if (y.length > 4 && y.endsWith("e")) y = y.slice(0, -1);
+  return y;
 }
 
 function parts(w: string): string[] {
@@ -224,8 +244,9 @@ function vocabulary(): Set<string> {
  * Grounding rule for words. Capitalized mid-sentence words must be in the cited text. A capitalized
  * sentence-initial word must be in the cited text, the corpus vocabulary or the starter list. Any
  * other word of four or more letters must be in the cited text, the corpus vocabulary or the starters.
+ * Returns the first word that breaks the rule (the live eval reports it), or undefined.
  */
-function namesGrounded(answer: string, source: string): boolean {
+export function ungroundedWord(answer: string, source: string): string | undefined {
   const cited = new Set<string>();
   for (const m of source.matchAll(WORD)) addWord(cited, m[0]);
   const vocab = vocabulary();
@@ -236,12 +257,17 @@ function namesGrounded(answer: string, source: string): boolean {
     if (ALWAYS_OK_NAMES.has(lower.replace(/['\u2019]s$/, ""))) continue;
     const initial = isSentenceInitial(answer, m.index);
     if (/^\p{Lu}/u.test(w)) {
-      if (initial ? !known(w) : !inSet(cited, w)) return false;
+      if (initial ? !known(w) : !inSet(cited, w)) return w;
       continue;
     }
-    if (parts(w).some((p) => p.length >= 4 && !known(p))) return false;
+    const bad = parts(w).find((p) => p.length >= 4 && !known(p));
+    if (bad !== undefined) return bad;
   }
-  return true;
+  return undefined;
+}
+
+function namesGrounded(answer: string, source: string): boolean {
+  return ungroundedWord(answer, source) === undefined;
 }
 
 export function validateAnswer(a: ModelAnswer, supplied: Chunk[]): ValidationResult {
@@ -257,7 +283,7 @@ export function validateAnswer(a: ModelAnswer, supplied: Chunk[]): ValidationRes
     return { ok: false, reason: "number" };
   }
   if (LINK.some((r) => r.test(answer))) return { ok: false, reason: "link" };
-  if (MARKUP.some((r) => r.test(answer)) || !ALLOWED_CHARS.test(answer)) return { ok: false, reason: "markup" };
+  if (MARKUP.some((r) => r.test(answer)) || !ALLOWED_CHARS.test(withoutCopiedEquals(answer, source))) return { ok: false, reason: "markup" };
   if (answer.length > ANSWER_MAX_CHARS) return { ok: false, reason: "length" };
   if (!namesGrounded(answer, source)) return { ok: false, reason: "name" };
   if (touchesDeflectTopic(answer)) return { ok: false, reason: "deflect_topic" };

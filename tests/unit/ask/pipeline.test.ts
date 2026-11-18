@@ -190,6 +190,16 @@ describe("answerQuestion", () => {
     expect(p.calls).toBe(1);
   });
 
+  it("the cache key includes the active model, so a provider switch is not served stale replies", async () => {
+    const p = mockProvider();
+    const cache = new Map<string, AskReply>();
+    await answerQuestion("what is keel", { provider: p, cache, modelId: "claude-haiku-5-5" });
+    await answerQuestion("what is keel", { provider: p, cache, modelId: "anthropic/claude-haiku-5.5" });
+    expect(p.calls).toBe(2);
+    await answerQuestion("what is keel", { provider: p, cache, modelId: "claude-haiku-5-5" });
+    expect(p.calls).toBe(2);
+  });
+
   it("returns the exact string the validator saw", async () => {
     const p = mockProvider(({ chunks }) => ({ answerable: true, answer: "Keel is a project.\u202E\u200B\uFF21", citations: [chunks[0].id] }));
     const { r } = await run("what is keel", p);
