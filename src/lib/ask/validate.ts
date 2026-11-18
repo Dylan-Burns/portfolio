@@ -164,66 +164,76 @@ function inSet(set: Set<string>, w: string): boolean {
   return forms(w).some((f) => set.has(f));
 }
 
-const STARTERS = new Set(
+export const STARTERS = new Set(
   (
     "The It This That These Those He His Dylan A An In On At For With From To By And But Or So When While After " +
-    "Before Each Every Both All Its They Their There Yes No Not One Two Three Four Five Six Seven Eight Nine Ten"
+    "Before Each Every Both Either Neither All Its They Their There Yes No Not One Two Three Four Five Six Seven Eight Nine Ten"
   )
     .toLowerCase()
     .split(" "),
 );
 
 // Very common English function and general words, so ordinary connective prose passes the grounding rule.
-// No proper nouns, places, companies or personal names belong here.
+// Same admission rule as allow-words.ts (Task 11 fix round 3): nothing that can assert a fact or status by
+// itself, and no time claims, quality or popularity comparisons, availability, money, employment, education,
+// places, greetings or filler. Those moved to COMMON_NOT_GROUNDING below.
 export const COMMON_WORDS = [
-  "about", "above", "across", "actually", "added", "adding", "adopted", "after", "again", "against", "aimed",
-  "allow", "allows", "almost", "also", "although", "always", "among", "another", "answer", "answers",
-  "anyone", "anything", "applies", "approach", "around", "aside", "asked", "asks", "aspect", "available",
-  "based", "basic", "basically", "because", "become", "been", "before", "behind", "being", "belongs",
-  "below", "benefit", "best", "better", "between", "beyond", "blend", "both", "bring", "brings", "broad",
-  "builds", "built", "called", "calls", "came", "cannot", "care", "carries", "case", "cases", "centered",
-  "certain", "change", "changes", "check", "checks", "choose", "chose", "claims", "clean", "clear",
-  "clearly", "closely", "come", "comes", "common", "compared", "comparison", "complete", "concept",
-  "consider", "contains", "context", "could", "cover", "covers", "created", "creates", "current", "deal",
-  "default", "define", "delivers", "depends", "describes", "design", "designed", "details", "different",
-  "direct", "directly", "does", "doing", "done", "down", "during", "each", "early", "easily", "effect",
-  "efficient", "either", "else", "emphasis", "enough", "ensure", "ensures", "entire", "equal", "especially",
-  "essentially", "even", "ever", "every", "everything", "evidence", "exactly", "example", "except", "exist",
-  "exists", "explains", "extra", "fact", "fairly", "features", "find", "finds", "first", "following", "form",
-  "found", "from", "fully", "further", "general", "generally", "gets", "given", "gives", "giving", "goal",
-  "goals", "goes", "going", "good", "great", "group", "handle", "handled", "handles", "happens", "have",
-  "having", "heavily", "help", "helped", "helping", "helps", "here", "higher", "himself", "hold", "holds",
-  "however", "idea", "ideas", "important", "improve", "include", "includes", "including", "individual",
-  "information", "inside", "instead", "intended", "interest", "interests", "interface", "into", "involved",
-  "involves", "itself", "just", "keep", "keeping", "keeps", "kind", "know", "known", "label", "large",
-  "later", "lead", "leading", "learn", "learned", "learning", "least", "leave", "less", "lets", "letting",
-  "level", "like", "likely", "limited", "lines", "list", "little", "long", "look", "looks", "made", "main",
-  "major", "make", "makes", "making", "manage", "manner", "many", "matter", "maybe", "mean", "means",
-  "method", "methods", "might", "mixed", "model", "models", "more", "most", "mostly", "much", "multiple",
-  "must", "name", "natural", "naturally", "near", "nearly", "need", "needs", "never", "newer", "next",
-  "none", "normal", "noted", "nothing", "number", "numbers", "offer", "offers", "often", "older", "once",
-  "ones", "only", "onto", "open", "order", "original", "other", "others", "otherwise", "outside", "over",
-  "overall", "owner", "paired", "part", "particular", "parts", "pattern", "people", "percent", "period",
-  "place", "plain", "plus", "point", "popular", "position", "possible", "practical", "prefer", "present",
-  "previous", "primarily", "principle", "principles", "prior", "probably", "process", "produce", "product",
-  "products", "project", "projects", "provide", "provides", "providing", "purpose", "quickly", "range",
-  "ranges", "rate", "rather", "real", "realistic", "really", "reason", "recent", "refers", "reflects",
-  "regular", "related", "relevant", "relies", "rely", "remains", "report", "require", "requires", "respect",
-  "responsible", "result", "results", "return", "returns", "right", "role", "roles", "rule", "rules", "runs",
-  "safe", "said", "same", "says", "second", "section", "seems", "seen", "select", "sense", "separate",
-  "serves", "service", "sets", "setting", "setup", "several", "share", "shared", "shows", "similar",
-  "simple", "simply", "since", "single", "size", "small", "solid", "solution", "solve", "some", "something",
-  "sometimes", "sort", "source", "sources", "specific", "split", "stage", "stand", "standard", "start",
-  "started", "state", "states", "step", "steps", "still", "stored", "strong", "structure", "style", "such",
-  "summary", "support", "supports", "sure", "system", "systems", "takes", "target", "tasks", "team", "teams",
-  "tell", "term", "terms", "test", "tests", "text", "than", "that", "their", "them", "then", "there",
-  "these", "they", "thing", "things", "think", "this", "those", "though", "three", "through", "thus", "time",
-  "times", "today", "together", "took", "tool", "tools", "topic", "total", "toward", "track", "true", "turn",
-  "turns", "type", "types", "under", "understand", "understanding", "unique", "unlike", "until", "upon",
-  "used", "useful", "uses", "using", "usually", "value", "various", "version", "very", "view", "want",
-  "wants", "ways", "week", "well", "were", "what", "when", "where", "whether", "which", "while", "whole",
-  "whose", "wide", "widely", "will", "with", "within", "without", "words", "work", "worked", "working",
-  "works", "world", "would", "write", "wrote", "year", "years", "your", "yours",
+  "about", "above", "across", "added", "adding", "after", "again", "against", "aimed", "allow", "allows",
+  "almost", "also", "although", "always", "among", "another", "answer", "answers", "anyone", "anything",
+  "applies", "approach", "around", "aside", "asked", "asks", "aspect", "based", "basic", "because", "become",
+  "been", "before", "behind", "being", "belongs", "below", "between", "beyond", "blend", "both", "bring",
+  "brings", "broad", "builds", "built", "called", "calls", "came", "cannot", "care", "carries", "case",
+  "cases", "centered", "certain", "change", "changes", "check", "checks", "choose", "chose", "claims", "clean",
+  "clear", "clearly", "closely", "come", "comes", "common", "compared", "comparison", "concept", "consider",
+  "contains", "context", "could", "cover", "covers", "created", "creates", "default", "define", "delivers",
+  "depends", "describes", "design", "designed", "details", "different", "direct", "directly", "does", "doing",
+  "done", "down", "during", "each", "easily", "effect", "either", "else", "emphasis", "enough", "ensure",
+  "ensures", "entire", "equal", "especially", "essentially", "even", "ever", "every", "everything", "evidence",
+  "exactly", "example", "except", "exist", "exists", "explains", "extra", "fact", "fairly", "features", "find",
+  "finds", "first", "following", "form", "found", "from", "fully", "further", "general", "generally", "gets",
+  "given", "gives", "giving", "goal", "goals", "goes", "going", "group", "handle", "handled", "handles",
+  "happens", "have", "having", "help", "helped", "helping", "helps", "here", "himself", "hold", "holds",
+  "however", "idea", "ideas", "improve", "include", "includes", "including", "individual", "information",
+  "inside", "instead", "intended", "interest", "interests", "interface", "into", "involved", "involves",
+  "itself", "just", "keep", "keeping", "keeps", "kind", "know", "label", "large", "least", "leave", "less",
+  "lets", "letting", "level", "like", "likely", "limited", "lines", "list", "little", "long", "look", "looks",
+  "made", "main", "make", "makes", "making", "manage", "manner", "many", "matter", "mean", "means", "method",
+  "methods", "might", "mixed", "model", "models", "more", "most", "mostly", "much", "multiple", "must", "name",
+  "natural", "naturally", "near", "nearly", "need", "needs", "never", "next", "none", "normal", "noted",
+  "nothing", "number", "numbers", "often", "once", "ones", "only", "onto", "order", "original", "other",
+  "others", "otherwise", "outside", "over", "overall", "paired", "part", "particular", "parts", "pattern",
+  "people", "percent", "place", "plain", "plus", "point", "possible", "practical", "prefer", "present",
+  "primarily", "principle", "principles", "process", "produce", "product", "products", "project", "projects",
+  "provide", "provides", "providing", "purpose", "quickly", "range", "ranges", "rather", "real", "realistic",
+  "reason", "refers", "reflects", "regular", "related", "relevant", "relies", "rely", "remains", "report",
+  "require", "requires", "respect", "result", "results", "return", "returns", "right", "rule", "rules", "runs",
+  "said", "same", "says", "second", "section", "seems", "seen", "select", "sense", "separate", "serves",
+  "service", "sets", "setting", "setup", "several", "share", "shared", "shows", "similar", "simple", "simply",
+  "single", "size", "small", "solution", "solve", "some", "something", "sometimes", "sort", "source",
+  "sources", "specific", "split", "stage", "stand", "standard", "start", "started", "step", "steps", "still",
+  "stored", "structure", "style", "such", "summary", "support", "supports", "system", "systems", "takes",
+  "target", "tasks", "team", "teams", "tell", "term", "terms", "test", "tests", "text", "than", "that",
+  "their", "them", "then", "there", "these", "they", "thing", "things", "think", "this", "those", "though",
+  "three", "through", "thus", "time", "times", "together", "took", "tool", "tools", "topic", "total", "toward",
+  "track", "true", "turn", "turns", "type", "types", "under", "understand", "understanding", "unlike", "until",
+  "upon", "used", "useful", "uses", "using", "usually", "value", "various", "version", "very", "view", "want",
+  "wants", "ways", "well", "were", "what", "when", "where", "whether", "which", "while", "whole", "whose",
+  "wide", "will", "with", "within", "without", "words", "work", "works", "would", "write", "wrote", "your",
+  "yours",
+];
+
+/**
+ * Common words taken out of COMMON_WORDS in fix round 3 because they can assert a fact or status by themselves
+ * ("best", "year", "available", "worked", "learned", ...). They no longer ground an answer; the scope gate
+ * still treats them as ordinary English (scope.ts), so which questions reach retrieval is unchanged.
+ */
+export const COMMON_NOT_GROUNDING = [
+  "actually", "adopted", "available", "basically", "benefit", "best", "better", "complete", "current", "deal",
+  "early", "efficient", "good", "great", "heavily", "higher", "important", "known", "later", "lead", "leading",
+  "learn", "learned", "learning", "major", "maybe", "newer", "offer", "offers", "older", "open", "owner",
+  "period", "popular", "position", "previous", "prior", "probably", "rate", "really", "recent", "responsible",
+  "role", "roles", "safe", "since", "solid", "state", "states", "strong", "sure", "today", "unique", "week",
+  "widely", "worked", "working", "world", "year", "years",
 ];
 
 function isSentenceInitial(text: string, index: number): boolean {

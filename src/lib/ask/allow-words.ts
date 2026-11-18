@@ -41,7 +41,7 @@ const SOFTWARE_AND_EXPLANATION = `
   devices display displayed document documented documents download downloads edit editor element enable
   enabled endpoint endpoints engine enter entry error errors event events example execute export feature
   features field fields file files filter filters flow format formats framework frameworks frontend function
-  functions generate generated generic handle handled handler handles implement implementation implemented
+  functions generate generated generic give gives given handle handled handler handles implement implementation implemented
   index indexed indicate indicates input inputs install installed instance integration interface item items
   key keys language languages layer layers layout library limit limits link list load loaded local
   logic logs lookup manual mention mentioned mentions method methods mobile mode modes module modules network

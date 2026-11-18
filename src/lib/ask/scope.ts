@@ -1,7 +1,7 @@
 import { ALIAS_VOCABULARY, baseForms } from "./aliases";
 import { PERSON_BEHIND, tokenize } from "./text";
 import type { Corpus } from "./types";
-import { COMMON_WORDS } from "./validate";
+import { COMMON_NOT_GROUNDING, COMMON_WORDS } from "./validate";
 
 /**
  * Words that say what kind of answer is wanted, not what it is about, plus contraction fragments
@@ -20,7 +20,7 @@ const FILLER =
   "people friend buddy man quick quickly rundown overview brief short honestly honest really actually basically " +
   "kinda sorta gonna wanna gotta gimme impressive interesting curious wondering wonder best favorite favourite " +
   "behind here there anyway also just like know want wanted would could should maybe bit lot lots different jump";
-const COMMON = new Set(tokenize(`${COMMON_WORDS.join(" ")} ${FILLER}`));
+const COMMON = new Set(tokenize(`${COMMON_WORDS.join(" ")} ${COMMON_NOT_GROUNDING.join(" ")} ${FILLER}`));
 
 /** Mentions of the owner or the portfolio itself. */
 const ANCHORS = new Set(

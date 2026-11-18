@@ -3,7 +3,7 @@ import { buildCorpus } from "@/lib/ask/corpus";
 import { touchesDeflectTopic } from "@/lib/ask/intent";
 import type { Chunk, ModelAnswer } from "@/lib/ask/types";
 import { ALLOW_WORDS } from "@/lib/ask/allow-words";
-import { ANSWER_MAX_CHARS, validateAnswer } from "@/lib/ask/validate";
+import { ANSWER_MAX_CHARS, COMMON_WORDS, STARTERS, validateAnswer } from "@/lib/ask/validate";
 import { STILL_PASS } from "./validate-fixtures";
 
 const chunk = (id: string, text: string): Chunk => ({ id, project: "keel", section: "outcomes", file: "keeldd.com", text });
@@ -337,20 +337,24 @@ describe("Task 11 fix round 2: the allow-list", () => {
 
   // Every word the re-review named, by category. None may be on the allow-list.
   const EXCLUDED: Record<string, string> = {
-    places: "berlin china york wales chile panama city town coast home location located country london paris texas",
+    places: "berlin china york wales chile panama city town coast home location located country london paris texas state states world",
     companies: "oracle apple cisco dell adobe meta google microsoft amazon startup company office",
     family: "mother father daughter sons sister brother partner wedding marriage child baby married wife husband family",
-    education: "student studied campus professor teacher tuition scholarship alumni bachelor masters school university college degree",
-    employment: "career interview remote employer employment hire hired salary job jobs availability",
-    moneyAndStatus: "paid payment rate investors funding raised money award prize approved certified licensed clients customers competitors leading best popular market",
-    time: "year month recently launched since",
+    education: "student studied campus professor teacher tuition scholarship alumni bachelor masters school university college degree learn learned learning major",
+    employment: "career interview remote employer employment hire hired salary job jobs availability available open worked working role roles position responsible owner lead",
+    moneyAndStatus: "paid payment rate investors funding raised money award prize approved certified licensed clients customers competitors leading best popular market better great good strong solid unique important efficient higher widely heavily safe complete known adopted benefit deal offer offers",
+    time: "year years month week today recent recently launched since older newer early later period current previous prior",
     offensive: "stupid dumb hate drunk casino gambling naked sexual fetish escorts marijuana weed suicide terrorist bomb weapons kill murder abortion",
-    filler: "hello thanks sorry okay please lol",
+    filler: "hello thanks sorry okay please lol maybe probably really actually basically sure",
   };
-  it.each(Object.entries(EXCLUDED))("the allow-list has no %s words", (_cat, words) => {
-    const allow = new Set(ALLOW_WORDS);
-    expect(words.split(" ").filter((w) => allow.has(w))).toEqual([]);
-  });
+  // Fix round 3: one admission rule for every list that grounds a word without the cited text.
+  const LISTS: Record<string, Set<string>> = { ALLOW_WORDS: new Set(ALLOW_WORDS), COMMON_WORDS: new Set(COMMON_WORDS), STARTERS };
+  it.each(Object.keys(LISTS).flatMap((list) => Object.entries(EXCLUDED).map(([cat, words]) => [list, cat, words] as const)))(
+    "%s has no %s words",
+    (list, _cat, words) => {
+      expect(words.split(" ").filter((w) => LISTS[list].has(w))).toEqual([]);
+    },
+  );
 
   it("is a short, hand-reviewed list", () => {
     expect(ALLOW_WORDS.length).toBeLessThanOrEqual(400);
@@ -358,6 +362,7 @@ describe("Task 11 fix round 2: the allow-list", () => {
 
   it("a capitalized sentence-initial word is never satisfied by the allow-list or the corpus vocabulary", () => {
     expect(check("Database access is fast.", "It is fast.")).toEqual(bad("name"));
+    expect(check("Neither is fast.", "It is fast.")).toEqual(OK);
     expect(check("It is fast. Database access helps.", "It is fast.")).toEqual(bad("name"));
     expect(check("The database is fast.", "It is fast.")).toEqual(OK);
   });
