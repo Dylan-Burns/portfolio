@@ -20,7 +20,12 @@ model call, validated citations, refusals that cost nothing, and a golden set th
   retrieval, the validator and the choice of fallback are pure functions of the question and the corpus.
   The wording of a model answer is not deterministic; a repeated question gets the same reply only from
   a per-instance cache that is lost on a cold start (see Determinism).
-- Out-of-scope and deflected questions are handled by code with **zero** model calls.
+- Out-of-scope and deflected questions are handled by code with **zero** model calls, **for the phrasings
+  the rules recognise**. This is measured, not proven for every phrasing: every non-answer golden entry makes
+  zero calls; of the final review's 139 fresh personal phrasings (employers, location, availability, pay,
+  education, family, age, contact) 138 make zero calls (56 before the final fix wave); of its 86 directive and
+  injection probes 74 do (34 before). A phrasing the rules miss reaches the model, and the validator is then
+  the only control (see Security, worst case).
 - Injection, abuse and runaway cost are contained by design, not by trusting the model.
 - A graded question set measures accuracy and safety, and the pipeline is tuned against it
   before launch. The results are written down.
@@ -115,6 +120,12 @@ The owner handed over the how; B is the builder's call, with C as the measured f
   compact source. Each chunk has a stable ID (`keel/outcomes/2`), its project or `profile`,
   its section, and the terminal file it belongs to (`keeldd.com`).
 - **Excluded:** image alt text and captions, `TODO(owner)` comments, and code comments.
+- **Home-page projects without a case study.** The home page lists ten projects; `projects.ts` has nine case
+  studies. The tenth (Super Mario Bros, `supermariobros.jar`) is added from its home-page entry only, through
+  `EXTRA_PROJECTS` in `src/lib/ask/corpus.ts` (a `projects.ts` entry would create a `/work/mario` page with no
+  images). Its chunks have no slug, so no source links to a case study. One overview chunk
+  (`profile/projects/1`) states the count and the names, generated from both lists, so "how many projects"
+  has a cited answer that always matches the home page.
 - The index is built by a pure function at module load. No build step, no stored artifact.
   A `corpusHash` is derived from the chunk text.
 
@@ -133,24 +144,53 @@ The owner handed over the how; B is the builder's call, with C as the measured f
    - `refuse`: injection-shaped input, requests for anything other than a question about the
      portfolio, empty after sanitizing.
    - `answer`: everything else goes to retrieval.
+   Directives that ride on a question (a forced "yes or no", "confirm", "roast", "fyi ...", "describe X as a
+   bad app") are refused after the person topics are checked, so a personal premise still deflects.
+3b. **Person gate (code, no model).** A question that mentions Dylan (pronoun, name, or "the author/owner")
+   and names no project is answered only if it has an intro shape ("who is he", "tell me about him", "what
+   does he do", "what is he like", "his background") or contains a word of the about or principles text, a
+   stack entry, or a portfolio-wide topic ("projects", "built", "stack", "his work"). Otherwise it is a
+   question about the person that the portfolio does not cover, and it is **deflected** with zero calls
+   ("is he in austin", "is dylan at google", "who employs him"). Then the vocabulary scope gate runs.
 4. **Retrieve.** BM25 over chunks with a boost on project cards and names; if project names
    were detected, restrict to them; take the top 8 with a per-project quota so one project
    cannot crowd out a comparison. If the best score is under a floor, **refuse with no model
-   call**.
+   call**. The floor does **not** filter questions about the person: when a question mentions him and no
+   project, retrieval adds the token "dylan", which every about and principles chunk is indexed under, so such
+   a question always clears the floor ("is he in austin" scored like "who is dylan"). The person gate (3b) is
+   what stops those; the floor only stops questions whose words reach no chunk at all.
 5. **Assemble.** Selected chunks with their IDs, under a fixed token budget (about 1,500).
 6. **Generate (the only model call).** No sampling control (the current Claude models reject
    `temperature`; see Determinism), thinking off, a hard output cap, and a structured
    output schema: `{ answerable: boolean, answer: string, citations: string[] }` where
    `citations` may only contain the IDs that were supplied. The system prompt is fixed.
    Retrieved text and the visitor's question are passed as delimited data, never as instructions.
-7. **Validate (deterministic).** The answer is shown only if all of these hold:
-   - `answerable` is true and at least one citation is present, all from the supplied set.
-   - Every number, percentage and dollar figure in the answer appears in a cited chunk.
-   - No URLs, email addresses, markup or code in the answer text.
-   - It is under the length cap and does not touch a deflect topic.
-   On any failure the reply falls back to an **extractive answer** (the top chunk of a project the
-   question names, quoted verbatim with its source) or, when no project is named, the not-found
-   refusal. A failed validation never retries the model.
+7. **Validate (deterministic).** The answer is shown only if all of these hold (`src/lib/ask/validate.ts`):
+   - **Citations:** `answerable` is true and at least one citation is present, all from the supplied set.
+   - **Numbers:** every digit run, range, number word (one to ten included, "five" grounded by "five-step")
+     and relative quantity ("half", "twice", "most") appears in a cited chunk; non-ASCII digits are rejected.
+   - **Links and markup:** no URL, domain, email (also spelled out: "at", "dot", "[at]"), tag, markdown link,
+     backtick, passage ID or markup-capable character; only Latin letters and plain punctuation.
+   - **Length:** at most 600 characters.
+   - **Vocabulary and names:** every capitalized word is in the cited text (or the cited passages' project
+     names), except fixed sentence starters; every other word of four or more letters is in the cited text,
+     the corpus vocabulary, or two reviewed lists of common and generic words.
+   - **Personal topics:** no employer, location, availability, pay, age or education statement, and no
+     family, home or education statement about him unless the profile says it in the first person.
+   - **Grounding overlap (final fix wave):** at least 3 distinct content words of the answer (four or more
+     letters, not function words, not Dylan/Burns; cited figures and short cited names count) are in the cited
+     text, and at least 2 in its first sentence; every word of three letters or fewer is a closed-class function
+     word (or one of seven generic software words) or is in the cited text; every evaluative or negative word
+     ("bad", "broken", "leaks", "fails", ...) is in the cited text, and a negated word ("does not work") is in
+     a cited sentence that is itself negative; a sentence that opens with "Yes", "No", "Correct" and the like
+     must itself have 3 grounded content words and be followed by a grounded sentence.
+   **What it cannot check is truth.** It checks that an answer is made of the cited passages' words, figures
+   and names and avoids the deflected topics; a sentence assembled from cited words can still say something
+   the passages do not ("Keel answers questions about Claruss filings").
+   On a failure the reply falls back to an **extractive answer** (the top chunk of a project the question
+   names, quoted verbatim with its source) or, when no project is named, the not-found refusal. If the
+   validator cannot read the model's output at all (it throws), the reply is not found, never a quoted
+   passage. A failed validation never retries the model.
 8. **Respond.** `{ kind: "answer" | "deflect" | "refuse" | "meta" | "busy", text, sources }`.
    `sources` are terminal file labels and section names derived from the citations by code.
 
@@ -164,7 +204,9 @@ The owner handed over the how; B is the builder's call, with C as the measured f
   21 of 66 answerable golden questions gave identical text in three runs.
 - Repeats: an answer cache keyed by `(normalized question, corpusHash, promptVersion, model)` returns
   the identical reply for a repeated question, but only on the same server instance and only until a
-  cold start. It is not a guarantee across instances or over time.
+  cold start. It is not a guarantee across instances or over time. The flip side: an answer that passes
+  the validator and is wrong is served to every visitor who asks the same question on that instance, until
+  it is evicted (500 entries, oldest first) or the instance restarts.
 
 ### Security
 
@@ -174,13 +216,13 @@ public text, and its output is discarded unless the validator passes it.
 | Threat | Control |
 |---|---|
 | Prompt injection in the question | Rule-based refusal of injection-shaped input; question passed as data; structured output; validator; no tools to hijack |
-| Extracting the system prompt | Nothing secret is in it; validator rejects answers that are not grounded in cited chunks |
-| Fabricated or off-scope claims | Score floor, `answerable` flag, citation and number validation, deflect list |
+| Extracting the system prompt | Nothing secret is in it; extraction-shaped questions are refused; an answer quoting the prompt fails the vocabulary and grounding-overlap checks (the prompt's words are not in the cited passages), which is a property of this prompt, not a guarantee |
+| Fabricated or off-scope claims | Person gate and deflect rules (zero calls for the measured phrasings), `answerable` flag, citation, number, name and personal-topic checks, and the grounding-overlap rule (enough of the answer's content words must be in the cited text). These bound **which words** an answer may use; none checks that the claim is true |
 | Content injected into the page (XSS) | Server returns plain text; the terminal renders it as text nodes, never as HTML; source links are built by code from an allowlist |
 | Link or contact injection | Validator rejects any URL or email in the answer |
 | Cost and abuse | Firewall rate-limit rule (primary); a provider-side spend limit: the monthly AI Gateway budget on the gateway path, or the monthly spend limit of the Anthropic workspace that owns the key on the direct path (the gateway budget does not apply there); per-instance in code only: the per-IP limiter and a daily model-call ceiling; input and output size caps; zero-call refusals |
 | Cross-site use of the endpoint | The `Origin` check, POST and JSON only. This stops only browser-driven cross-site use; any script can forge the header, so the Firewall rule and the provider-side spend limit are the controls against scripted abuse |
-| Secrets exposure | Credentials are server-only; nothing sensitive is sent to the client or logged |
+| Secrets exposure | Credentials are server-only; nothing sensitive is sent to the client or logged by this site |
 | Denial of service by slow requests | The provider call has an 8 s timeout, after which the reply is the fixed "try again" message. The route's `maxDuration = 15` s bounds the whole function. Request bodies are capped at 1 KB while being read. Nothing else is timed out in code; connection-level slowness is the platform's to handle |
 
 Rate limiting decision (no shared store). Abuse control has four layers, and the first two are
@@ -205,11 +247,21 @@ other shared store is used, so there is no global cap in code; the provider-side
 and the route's reply when the provider refuses or fails is the fixed "resting" message.
 
 Route behaviour that is not a limit: the endpoint is off unless `ASK_ENABLED=1` (otherwise it replies
-that ask is not switched on, with no provider constructed and no model call). Nothing is logged:
-no question, no answer and no counts.
+that ask is not switched on, with no provider constructed and no model call).
 
-Honest limit: no design makes injection impossible. This one bounds the worst case to "the
-visitor sees a refusal or a quoted passage from the public site".
+Storage, precisely: **this site logs and persists nothing** about a question (no question, no answer, no
+counts; no database, file or log line). But a question that reaches the model is **sent to the model
+provider** (Anthropic directly, or through AI Gateway), which handles it under its own retention policy. And
+while an instance runs, the normalized question text is held **in memory as part of the answer-cache key**
+(up to 500 entries per instance, lost on a cold start). Questions stopped by the rules are never sent or
+cached.
+
+Honest limit: no design makes injection impossible. The worst case is **any sentence that passes the
+validator**: up to 600 characters whose figures, names, short words and evaluative words all come from the
+cited passages, with enough of its content words in them, and no link, markup or deflected topic. Such a
+sentence can still be false or misleading, for example by recombining true phrases ("Keel answers questions
+about Claruss filings"), and it is then cached for that instance (see Determinism). It cannot carry a link, an
+email, a figure, a name or an insult that the cited passages do not contain.
 
 ### Model and provider
 
@@ -295,7 +347,8 @@ eval is a separate script run by hand, because it needs credentials and costs mo
    workspace key with a monthly spend limit** set in the Anthropic console. With the Firewall rule,
    this is the real cost control. **Both this limit and the Firewall rule (item 3) are required before
    `ASK_ENABLED=1`.**
-5. **Question logging.** The code logs nothing at all (no question, no answer, no counts). Keeping question text
+5. **Question logging.** The code logs nothing at all (no question, no answer, no counts); questions that reach
+   the model are still sent to the provider, and held in a per-instance in-memory cache key (see Security). Keeping question text
    (without IP addresses) would make tuning easier after launch, but it is visitors' input,
    so it is the owner's call.
 6. **Confirm client-IP handling.** Check the current Vercel docs that the platform overwrites a
