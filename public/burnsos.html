@@ -548,8 +548,8 @@ const P = [
     links: [["View the source on GitHub", "https://github.com/Dylan-Burns/Super-Mario-Bros"]] },
 ];
 const CYCLE = ["syene", "watchtower", "parahealth", "steamhouse", "outpost", "keel", "remoteretros", "claruss", "cartlords"].map((s) => P.findIndex((p) => p.slug === s));
-const FORM_ORDER = ["capsule", "radar", "board", "stack", "globe", "page", "phone", "bars", "phyllo", "portrait", "compass", "plane", "envelope", "key", "gamepad"];
-const ROT = { globe: 0.5, capsule: 0.5, radar: 0.42, board: 0.26, stack: 0.42, page: 0.28, phone: 0.4, bars: 0.42, phyllo: 0.32, portrait: 0.13, compass: 0.3, plane: 0.42, envelope: 0.3, key: 0.3, gamepad: 0.34 };
+const FORM_ORDER = ["capsule", "radar", "board", "stack", "globe", "page", "phone", "bars", "phyllo", "portrait", "compass", "plane", "envelope", "key", "gamepad", "folder", "house", "arrow"];
+const ROT = { globe: 0.5, capsule: 0.5, radar: 0.42, board: 0.26, stack: 0.42, page: 0.28, phone: 0.4, bars: 0.42, phyllo: 0.32, portrait: 0.13, compass: 0.3, plane: 0.42, envelope: 0.3, key: 0.3, gamepad: 0.34, folder: 0.32, house: 0.36, arrow: 0.3 };
 
 /* --------------------------------------------------------------- shapes */
 const TAU = Math.PI * 2, R = Math.random;
@@ -706,6 +706,12 @@ SHAPES.gamepad = (N) => {
   const bar = (x0, y0, x1, y1) => { const p = seg([x0, y0, 0], [x1, y1, 0]); return [p[0] + (R() - 0.5) * 0.05, p[1] + (R() - 0.5) * 0.05, 0.06]; };
   return build(N, [[0.46, body], [0.11, () => bar(-0.6, 0, -0.3, 0)], [0.11, () => bar(-0.45, -0.15, -0.45, 0.15)], [0.12, () => disc(0.36, -0.07, 0.085)], [0.12, () => disc(0.58, 0.07, 0.085)], [0.04, () => bar(-0.1, -0.12, -0.02, -0.12)], [0.04, () => bar(0.04, -0.12, 0.12, -0.12)]]);
 };
+{
+  const zz = () => (R() - 0.5) * 0.16, path = (pts, closed) => () => { const n = pts.length - (closed ? 0 : 1), k = (R() * n) | 0, p = seg([...pts[k], 0], [...pts[(k + 1) % pts.length], 0]); return [p[0] + (R() - 0.5) * 0.03, p[1] + (R() - 0.5) * 0.03, zz()]; };
+  SHAPES.folder = (N) => build(N, [[0.62, path([[-0.8, -0.5], [0.8, -0.5], [0.8, 0.34], [-0.05, 0.34], [-0.2, 0.52], [-0.8, 0.52]], true)], [0.2, path([[-0.8, 0.2], [0.8, 0.2]])], [0.18, () => [(R() - 0.5) * 1.5, -0.42 + R() * 0.56, zz() * 0.4]]]);
+  SHAPES.house = (N) => build(N, [[0.42, path([[-0.62, -0.6], [0.62, -0.6], [0.62, 0.1], [-0.62, 0.1]], true)], [0.34, path([[-0.84, 0.06], [0, 0.72], [0.84, 0.06]])], [0.16, path([[-0.14, -0.6], [-0.14, -0.14], [0.14, -0.14], [0.14, -0.6]])], [0.08, path([[0.3, -0.1], [0.3, -0.34], [0.5, -0.34], [0.5, -0.1]], true)]]);
+  SHAPES.arrow = (N) => build(N, [[0.5, path([[0.8, 0], [-0.7, 0]])], [0.25, path([[-0.7, 0], [-0.25, 0.42]])], [0.25, path([[-0.7, 0], [-0.25, -0.42]])]]);
+}
 SHAPES.key = (N) => build(N, [
   [0.44, () => { const a = R() * TAU, r = 0.25 + (R() - 0.5) * 0.06; return [-0.5 + Math.cos(a) * r, Math.sin(a) * r, (R() - 0.5) * 0.1]; }],
   [0.34, () => { const p = seg([-0.24, 0, 0], [0.78, 0, 0]); return [p[0], (R() - 0.5) * 0.07, (R() - 0.5) * 0.07]; }],
@@ -972,17 +978,32 @@ const FILES = [...P.map((p, i) => ({ name: p.slug, label: LABEL[p.slug], title: 
   { name: "contact", label: "contact.txt", title: "Contact", form: "envelope", metric: "contact", what: "say hello" },
   { name: "env", label: ".env", title: "API Keys", form: "key", metric: "secrets", what: "do not open" }];
 const filesEl = $("files");
-filesEl.innerHTML = FILES.map((f, i) => `<a class="file" href="#${f.name}" data-i="${i}"><span class="pre">&gt;</span><span>${f.label}</span></a>`).join("");
-let pickd = -1, selAt = 0, touched = false, formOverride = "";
-function selectFile(i, user) {
-  pickd = (i + FILES.length) % FILES.length; selAt = performance.now(); if (user) touched = true;
-  [...filesEl.children].forEach((a, n) => a.classList.toggle("sel", n === pickd));
-  $("pvMetric").textContent = FILES[pickd].metric; $("pvWhat").textContent = FILES[pickd].what;
+// The top of the disk shows two folders and one file. Apps are in /apps, the text files in /usr.
+const DIRS = { apps: { label: "/apps", form: "folder", metric: "apps", what: `${P.length} things I have built` }, usr: { label: "/usr", form: "house", metric: "usr", what: "about me, principles, writing, contact" } };
+const dirOf = (i) => (P[i] ? "apps" : FILES[i].name === "env" ? "" : "usr");
+let pickd = 0, vsel = 0, cwd = "", rows = [], curForm = "folder", selAt = 0, touched = false, formOverride = "";
+function listDir() {
+  const files = FILES.map((f, i) => ({ fi: i, label: f.label, form: f.form, metric: f.metric, what: f.what })).filter((it) => dirOf(it.fi) === cwd);
+  rows = cwd ? [{ up: true, label: "../", form: "arrow", metric: "..", what: "back to the top" }, ...files] : [...Object.entries(DIRS).map(([dir, d]) => ({ dir, ...d })), ...files];
+  filesEl.innerHTML = rows.map((it, n) => `<a class="file" href="#${it.fi >= 0 ? FILES[it.fi].name : ""}" data-n="${n}"${it.dir ? ` data-dir="${it.dir}"` : it.up ? ` data-dir=".."` : ""}><span class="pre">&gt;</span><span>${it.label}</span></a>`).join("");
+  const p = document.querySelector(".t-prompt .dim"); if (p) p.textContent = `guest@burnsOS:~${cwd ? "/" + cwd : ""}$`;
+}
+function selectView(n, user) {
+  vsel = (n + rows.length) % rows.length; selAt = performance.now(); if (user) touched = true;
+  const it = rows[vsel]; if (it.fi >= 0) pickd = it.fi; curForm = it.form;
+  [...filesEl.children].forEach((a, k) => a.classList.toggle("sel", k === vsel));
+  $("pvMetric").textContent = it.metric; $("pvWhat").textContent = it.what;
   formOverride = "";
 }
-selectFile(0);
-filesEl.addEventListener("click", (e) => { const a = e.target.closest(".file"); if (!a) return; e.preventDefault(); go(FILES[+a.dataset.i].name); });
-filesEl.addEventListener("pointermove", (e) => { const a = e.target.closest(".file"); if (a && e.pointerType === "mouse" && +a.dataset.i !== pickd) selectFile(+a.dataset.i, true); });
+function cd(dir, from) { cwd = DIRS[dir] ? dir : ""; listDir(); selectView(Math.max(0, rows.findIndex((it) => (from ? it.dir === from : false))), true); }
+function selectFile(i, user) {                           // select a real file wherever it lives, stepping into its folder first
+  i = (i + FILES.length) % FILES.length; if (dirOf(i) !== cwd) { cwd = dirOf(i); listDir(); }
+  selectView(rows.findIndex((it) => it.fi === i), user);
+}
+function enterSel() { const it = rows[vsel]; if (it.dir) cd(it.dir); else if (it.up) cd("", cwd); else go(FILES[it.fi].name); }
+listDir(); selectView(0);
+filesEl.addEventListener("click", (e) => { const a = e.target.closest(".file"); if (!a) return; e.preventDefault(); selectView(+a.dataset.n, true); enterSel(); });
+filesEl.addEventListener("pointermove", (e) => { const a = e.target.closest(".file"); if (a && e.pointerType === "mouse" && +a.dataset.n !== vsel) selectView(+a.dataset.n, true); });
 const isTouch = matchMedia("(hover: none)").matches; if (isTouch) document.documentElement.classList.add("touch");
 
 /* ------------------------------------ pages render on the CRT, by #name */
@@ -1272,7 +1293,7 @@ const COMMANDS = {
   fullscreen: () => { growTo = growTo ? 0 : 1; $("fsBtn").textContent = growTo ? "small screen" : "full screen"; },
   clear: () => setMode("list"), close: () => go(""),
   history: () => print(shell.hist.map((h, n) => `${String(n + 1).padStart(3)}  ${esc(h)}`).join("\n") || "nothing yet"),
-  whoami: () => print("guest"), pwd: () => print("/home/dylan"), date: () => print(esc(new Date().toString())),
+  whoami: () => print("guest"), pwd: () => print("/home/dylan" + (cwd ? "/" + cwd : "")), date: () => print(esc(new Date().toString())),
   uname: () => print("burnsOS 2.0 js-shell  (not Linux: a shell written for this page)"),
   echo: (a) => print(esc(a.join(" "))),
   sudo: (a) => print(a.join(" ") === "make me a sandwich" ? "okay." : "guest is not in the sudoers file. This incident will be reported."),
@@ -1311,7 +1332,12 @@ function run(line) {
   if (shell.hist[shell.hist.length - 1] !== line) shell.hist.push(line);
   if (shell.inVim && shell.mode === "out") return vimInput(line);
   const [c0, ...args] = line.split(/\s+/), c = c0.toLowerCase().replace(/^\.\//, ""), name = ALIAS[c] || c;
-  if (name === "open" && (args[0] === ".." || args[0] === "~" || !args[0]) && c === "cd") return setMode("list");
+  if (c === "cd" || (name === "ls" && args[0] && !args[0].startsWith("-"))) {                    // cd apps, cd /usr, cd .., ls apps
+    const d = (args[0] || "").toLowerCase().replace(/^[.~]?\/+|\/+$/g, "");
+    if (DIRS[d]) { cd(d); return setMode("list"); }
+    if (c === "cd" && (!d || d === ".." || d === "~" || d === ".")) { cd("", cwd); return setMode("list"); }
+    if (name === "ls") return print(`ls: ${esc(args[0])}: no such directory. Try ${cmdLink("ls apps")} or ${cmdLink("ls usr")}.`);
+  }
   if (!["ls", "clear", "close", "snake", "pong", "open", "fullscreen", "exit", "particles", "rm"].includes(name)) print(`<span class="d">$ ${esc(line)}</span>`);
   if (COMMANDS[name]) return COMMANDS[name](name === "ls" && c === "ll" ? ["-l"] : args);
   const i = findFile(c0); if (i >= 0) return go(FILES[i].name);     // a bare file name opens it
@@ -1329,7 +1355,7 @@ tIn.addEventListener("input", () => setBuf(tIn.value));
 tIn.addEventListener("keydown", (e) => {
   // With nothing typed, Space, Escape and the arrows belong to the room, not the text field: hand them on, or a click on the prompt would trap them.
   if (!e.metaKey && !e.ctrlKey && !e.altKey && (e.key === "Escape" || (!tIn.value && [" ", "ArrowUp", "ArrowDown"].includes(e.key)))) { tIn.blur(); return; }
-  e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); const v = tIn.value; if (v.trim()) run(v); else if (shell.mode === "list") go(FILES[pickd].name); tIn.blur(); } });
+  e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); const v = tIn.value; if (v.trim()) run(v); else if (shell.mode === "list") enterSel(); tIn.blur(); } });
 
 // games: drawn on a canvas inside the screen, in the same phosphor
 const game = { on: null };
@@ -1434,11 +1460,11 @@ addEventListener("keydown", (e) => {
   const listNav = shell.mode === "list" && !shell.buf;
   if (e.key === "ArrowDown" || e.key === "ArrowUp") {
     e.preventDefault(); const dn = e.key === "ArrowDown";
-    if (listNav) { selectFile(pickd + (dn ? 1 : -1), true); if (!atKb) toKeyboard(); }
+    if (listNav) { selectView(vsel + (dn ? 1 : -1), true); if (!atKb) toKeyboard(); }
     else if (shell.hist.length) { shell.hi = clamp(shell.hi < 0 ? (dn ? -1 : shell.hist.length - 1) : shell.hi + (dn ? 1 : -1), -1, shell.hist.length - 1); setBuf(shell.hi < 0 || shell.hi >= shell.hist.length ? "" : shell.hist[shell.hi]); }
   }
-  else if (e.key === "Enter") { e.preventDefault(); if (!atKb) return toKeyboard(); if (listNav) go(FILES[pickd].name); else run(shell.buf); }
-  else if (e.key === "Escape") { if (shell.inVim && shell.mode === "out" && !shell.buf) print(`<span class="d">-- NORMAL --   esc does not quit vim</span>`); else if (shell.buf) setBuf(""); else if (growTo) COMMANDS.fullscreen(); else setMode("list"); }
+  else if (e.key === "Enter") { e.preventDefault(); if (!atKb) return toKeyboard(); if (listNav) enterSel(); else run(shell.buf); }
+  else if (e.key === "Escape") { if (shell.inVim && shell.mode === "out" && !shell.buf) print(`<span class="d">-- NORMAL --   esc does not quit vim</span>`); else if (shell.buf) setBuf(""); else if (growTo) COMMANDS.fullscreen(); else if (shell.mode === "list" && cwd) cd("", cwd); else setMode("list"); }
   else if (e.key === "Backspace") { e.preventDefault(); setBuf(shell.buf.slice(0, -1)); }
   else if (e.key === "Tab" && atKb && shell.buf) { e.preventDefault(); complete(); }
   else if (e.key.length === 1) { if (!atKb) toKeyboard(); e.preventDefault(); setBuf(shell.buf + e.key); }
@@ -1625,7 +1651,7 @@ function frame(now) {
     const tb = smooth(clamp((zt - zs * 0.45) / (zs * 0.55))) * (1 - smooth(clamp((zt - zs) / ((1 - zs) * 0.3))));
     const cap = Math.min(innerWidth, vh) * 0.4;
     T = { cx: g1.cx + g1.w * 0.25 * tb, cy: pinTop + g1.cy - g1.h * 0.07 * tb, r: Math.min(Math.min(g1.w, g1.h) * lerp(0.36, 0.26, tb), cap) };
-    form = formOverride || FILES[pickd].form; phos = 1 - smooth(clamp(((zt - zs) / (1 - zs) - 0.35) / 0.65)); exact = true;
+    form = formOverride || curForm; phos = 1 - smooth(clamp(((zt - zs) / (1 - zs) - 0.35) / 0.65)); exact = true;
     // behind command output the particles stay as a ghost image; during a game they step aside
     gainTo = shell.mode === "list" ? 1 : shell.mode === "out" && !shell.quiet ? 0.2 : 0;
     const stg = shell.mode === "page" ? $("tPage").querySelector(".pg-stage") : null;
