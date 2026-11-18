@@ -13,7 +13,9 @@ const nextConfig: NextConfig = {
     return [{ source: "/work/:slug(parahealth|watchtower|remoteretros|outpost|syene|keel|claruss|cartlords|steamhouse)", destination: "/#:slug", permanent: false }];
   },
   async rewrites() {
-    return { beforeFiles: [{ source: "/", destination: "/burnsos.html" }], afterFiles: [], fallback: [] };
+    // "/opengraph-image" was the old preview image's address. Apps that cached the old page still ask for it, so it
+    // now serves the new picture instead of a broken image.
+    return { beforeFiles: [{ source: "/", destination: "/burnsos.html" }, { source: "/opengraph-image", destination: "/burnsos/og.jpg" }], afterFiles: [], fallback: [] };
   },
 };
 
