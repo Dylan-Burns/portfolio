@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:plain": "node scripts/build-plain.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

@@ -203,3 +203,57 @@ test("timeline lists every project, and the header has the sound and full-screen
   await page.locator("#sndBtn").click();
   await expect(page.locator("#sndBtn")).toHaveAttribute("aria-label", "Sound on");
 });
+
+test("with scripts off the page is a readable document; with them on that text is still there for screen readers", async ({ browser, page }) => {
+  const ctx = await browser.newContext({ javaScriptEnabled: false });
+  const plain = await ctx.newPage();
+  await plain.goto("/");
+  await expect(plain.getByRole("heading", { level: 1, name: "Dylan Burns" })).toBeVisible();
+  await expect(plain.getByRole("heading", { level: 3 })).toHaveCount(10);
+  await expect(plain.getByRole("heading", { level: 3, name: "Watchtower" })).toBeVisible();
+  await ctx.close();
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1, name: "Dylan Burns" })).toBeAttached();   // in the accessibility tree
+  const box = await page.locator("#plain").boundingBox();
+  expect(box!.width).toBeLessThanOrEqual(2);                                                    // but not on screen
+});
+
+test("backspace on an empty prompt goes back, at every level", async ({ page }) => {
+  await page.goto("/");
+  await page.keyboard.press("Space");
+  await screenOn(page);
+  await expect(page.locator("#legend")).toContainText(/backspace/i);
+  await page.keyboard.press("Enter");                                  // into /apps
+  await expect(page.locator(".t-prompt")).toContainText("~/apps");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");                                  // open the first project
+  await expect(page.locator("#tPage h2")).toBeVisible();
+  await page.keyboard.press("Backspace");                              // page -> folder
+  await expect(page.locator("#files")).toBeVisible();
+  await expect(page.locator(".t-prompt")).toContainText("~/apps");
+  await page.keyboard.press("Backspace");                              // folder -> top
+  await expect(page.locator("#files .file")).toHaveCount(4);
+  await page.keyboard.type("lsx");
+  await page.keyboard.press("Backspace");                              // with text typed it just deletes a letter
+  await expect(page.locator("#tBuf")).toHaveText("ls");
+});
+
+test("the watchtower demo runs on the screen and waits for a person to approve the rollback", async ({ page }) => {
+  await page.goto("/#watchtower");
+  await page.locator('#tPage [data-cmd="demo"]').click();
+  const wt = page.locator("#tOut .wt");
+  await expect(wt).toContainText("WATCHTOWER");
+  await expect(wt).toContainText("payments");
+  await page.keyboard.press("1");                                      // inject the bad deploy
+  await expect(wt).toContainText("fault injected: bad deploy");
+  await expect(wt).toContainText("ROOT CAUSE", { timeout: 40_000 });
+  await expect(wt).toContainText("payments #88");
+  await expect(wt).toContainText("red herring");
+  await page.waitForTimeout(1500);
+  await expect(wt).toContainText("ROOT CAUSE");                        // nothing happens until someone approves
+  await page.keyboard.press("Enter");
+  await expect(wt).toContainText("recovered.", { timeout: 20_000 });
+  await page.keyboard.press("Backspace");                              // the page had enlarged the screen: the first press shrinks it
+  await page.keyboard.press("Backspace");                              // the second leaves the demo
+  await expect(page.locator("#files")).toBeVisible();
+});
