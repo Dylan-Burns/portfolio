@@ -161,6 +161,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .hrow { display: flex; align-items: baseline; white-space: nowrap; } .hrow > span { flex: none; }
 .hrow > i { flex: 1; min-width: 2ch; overflow: hidden; font-style: normal; opacity: 0.3; margin: 0 0.6ch; letter-spacing: 0.1em; }
 .t-game { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+.t-saver { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 6; border-radius: inherit; background: #020503; cursor: none; } .t-saver[hidden] { display: none; }
 .sl { overflow: hidden; white-space: pre; line-height: 1.05; font-size: 0.62em; margin: 0.4em 0; } .sl > span { display: inline-block; animation: sl 6.5s linear both; }
 @keyframes sl { from { transform: translateX(100cqw); } to { transform: translateX(-100%); } }
 .t-out { container-type: inline-size; }
@@ -1739,6 +1740,46 @@ $("sndBtn").addEventListener("click", (e) => { e.stopPropagation(); sndSet(!snd.
 addEventListener("keydown", (e) => { if (snd.on && !e.metaKey && !e.ctrlKey && !e.altKey && document.documentElement.classList.contains("zoomed") && (e.key.length === 1 || ["Enter", "Backspace", "Escape", "Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key))) sndKey(); }, true);
 COMMANDS.sound = (a) => { const v = (a[0] || "").toLowerCase(); sndSet(v === "on" ? true : v === "off" ? false : !snd.on); print(`sound ${snd.on ? "on" : "off"}.  ${snd.on ? `<span class="d">key clicks, and a hum when the screen powers on</span>` : ""}`); };
 sndIcon();
+
+/* ------------------------------------------------------------ screen saver */
+// Left alone with the screen on, the terminal protects its phosphor the old way: a field of stars rushing past and the
+// system's name drifting from edge to edge. Any key, movement or tap brings the screen back exactly as it was.
+const SAVER_MS = 45000, saver = { el: document.createElement("canvas"), on: false, last: performance.now(), stars: [], x: 60, y: 60, vx: 46, vy: 31, t: 0 };
+saver.el.className = "t-saver"; saver.el.hidden = true; saver.el.setAttribute("aria-hidden", "true"); $("t1").appendChild(saver.el);
+function saverStart() {
+  if (saver.on || reduce) return;
+  const c = saver.el, W = $("t1").clientWidth, H = $("t1").clientHeight; c.width = W; c.height = H;
+  saver.stars = Array.from({ length: 150 }, () => ({ x: (R() - 0.5) * 2, y: (R() - 0.5) * 2, z: 0.1 + R() * 0.9 }));
+  saver.on = true; saver.t = performance.now(); c.hidden = false; requestAnimationFrame(saverDraw);
+}
+function saverStop() { if (!saver.on) return; saver.on = false; saver.el.hidden = true; saver.last = performance.now(); }
+function saverDraw(now) {
+  if (!saver.on) return;
+  const c = saver.el, x = c.getContext("2d"), W = c.width, H = c.height, dt = Math.min(0.05, (now - saver.t) / 1000); saver.t = now;
+  x.fillStyle = "rgba(2, 5, 3, 0.4)"; x.fillRect(0, 0, W, H);                      // a short trail, like slow phosphor
+  for (const st of saver.stars) {
+    st.z -= dt * 0.28; if (st.z <= 0.02) { st.x = (R() - 0.5) * 2; st.y = (R() - 0.5) * 2; st.z = 1; }
+    const px = W / 2 + (st.x / st.z) * W * 0.32, py = H / 2 + (st.y / st.z) * H * 0.32; if (px < 0 || py < 0 || px > W || py > H) { st.z = 0; continue; }
+    const k = 1 - st.z; x.fillStyle = `rgba(125, 255, 166, ${0.25 + k * 0.75})`; x.fillRect(px, py, 1 + k * 2.4, 1 + k * 2.4);
+  }
+  x.font = `34px ${getComputedStyle($("t1")).fontFamily}`; x.textBaseline = "top"; const label = "burnsOS 2.0", tw = x.measureText(label).width, th = 30;
+  saver.x += saver.vx * dt; saver.y += saver.vy * dt;
+  if (saver.x < 14 || saver.x + tw > W - 14) { saver.vx *= -1; saver.x = clamp(saver.x, 14, W - 14 - tw); }
+  if (saver.y < 14 || saver.y + th > H - 14) { saver.vy *= -1; saver.y = clamp(saver.y, 14, H - 14 - th); }
+  x.shadowColor = "rgba(125, 255, 166, 0.7)"; x.shadowBlur = 12; x.fillStyle = "#d9ffe8"; x.fillText(label, saver.x, saver.y); x.shadowBlur = 0;
+  requestAnimationFrame(saverDraw);
+}
+// any sign of life: wake if asleep (and swallow that first press or click, so waking never also does something), otherwise restart the clock
+for (const type of ["keydown", "pointerdown", "pointermove", "wheel", "touchstart"]) addEventListener(type, (e) => {
+  if (saver.on) { saverStop(); if (type === "pointerdown") saver.woke = true; if (type === "keydown" || type === "pointerdown") { e.stopImmediatePropagation(); e.preventDefault(); } } else saver.last = performance.now();
+}, { capture: true, passive: false });
+addEventListener("click", (e) => { if (performance.now() - saver.last < 700 && saver.woke) { saver.woke = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+setInterval(() => {
+  const idle = document.documentElement.classList.contains("zoomed") && (shell.mode === "list" || shell.mode === "out") && !game.on && !document.hidden;
+  if (!idle) { saver.last = performance.now(); if (saver.on) saverStop(); return; }
+  if (!saver.on && performance.now() - saver.last > SAVER_MS) saverStart();
+}, 1000);
+COMMANDS.saver = COMMANDS.screensaver = () => { setMode("list"); setTimeout(saverStart, 350); };
 
 /* ------------------------------------------------------------ main loop */
 const stageRect = (el) => { const r = el.getBoundingClientRect(); return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, r: Math.min(r.width, r.height) * (innerWidth > 900 ? 0.43 : 0.4) }; };
