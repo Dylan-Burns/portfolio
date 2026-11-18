@@ -156,6 +156,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .t-out { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; white-space: pre-wrap; overflow-wrap: anywhere; scrollbar-width: none; text-shadow: 0 0 10px rgba(125, 255, 166, 0.45); }
 .t-out::-webkit-scrollbar { display: none; }
 .t-out .b { color: #d9ffe8; } .t-out .d { opacity: 0.55; }
+/* help: command on the left, what it does on the right, a row of dots between */
+.hrow { display: flex; align-items: baseline; white-space: nowrap; } .hrow > span { flex: none; }
+.hrow > i { flex: 1; min-width: 2ch; overflow: hidden; font-style: normal; opacity: 0.3; margin: 0 0.6ch; letter-spacing: 0.1em; }
 .t-game { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
 .sl { overflow: hidden; white-space: pre; line-height: 1.05; font-size: 0.62em; margin: 0.4em 0; } .sl > span { display: inline-block; animation: sl 6.5s linear both; }
 @keyframes sl { from { transform: translateX(100cqw); } to { transform: translateX(-100%); } }
@@ -1343,7 +1346,7 @@ function fsIcon() {
   b.setAttribute("aria-label", growTo ? "Small screen" : "Full screen"); b.title = growTo ? "small screen" : "full screen";
 }
 const COMMANDS = {
-  help: () => { shell.quiet = true; print(`<span class="d">tab completes, up arrow recalls</span>\n` + HELP.map(([c, d]) => `${c.split(", ").map((x) => cmdLink(x.split(" ")[0], x)).join(", ").padEnd(0)}${" ".repeat(Math.max(2, 20 - c.length))}<span class="d">${d}</span>`).join("\n")); },
+  help: () => { shell.quiet = true; print(`<span class="d">tab completes, up arrow recalls</span>\n` + HELP.map(([c, d]) => `<span class="hrow"><span>${c.split(", ").map((x) => cmdLink(x.split(" ")[0], x)).join(", ")}</span><i aria-hidden="true">${".".repeat(80)}</i><span class="d">${d}</span></span>`).join("")); },
   ls: (a) => { if (/^-[la]+$/.test(a[0] || "")) print((a[0].includes("a") ? `-r--------  dylan  ${"2026".padEnd(14)} ${cmdLink("cat .plan", ".plan")}\n` : "") + FILES.map((f, i) => `-r--r--r--  dylan  ${(P[i] ? P[i].period : "2026").padEnd(14)} ${cmdLink("cat " + f.label, f.label)}`).join("\n") + `\n-r-xr-xr-x  dylan  ${"1976, 1972".padEnd(14)} ${cmdLink("snake")}  ${cmdLink("pong")}`); else setMode("list"); },
   cat: (a) => {
     if (a[0] === ".plan") return print(PLAN);
