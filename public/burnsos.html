@@ -548,8 +548,8 @@ const P = [
     links: [["View the source on GitHub", "https://github.com/Dylan-Burns/Super-Mario-Bros"]] },
 ];
 const CYCLE = ["syene", "watchtower", "parahealth", "steamhouse", "outpost", "keel", "remoteretros", "claruss", "cartlords"].map((s) => P.findIndex((p) => p.slug === s));
-const FORM_ORDER = ["capsule", "radar", "board", "stack", "globe", "page", "phone", "bars", "phyllo", "portrait", "compass", "plane", "envelope", "key", "gamepad", "folder", "house", "arrow"];
-const ROT = { globe: 0.5, capsule: 0.5, radar: 0.42, board: 0.26, stack: 0.42, page: 0.28, phone: 0.4, bars: 0.42, phyllo: 0.32, portrait: 0.13, compass: 0.3, plane: 0.42, envelope: 0.3, key: 0.3, gamepad: 0.34, folder: 0.32, house: 0.36, arrow: 0.3 };
+const FORM_ORDER = ["capsule", "radar", "board", "stack", "globe", "page", "phone", "bars", "phyllo", "portrait", "compass", "plane", "envelope", "key", "gamepad", "folder", "house", "arrow", "joystick", "snake", "pong"];
+const ROT = { globe: 0.5, capsule: 0.5, radar: 0.42, board: 0.26, stack: 0.42, page: 0.28, phone: 0.4, bars: 0.42, phyllo: 0.32, portrait: 0.13, compass: 0.3, plane: 0.42, envelope: 0.3, key: 0.3, gamepad: 0.34, folder: 0.32, house: 0.36, arrow: 0.3, joystick: 0.4, snake: 0.3, pong: 0.26 };
 
 /* --------------------------------------------------------------- shapes */
 const TAU = Math.PI * 2, R = Math.random;
@@ -711,6 +711,14 @@ SHAPES.gamepad = (N) => {
   SHAPES.folder = (N) => build(N, [[0.62, path([[-0.8, -0.5], [0.8, -0.5], [0.8, 0.34], [-0.05, 0.34], [-0.2, 0.52], [-0.8, 0.52]], true)], [0.2, path([[-0.8, 0.2], [0.8, 0.2]])], [0.18, () => [(R() - 0.5) * 1.5, -0.42 + R() * 0.56, zz() * 0.4]]]);
   SHAPES.house = (N) => build(N, [[0.42, path([[-0.62, -0.6], [0.62, -0.6], [0.62, 0.1], [-0.62, 0.1]], true)], [0.34, path([[-0.84, 0.06], [0, 0.72], [0.84, 0.06]])], [0.16, path([[-0.14, -0.6], [-0.14, -0.14], [0.14, -0.14], [0.14, -0.6]])], [0.08, path([[0.3, -0.1], [0.3, -0.34], [0.5, -0.34], [0.5, -0.1]], true)]]);
   SHAPES.arrow = (N) => build(N, [[0.5, path([[0.8, 0], [-0.7, 0]])], [0.25, path([[-0.7, 0], [-0.25, 0.42]])], [0.25, path([[-0.7, 0], [-0.25, -0.42]])]]);
+}
+{
+  const zz = () => (R() - 0.5) * 0.12, ball = (cx, cy, r) => () => { const u = R() * 2 - 1, t = R() * TAU, q = Math.sqrt(1 - u * u); return [cx + r * q * Math.cos(t), cy + r * u, r * q * Math.sin(t)]; };
+  const line = (x0, y0, x1, y1, w) => () => { const t = R(); return [x0 + (x1 - x0) * t + (R() - 0.5) * w, y0 + (y1 - y0) * t + (R() - 0.5) * w, zz()]; };
+  SHAPES.joystick = (N) => build(N, [[0.34, () => { const a = R() * TAU, r = 0.62 + (R() - 0.5) * 0.06; return [Math.cos(a) * r, -0.5 + (R() - 0.5) * 0.16, Math.sin(a) * r * 0.55]; }], [0.14, () => { const a = R() * TAU, r = Math.sqrt(R()) * 0.6; return [Math.cos(a) * r, -0.42, Math.sin(a) * r * 0.55]; }],
+    [0.2, line(0, -0.42, 0.12, 0.36, 0.07)], [0.24, ball(0.14, 0.5, 0.2)], [0.08, ball(-0.36, -0.36, 0.08)]]);
+  SHAPES.snake = (N) => build(N, [[0.78, () => { const t = R(), x = -0.85 + t * 1.5; return [x + (R() - 0.5) * 0.09, Math.sin(t * TAU * 1.5) * 0.34 + (R() - 0.5) * 0.09, zz()]; }], [0.14, ball(0.72, 0.02, 0.13)], [0.04, line(0.84, 0.02, 0.98, 0.08, 0.02)], [0.04, line(0.84, 0.02, 0.98, -0.04, 0.02)]]);
+  SHAPES.pong = (N) => build(N, [[0.26, line(-0.78, -0.32, -0.78, 0.22, 0.07)], [0.26, line(0.78, -0.1, 0.78, 0.44, 0.07)], [0.2, () => [(R() - 0.5) * 0.03, -0.6 + (((R() * 8) | 0) + R() * 0.5) * 0.15, zz()]], [0.16, ball(0.3, 0.12, 0.09)], [0.12, () => { const t = R(); return [0.2 - t * 0.7, 0.08 - t * 0.2 + (R() - 0.5) * 0.02, zz()]; }]]);
 }
 SHAPES.key = (N) => build(N, [
   [0.44, () => { const a = R() * TAU, r = 0.25 + (R() - 0.5) * 0.06; return [-0.5 + Math.cos(a) * r, Math.sin(a) * r, (R() - 0.5) * 0.1]; }],
@@ -979,13 +987,15 @@ const FILES = [...P.map((p, i) => ({ name: p.slug, label: LABEL[p.slug], title: 
   { name: "env", label: ".env", title: "API Keys", form: "key", metric: "secrets", what: "do not open" }];
 const filesEl = $("files");
 // The top of the disk shows two folders and one file. Apps are in /apps, the text files in /usr.
-const DIRS = { apps: { label: "/apps", form: "folder", metric: "apps", what: `${P.length} things I have built` }, usr: { label: "/usr", form: "house", metric: "usr", what: "about me, principles, writing, contact" } };
+const DIRS = { apps: { label: "/apps", form: "folder", metric: "apps", what: `${P.length} things I have built` }, usr: { label: "/usr", form: "house", metric: "usr", what: "about me, principles, writing, contact" }, games: { label: "/games", form: "joystick", metric: "games", what: "two to play on a 1978 screen" } };
+const GAMES = [["snake", "snake", "arrow keys or swipe"], ["pong", "pong", "arrow keys, or drag the paddle"]];   // [command, particle shape, how to play]
 const dirOf = (i) => (P[i] ? "apps" : FILES[i].name === "env" ? "" : "usr");
 let pickd = 0, vsel = 0, cwd = "", rows = [], curForm = "folder", selAt = 0, touched = false, formOverride = "";
 function listDir() {
   const files = FILES.map((f, i) => ({ fi: i, label: f.label, form: f.form, metric: f.metric, what: f.what })).filter((it) => dirOf(it.fi) === cwd);
-  rows = cwd ? [{ up: true, label: "../", form: "arrow", metric: "..", what: "back to the top" }, ...files] : [...Object.entries(DIRS).map(([dir, d]) => ({ dir, ...d })), ...files];
-  filesEl.innerHTML = rows.map((it, n) => `<a class="file" href="#${it.fi >= 0 ? FILES[it.fi].name : ""}" data-n="${n}"${it.dir ? ` data-dir="${it.dir}"` : it.up ? ` data-dir=".."` : ""}><span class="pre">&gt;</span><span>${it.label}</span></a>`).join("");
+  const games = cwd === "games" ? GAMES.map(([cmd, form, what]) => ({ cmd, label: cmd, form, metric: "game", what })) : [];
+  rows = cwd ? [{ up: true, label: "../", form: "arrow", metric: "..", what: "back to the top" }, ...files, ...games] : [...Object.entries(DIRS).map(([dir, d]) => ({ dir, ...d })), ...files];
+  filesEl.innerHTML = rows.map((it, n) => `<a class="file" href="#${it.fi >= 0 ? FILES[it.fi].name : ""}" data-n="${n}"${it.dir ? ` data-dir="${it.dir}"` : it.up ? ` data-dir=".."` : it.cmd ? ` data-game="${it.cmd}"` : ""}><span class="pre">&gt;</span><span>${it.label}</span></a>`).join("");
   const p = document.querySelector(".t-prompt .dim"); if (p) p.textContent = `guest@burnsOS:~${cwd ? "/" + cwd : ""}$`;
 }
 function selectView(n, user) {
@@ -1000,7 +1010,7 @@ function selectFile(i, user) {                           // select a real file w
   i = (i + FILES.length) % FILES.length; if (dirOf(i) !== cwd) { cwd = dirOf(i); listDir(); }
   selectView(rows.findIndex((it) => it.fi === i), user);
 }
-function enterSel() { const it = rows[vsel]; if (it.dir) cd(it.dir); else if (it.up) cd("", cwd); else go(FILES[it.fi].name); }
+function enterSel() { const it = rows[vsel]; if (it.dir) cd(it.dir); else if (it.up) cd("", cwd); else if (it.cmd) COMMANDS[it.cmd](); else go(FILES[it.fi].name); }
 listDir(); selectView(0);
 filesEl.addEventListener("click", (e) => { const a = e.target.closest(".file"); if (!a) return; e.preventDefault(); selectView(+a.dataset.n, true); enterSel(); });
 filesEl.addEventListener("pointermove", (e) => { const a = e.target.closest(".file"); if (a && e.pointerType === "mouse" && +a.dataset.n !== vsel) selectView(+a.dataset.n, true); });
@@ -1288,7 +1298,7 @@ const COMMANDS = {
   mail: () => { copyEmail(); print("dylanburns1524@gmail.com  (copied to your clipboard if the browser allowed it)"); },
   github: () => { print("opening github.com/Dylan-Burns in a new tab"); openTab("https://github.com/Dylan-Burns"); },
   linkedin: () => { print("opening LinkedIn in a new tab"); openTab("https://www.linkedin.com/in/dylan-burns-"); },
-  games: () => print(`${cmdLink("snake")}   arrow keys or swipe\n${cmdLink("pong")}    arrow keys, or drag the paddle\n\n<span class="d">esc quits a game</span>`),
+  games: () => { cd("games"); setMode("list"); },
   snake: () => startGame("snake"), pong: () => startGame("pong"),
   fullscreen: () => { growTo = growTo ? 0 : 1; $("fsBtn").textContent = growTo ? "small screen" : "full screen"; },
   clear: () => setMode("list"), close: () => go(""),
