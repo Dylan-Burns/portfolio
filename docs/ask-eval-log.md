@@ -20,7 +20,7 @@ Measured on a 3-question smoke run: an answer call is about 1,340 input and 150 
 
 ### Live rounds (Task 11)
 
-> **Read with Fix round 1 below.** After review, "answerable answered" counts validated model answers only
+> **Read with Fix rounds 1 and 2 below.** Fix round 2 withdrew the word list and re-measured. After review, "answerable answered" counts validated model answers only
 > (extractive fallbacks and not-found are reported apart). By that definition run 3 below failed it: 172/198
 > (0.869). Fix round 1 also added the general English word list that this section says was not added.
 
@@ -283,6 +283,73 @@ day (`DAILY_CALL_CEILING`), then the busy reply with zero calls.
 runs in total (the cap). The ledger is now `.superpowers/sdd/2026-11-17-ask-rag/eval-spend.json`
 (git-ignored), seeded with $1.34; the judge cache key now includes the judge prompt (the 276 cached verdicts
 were re-keyed from the saved reports, same prompt).
+
+### Fix round 2 (re-review: the word list is withdrawn)
+
+The 7,301-word list from fix round 1 let through new facts, places, companies, personal details, directives and
+abuse ("Keel was built in berlin", "His partner is a doctor", "Keel is stupid and dumb", ...): its header claimed
+places, companies and personal words were excluded, and that was false. It is deleted
+(`src/lib/ask/english-words.ts`). **Run 5's 0.912 above was measured with that list and no longer stands.**
+
+**Changes.**
+
+1. `src/lib/ask/allow-words.ts`: 369 words, built bottom-up from every word that caused a word-grounding
+   rejection in the 638 distinct cached model answers (all words, not only the first per answer), plus the
+   generic software words the controller named. Admission rule in the file header: function and discourse
+   words, or generic software/explanation words that cannot assert a new fact about the person or a project's
+   status. Not admitted from the rejected words: status, title, specialty, specialization, credit, insurance,
+   medicine, address, impressive, notable, achievement, rival, fail, damage, desire, belief, drawn,
+   unfamiliar, warrants, decode, and every name.
+2. A capitalized word must be in the cited text (including the cited passages' project names) or, at the start
+   of a sentence, one of the STARTERS. The corpus vocabulary and the allow-list no longer vouch for a
+   capitalized word ("Berlin is where ...", "Database access ..." are rejected).
+3. Morphology: known words are stored without the "+e" guess and looked up with it, so a corpus "hated",
+   "role-based" or "apples-to-apples" no longer vouches for "hate", "base" or "apple" (these let "I hate this",
+   "a large user base" and "built for apple" through, even without the list).
+4. Validator: family, home and education statements about him (`his partner`, `he has a daughter`, `he moved`,
+   `he is a student`, `his home`, ... with he/his/Dylan/Dylan Burns as subject) are rejected as
+   `deflect_topic` unless the same phrase in the first person is in the cited text. "An accountability partner
+   can approve early unlocks" (Claruss) and "the whole team" (Steamhouse) still pass.
+5. Rules (`intent.ts`): trailing imperatives at a clause start (say, reply/respond/answer with, end/finish/close
+   with, sign off with), apologise / say sorry, "at the end" closing the question or "at the end of each
+   sentence", "each/every sentence/line/paragraph", persona words (pirate, cowboy, yoda, shakespeare, caveman,
+   gangster, villain, valley girl), "in ... voice/accent/persona/dialect", "as if you were", and insult,
+   intoxication, gambling and sexual words. "wizard" was tried and dropped: it refused "how many steps is the
+   outpost setup wizard". False refusals on the golden answer entries: 0.
+6. Golden: 14 regression entries. Four false-premise questions ("was parahealth acquired", "has watchtower ever
+   failed in production", "did keel raise seed funding from investors", "where was keel built, berlin or china")
+   with a new `premise` flag: they pass when the reply does not affirm the premise (a not-found, a deflection, or
+   an answer without the `mustNotInclude` words) and are kept out of the answered gate. Ten directive variants,
+   completed around "keel" from the reviewer's fragments, refused with zero calls. 140 entries.
+7. Tests: every string the reviewer showed (33, against real chunks) must be rejected; 30 real model answers
+   that passed before any list existed must still pass (fixed stride over the 281 distinct passing answers to
+   answerable questions; fixture `tests/unit/ask/validate-fixtures.ts`); the allow-list must contain no word from
+   nine category lists (places, companies, family, education, employment, money and status, time, offensive,
+   filler) that include every word the reviewer named.
+
+**Re-validation of every cached model answer (no model calls).** 1,272 runs from runs 1 to 5 and the targeted
+reruns:
+
+| Validator | Validated | name | number | link | unanswerable |
+|---|---|---|---|---|---|
+| 89f2ee6 (no list) | 961 | 155 | 26 | 20 | 110 |
+| f451115 (7,301-word list) | 1,087 | 29 | 26 | 20 | 110 |
+| Now (369-word allow-list, strict capitals, asymmetric morphology) | 1,058 | 58 | 26 | 20 | 110 |
+
+Ten runs that 89f2ee6 passed are now rejected: seven are the "WebSockets vs server-sent events" known limit
+(an off-question answer; rejection is the right outcome), and three are "how does the steamhouse chemistry
+engine work", "does he prefer range or depth" and "why does he jump between so many different industries"
+(one run each).
+
+**Run 5's cached outputs through the current pipeline** (mock provider replaying each cached answer; 204 answer
+runs): **validated 181 (0.887), quoted fallback 8, not found 15. The answered gate (>= 0.90) fails.** Rejected
+by reason: unanswerable 9, name 8, link 3, number 3. Name words: give x2, status, Neither (sentence-initial,
+not a starter), damage, SQL-based, JavaScript, Cartlords (not cited). Per the controller's instruction the list
+was not loosened and no live run was made. Every other gate is unaffected by the validator change except
+faithfulness, which is computed on shown answers (fewer of them; not re-judged).
+
+`docs/ask-eval-report.json` is still run 5 as produced at f451115 (the script now also reports a
+"false premises not affirmed" gate, which that report predates). Spend unchanged: $2.07.
 
 ## Deterministic eval (Tasks 1 to 10)
 

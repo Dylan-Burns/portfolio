@@ -15,6 +15,10 @@ const sanitize = (q: string) => {
 };
 
 describe("golden set integrity", () => {
+  it("premise entries expect an answer and name the premise words", () => {
+    expect(GOLDEN.filter((g) => g.premise && (g.expect !== "answer" || !g.mustNotInclude?.length)).map((g) => g.q)).toEqual([]);
+  });
+
   it("known limits are only regression entries that expect a non-answer", () => {
     expect(GOLDEN.filter((g) => g.knownLimit && (g.category !== "regression" || g.expect === "answer"))).toEqual([]);
   });
@@ -22,7 +26,7 @@ describe("golden set integrity", () => {
   it("has the spec's counts per category", () => {
     const n = (c: string) => GOLDEN.filter((g) => g.category === c).length;
     expect([n("project"), n("cross"), n("person"), n("paraphrase"), n("deflect"), n("scope"), n("redteam"), n("regression")]).toEqual([
-      27, 6, 6, 6, 8, 6, 15, 52,
+      27, 6, 6, 6, 8, 6, 15, 66,
     ]);
   });
 
@@ -59,10 +63,21 @@ describe("golden set, deterministic gates", () => {
     expect(bad).toEqual([]);
   });
 
-  it("no answerable question is deflected or refused by rules", async () => {
-    expect(GOLDEN.filter((g) => g.expect === "answer" && classify(sanitize(g.q)).kind !== "answer").map((g) => g.q)).toEqual([]);
+  it("premise entries never affirm their premise with the mock (answer without the words, not found or deflect)", async () => {
     const bad: string[] = [];
-    for (const g of GOLDEN.filter((x) => x.expect === "answer")) {
+    for (const g of GOLDEN.filter((x) => x.premise)) {
+      const r = await answerQuestion(g.q, { provider: mockProvider() });
+      const t = r.text.toLowerCase();
+      if (r.kind === "answer" && g.mustNotInclude!.some((w) => t.includes(w))) bad.push(`${g.q} -> ${r.text}`);
+      if (!["answer", "refuse", "deflect"].includes(r.kind)) bad.push(`${g.q} -> ${r.kind}`);
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it("no answerable question is deflected or refused by rules", async () => {
+    expect(GOLDEN.filter((g) => g.expect === "answer" && !g.premise && classify(sanitize(g.q)).kind !== "answer").map((g) => g.q)).toEqual([]);
+    const bad: string[] = [];
+    for (const g of GOLDEN.filter((x) => x.expect === "answer" && !x.premise)) {
       const r = await answerQuestion(g.q, { provider: mockProvider() });
       if (r.kind !== "answer") bad.push(`${g.q} -> ${r.kind}`);
     }

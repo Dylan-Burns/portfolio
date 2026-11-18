@@ -1,5 +1,5 @@
+import { ALLOW_WORDS } from "./allow-words";
 import { buildCorpus, projectName } from "./corpus";
-import { ENGLISH_WORDS } from "./english-words";
 import { touchesDeflectTopic } from "./intent";
 import { stripInvisible } from "./text";
 import type { Chunk, ModelAnswer } from "./types";
@@ -133,7 +133,7 @@ const WORD = /[\p{L}][\p{L}\p{N}]*(?:[.'\u2019-][\p{L}\p{N}]+)*/gu;
  * -ed/-ing/-es the base plus "e" ("admired" -> "admire") and with a doubled final consonant undoubled
  * ("plotted" -> "plot"). A bare word is never trimmed, so "plane" and "plan" stay different words.
  */
-function forms(w: string): string[] {
+function forms(w: string, withE = true): string[] {
   const x = w.toLowerCase().replace(/['\u2019]s$/, "");
   if (x.length > 4 && x.endsWith("ies")) return [x, x.slice(0, -3) + "y"];
   if (x.length > 4 && x.endsWith("ied")) return [x, x.slice(0, -3) + "y"];
@@ -141,7 +141,7 @@ function forms(w: string): string[] {
     if (x.length - suf.length >= 3 && x.endsWith(suf)) {
       const base = x.slice(0, -suf.length);
       const out = [x, base];
-      if (suf === "ing" || suf === "ed" || suf === "es") out.push(base + "e");
+      if (withE && (suf === "ing" || suf === "ed" || suf === "es")) out.push(base + "e");
       if ((suf === "ing" || suf === "ed") && /([b-df-hj-np-tv-z])\1$/.test(base)) out.push(base.slice(0, -1));
       return out;
     }
@@ -153,9 +153,11 @@ function parts(w: string): string[] {
   return w.split(/[.'\u2019-]/).filter(Boolean);
 }
 
+// Known words are stored without the "+e" guess and looked up with it: an answer's "admires" finds a known
+// "admired" (both reach "admir"), but a known "hated" or "role-based" never vouches for a bare "hate" or "base".
 function addWord(set: Set<string>, w: string) {
-  for (const f of forms(w)) set.add(f);
-  for (const p of parts(w)) for (const f of forms(p)) set.add(f);
+  for (const f of forms(w, false)) set.add(f);
+  for (const p of parts(w)) for (const f of forms(p, false)) set.add(f);
 }
 
 function inSet(set: Set<string>, w: string): boolean {
@@ -237,7 +239,7 @@ function vocabulary(): Set<string> {
   if (!corpusVocab) {
     corpusVocab = new Set();
     for (const w of COMMON_WORDS) addWord(corpusVocab, w);
-    for (const w of ENGLISH_WORDS) addWord(corpusVocab, w);
+    for (const w of ALLOW_WORDS) addWord(corpusVocab, w);
     for (const c of buildCorpus().chunks) {
       const t = c.text.normalize("NFKC");
       for (const m of t.matchAll(WORD)) {
@@ -249,9 +251,9 @@ function vocabulary(): Set<string> {
 }
 
 /**
- * Grounding rule for words. Capitalized mid-sentence words must be in the cited text. A capitalized
- * sentence-initial word must be in the cited text, the corpus vocabulary or the starter list. Any
- * other word of four or more letters must be in the cited text, the corpus vocabulary or the starters.
+ * Grounding rule for words. A capitalized word must be in the cited text (which includes the cited passages'
+ * project names), or, at the start of a sentence, be one of the STARTERS. Any other word of four or more
+ * letters must be in the cited text, the corpus vocabulary, COMMON_WORDS, ALLOW_WORDS or the starters.
  * Returns the first word that breaks the rule (the live eval reports it), or undefined.
  */
 export function ungroundedWord(answer: string, source: string): string | undefined {
@@ -263,9 +265,9 @@ export function ungroundedWord(answer: string, source: string): string | undefin
     const w = m[0];
     const lower = w.toLowerCase();
     if (ALWAYS_OK_NAMES.has(lower.replace(/['\u2019]s$/, ""))) continue;
-    const initial = isSentenceInitial(answer, m.index);
     if (/^\p{Lu}/u.test(w)) {
-      if (initial ? !known(w) : !inSet(cited, w)) return w;
+      const ok = inSet(cited, w) || (isSentenceInitial(answer, m.index) && STARTERS.has(lower));
+      if (!ok) return w;
       continue;
     }
     const bad = parts(w).find((p) => p.length >= 4 && !known(p));
@@ -276,6 +278,33 @@ export function ungroundedWord(answer: string, source: string): string | undefin
 
 function namesGrounded(answer: string, source: string): boolean {
   return ungroundedWord(answer, source) === undefined;
+}
+
+/**
+ * Family, home and education statements about the owner (he/his/Dylan as the subject). A project passage
+ * that uses such a word about the product ("an accountability partner", "the whole team") never matches,
+ * because these need the owner as subject or possessor. The one exception: the same phrase in the first
+ * person ("I moved", "my family") is in the cited text, i.e. the profile says it.
+ */
+const FAMILY = String.raw`mother|father|mom|dad|parents?|wife|husband|partner|girlfriend|boyfriend|fianc\w*|daughters?|sons?|child|children|kids?|siblings?|brothers?|sisters?|family|wedding|marriage`;
+const HOME = String.raw`home|house|apartment|city|town|neighbou?rhood|country|hometown`;
+const EDUCATION = String.raw`school|campus|degree|diploma|professor|teacher|classes|studies|university|college`;
+const PERSONAL_ANSWER: RegExp[] = [
+  new RegExp(String.raw`\b(?:his|dylan(?: burns)?'?s|dylan(?: burns)?’s) (?:${FAMILY}|${HOME}|${EDUCATION})\b`),
+  new RegExp(String.raw`\b(?:he|dylan(?: burns)?) (?:has|had) (?:a |an |one |two |three |\d+ )?(?:${FAMILY})\b`),
+  /\b(?:he|dylan(?: burns)?) (?:is|was|got|became) (?:now |currently |once )?(?:married|engaged|divorced|a parent|a father|a dad|a student|a professor|a teacher|a graduate|studying|in school|at school)\b/,
+  /\b(?:he|dylan(?: burns)?) (?:moved|moves|relocated|lives|lived|grew up|resides|studied|studies|graduated|teaches|taught|attended|enrolled)\b/,
+];
+
+function touchesPersonalLife(answer: string, source: string): boolean {
+  const a = answer.toLowerCase();
+  const src = source.toLowerCase();
+  return PERSONAL_ANSWER.some((r) => {
+    const m = a.match(r);
+    if (!m) return false;
+    const firstPerson = m[0].replace(/^(?:his|dylan(?: burns)?'?s|dylan(?: burns)?’s)\b/, "my").replace(/^(?:he|dylan(?: burns)?)\b/, "i");
+    return !src.includes(firstPerson);
+  });
 }
 
 export function validateAnswer(a: ModelAnswer, supplied: Chunk[]): ValidationResult {
@@ -297,6 +326,6 @@ export function validateAnswer(a: ModelAnswer, supplied: Chunk[]): ValidationRes
   // ("Designed, built, and shipped solo." is a Claruss passage). Names of uncited projects do not.
   const names = (cited as Chunk[]).map(projectName).filter(Boolean).join("\n");
   if (!namesGrounded(answer, `${source}\n${names}`)) return { ok: false, reason: "name" };
-  if (touchesDeflectTopic(answer)) return { ok: false, reason: "deflect_topic" };
+  if (touchesDeflectTopic(answer) || touchesPersonalLife(answer, source)) return { ok: false, reason: "deflect_topic" };
   return { ok: true };
 }

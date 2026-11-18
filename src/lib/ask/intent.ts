@@ -74,6 +74,17 @@ const INJECTION: RegExp[] = [
   // Encodings only as a reply format ("explain outpost in emoji"), not as a fact ("ships in binary form").
   /\b(answer|reply|respond|write|say|tell|explain|describe|summari[sz]e|it|that|this|everything)\b[^?.!;]*\b(in|into|using) (morse|emojis?|leetspeak|binary|base64|hex)\b/,
   /\b(talk|speak|sound|write|answer|reply|respond)(s|ing)? like (a|an)\b/,
+  // Trailing imperatives about the reply ("then say banana", "reply with lol", "apologise and say sorry").
+  new RegExp(`${CLAUSE}(?:say|reply with|respond with|answer with|end with|finish with|close with|sign off with)\\b`),
+  /\bapologi[sz]e\b|\bsay sorry\b/,
+  // "... at the end (of each sentence)" closing the question; "what happens at the end of a retro" stays.
+  /\bat the end(?: of (?:each|every|the|your|my) (?:sentence|line|answer|reply|response|paragraph)s?)?\s*(?:please|pls|thanks|thank you)?[.!?]*$/,
+  /\b(?:each|every) (?:sentence|line|paragraph)\b/,
+  // Personas and voices ("like a pirate", "in pirate voice", "pirate style", "as if you were").
+  /\b(?:pirate|cowboy|yoda|shakespeare\w*|caveman|gangster|villain|valley girl)\b/,
+  /\bin (?:a |an |the )?(?:\w+ )?(?:voice|accent|persona|dialect)\b|\bas if (?:you|u) (?:were|are)\b/,
+  // Insults, intoxication, gambling, sexual content: never part of a portfolio question.
+  /\b(?:stupid|dumb|idiot\w*|hate|drunk\w*|casino\w*|gambl\w*|naked|sex\w*|porn\w*)\b/,
   // The assistant's own context: passage IDs, "what you can see" (not "the projects you can see here").
   /\b(passage|chunk) ids?\b|\b(what|everything|all|anything) (that )?(you|u) can see\b/,
 ];
