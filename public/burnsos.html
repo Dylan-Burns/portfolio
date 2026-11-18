@@ -1357,7 +1357,7 @@ function fileText(i) {
 const openTab = (url) => { const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove(); };
 const HELP = [["ls", "list the files"], ["cat <file>", "read a file here"], ["open <file>", "open its full page"], ["browse <file>", "text-mode web view"],
   ["snake, pong", "games"], ["particles <shape>", "reshape the particles"], ["neofetch", "about this machine"], ["stack", "languages and tools"], ["mail", "copy my email"],
-  ["fullscreen", "bigger screen"], ["sound", "key clicks and a power-on hum"], ["history, clear, top", "the usual"], ["exit", "step back"]];
+  ["fullscreen", "bigger screen"], ["sound", "a hum at power-on"], ["history, clear, top", "the usual"], ["exit", "step back"]];
 // the one control in the header: four corners pointing out to enlarge the screen, pointing in to shrink it
 function fsIcon() {
   const b = $("fsBtn"), d = growTo ? "M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6" : "M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6";
@@ -1719,15 +1719,9 @@ function bootOnce() {
   rows.forEach((r, n) => setTimeout(() => { if (id === loadId && shell.mode === "out") print(r); }, 500 + n * 300));
   setTimeout(() => { if (id === loadId && shell.mode === "out") setMode("list"); }, 500 + rows.length * 300 + 600);
 }
-// Sound is off until asked for: a soft click on each key, and a mains hum as the tube warms up. All of it is synthesised here; nothing is downloaded.
+// Sound is off until asked for: a mains hum as the tube warms up. It is synthesised here; nothing is downloaded.
 const snd = { on: store("sound") === "1", ctx: null };
 function sndCtx() { if (!snd.on) return null; try { snd.ctx = snd.ctx || new (window.AudioContext || window.webkitAudioContext)(); if (snd.ctx.state === "suspended") snd.ctx.resume(); return snd.ctx; } catch (e) { return null; } }
-function sndKey() {
-  const c = sndCtx(); if (!c) return;
-  const n = (c.sampleRate * 0.03) | 0, buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
-  const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); src.buffer = buf; f.type = "bandpass"; f.frequency.value = 1700 + Math.random() * 900; g.gain.value = 0.2;
-  src.connect(f); f.connect(g); g.connect(c.destination); src.start();
-}
 function sndPower() {
   const c = sndCtx(); if (!c) return; const t = c.currentTime;
   [[60, 0.05], [120, 0.03], [180, 0.012]].forEach(([hz, vol]) => { const o = c.createOscillator(), a = c.createGain(); o.type = "sine"; o.frequency.value = hz; a.gain.setValueAtTime(0.0001, t); a.gain.linearRampToValueAtTime(vol, t + 0.25); a.gain.exponentialRampToValueAtTime(0.0001, t + 2.2); o.connect(a); a.connect(c.destination); o.start(t); o.stop(t + 2.3); });
@@ -1737,10 +1731,9 @@ function sndIcon() {
   b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor" stroke-width="1"/>${snd.on ? `<path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/>` : `<path d="M17 9l5 6M22 9l-5 6"/>`}</svg>`;
   b.setAttribute("aria-label", snd.on ? "Sound on" : "Sound off"); b.title = snd.on ? "sound on" : "sound off";
 }
-function sndSet(on) { snd.on = on; store("sound", on ? "1" : "0"); sndIcon(); if (on) sndKey(); }
+function sndSet(on) { snd.on = on; store("sound", on ? "1" : "0"); sndIcon(); if (on) sndPower(); }
 $("sndBtn").addEventListener("click", (e) => { e.stopPropagation(); sndSet(!snd.on); });
-addEventListener("keydown", (e) => { if (snd.on && !e.metaKey && !e.ctrlKey && !e.altKey && document.documentElement.classList.contains("zoomed") && (e.key.length === 1 || ["Enter", "Backspace", "Escape", "Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key))) sndKey(); }, true);
-COMMANDS.sound = (a) => { const v = (a[0] || "").toLowerCase(); sndSet(v === "on" ? true : v === "off" ? false : !snd.on); print(`sound ${snd.on ? "on" : "off"}.  ${snd.on ? `<span class="d">key clicks, and a hum when the screen powers on</span>` : ""}`); };
+COMMANDS.sound = (a) => { const v = (a[0] || "").toLowerCase(); sndSet(v === "on" ? true : v === "off" ? false : !snd.on); print(`sound ${snd.on ? "on" : "off"}.  ${snd.on ? `<span class="d">a hum when the screen powers on</span>` : ""}`); };
 sndIcon();
 
 /* ------------------------------------------------------------ screen saver */
