@@ -164,6 +164,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .t-video[hidden] { display: none; }
 .t-video p { margin: 0; white-space: pre; overflow: hidden; }
 .t-video .d { opacity: 0.55; } .t-video a { cursor: pointer; color: #d9ffe8; }
+.v-hint { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; pointer-events: none; color: #d9ffe8; background: rgba(2, 10, 5, 0.55); text-shadow: 0 0 10px rgba(125, 255, 166, 0.6); }
+.v-hint[hidden] { display: none; }
 .v-mid { position: relative; flex: 1; min-height: 0; }
 .v-mid > a { position: absolute; left: 0; top: 0; white-space: nowrap; pointer-events: none; will-change: transform; }   /* they ride the track and cannot be clicked */
 .v-frame { position: absolute; overflow: hidden; border: 1px solid rgba(125, 255, 166, 0.45); border-radius: 6px; background: #000; }
@@ -425,7 +427,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
           <div class="t-prev" id="tPrev" aria-live="polite"><p class="pv-m" id="pvMetric"></p><p class="pv-w dim" id="pvWhat"></p></div>
           <div class="t-out" id="tOut" hidden></div>
           <canvas class="t-game" id="tGame" hidden></canvas>
-          <div class="t-video" id="tVideo" hidden><div class="v-mid" id="vSide"><div class="v-frame" id="vFrame"><div class="v-shield" id="vShield"></div></div><a id="vPlay"></a><a id="vMute"></a><a data-cmd="ls">[close]</a></div><p class="v-bar"><span class="v-prog" id="vProg"></span><span id="vTime"></span><span class="sp"></span><span id="vTitle"></span></p></div>
+          <div class="t-video" id="tVideo" hidden><div class="v-mid" id="vSide"><div class="v-frame" id="vFrame"><div class="v-shield" id="vShield"></div><div class="v-hint" id="vHint" hidden>tap for sound</div></div><a id="vPlay"></a><a id="vMute"></a><a data-cmd="ls">[close]</a></div><p class="v-bar"><span class="v-prog" id="vProg"></span><span id="vTime"></span><span class="sp"></span><span id="vTitle"></span></p></div>
           <div class="t-page" id="tPage" hidden></div>
         </div>
         <p class="t-prompt"><span class="dim">guest@burnsOS:~$</span><span id="tBuf"></span><span class="caret"></span><span class="dim" id="tHint">type help, or pick a file</span><input id="tIn" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="tap to type a command" aria-label="Command"></p>
@@ -1172,7 +1174,8 @@ function playVideo() {
 }
 function stopVideo() {
   clearTimeout(vid.timer); if (vid.el) vid.el.remove();
-  Object.assign(vid, { el: null, ready: false, playing: false, muted: false, t: 0, dodges: 0 });
+  Object.assign(vid, { el: null, ready: false, playing: false, muted: false, t: 0, dodges: 0, askedTap: false, needTap: false });
+  $("vShield").style.pointerEvents = ""; $("vHint").hidden = true;
   vT.L = 0;
 }
 addEventListener("blur", () => setTimeout(() => { if (vid.el && document.activeElement === vid.el) { vid.el.blur(); window.focus(); } }, 0));
@@ -1182,12 +1185,19 @@ addEventListener("message", (e) => {
   if (e.origin !== VIMEO || !vid.el || e.source !== vid.el.contentWindow) return;
   let d; try { d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch (err) { return; }
   if (!d || typeof d !== "object") return;
-  if (d.event === "ready") { vid.ready = true; ["play", "pause", "ended", "timeupdate", "playProgress", "volumechange"].forEach((v) => vSay("addEventListener", v)); vSay("play"); }
+  if (d.event === "ready") { vid.ready = true; ["play", "pause", "ended", "timeupdate", "playProgress", "volumechange"].forEach((v) => vSay("addEventListener", v)); if (!vid.needTap) vSay("play"); }
   else if (d.event === "play") vid.playing = true;
   else if (d.event === "pause") vid.playing = false;
   else if (d.event === "ended") { vid.playing = false; vSeek(0); vSay("play"); }           // it never gives you up
   else if ((d.event === "timeupdate" || d.event === "playProgress") && d.data) { vid.t = +d.data.seconds || 0; if (+d.data.duration) vid.dur = +d.data.duration; }
   else if (d.event === "volumechange" && d.data) vid.muted = !!d.data.muted || d.data.volume === 0;
+  // Phones only allow sound when the tap lands on the video itself. If the browser started it silent, rewind and ask for that one tap.
+  if (vid.playing && vid.muted && !vid.askedTap) {
+    vid.askedTap = vid.needTap = true;
+    const el = vid.el.cloneNode(); el.src = vid.el.src.replace("autoplay=1", "autoplay=0").replace("&controls=0", "");   // reloaded with its own controls on, because a player with them off ignores taps
+    vid.el.replaceWith(el); vid.el = el; vid.ready = false;
+    $("vShield").style.pointerEvents = "none"; $("vHint").hidden = false; vid.playing = false; vid.muted = false; vid.t = 0;
+  } else if (vid.needTap && d.event === "play") { vid.needTap = false; $("vShield").style.pointerEvents = ""; $("vHint").hidden = true; }
   vPaint();
 });
 // The controls are a trap. Play, mute and close ride a rectangular track around the picture and slide along it to keep their
