@@ -28,3 +28,10 @@ describe("plain-text version of the home page", () => {
     expect(html.indexOf('classList.add("js")')).toBeLessThan(html.indexOf("<body"));
   });
 });
+
+describe("analytics on the home page", () => {
+  it("never declares a global named va, which would overwrite the event queue", () => {
+    expect(html).not.toMatch(/\b(var|let|const)\s+va\b/);
+    expect(html).toContain("window.va = window.va || function");
+  });
+});

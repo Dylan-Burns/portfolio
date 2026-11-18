@@ -30,7 +30,7 @@
 <script>
   // Vercel Web Analytics. The script only exists on Vercel, so it is requested on the real site and its previews, never locally.
   window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-  if (/(^|\.)burnsdylan\.com$|\.vercel\.app$/.test(location.hostname)) { var va = document.createElement("script"); va.defer = true; va.src = "/_vercel/insights/script.js"; document.head.appendChild(va); }
+  if (/(^|\.)burnsdylan\.com$|\.vercel\.app$/.test(location.hostname)) (function () { var el = document.createElement("script"); el.defer = true; el.src = "/_vercel/insights/script.js"; document.head.appendChild(el); })();   // not a global named "va": that would overwrite the queue above
 </script>
 </head>
 <body>
