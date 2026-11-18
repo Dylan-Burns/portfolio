@@ -40,7 +40,7 @@ test("space zooms in, the screen powers on and lists every file", async ({ page 
   await expect(page.locator("#files .file")).toHaveText([/\/apps$/, /\/usr$/, /\/games$/, /\.env$/]);
   await page.keyboard.press("Enter");                                  // into /apps
   for (const f of APPS) await expect(page.locator(`.file[href="#${f}"]`)).toBeVisible();
-  await expect(page.locator(".t-prompt")).toContainText("~/apps$");
+  await expect(page.locator(".t-prompt")).toContainText("~/apps");
   await page.keyboard.press("Escape");                                 // back to the top
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");                                  // into /usr
@@ -52,7 +52,7 @@ test("space zooms in, the screen powers on and lists every file", async ({ page 
   await page.locator('#files a[data-game="snake"]').click();
   await expect(page.locator("#tGame")).toBeVisible();
   await page.keyboard.press("Escape");                                 // quits the game, back in /games
-  await expect(page.locator(".t-prompt")).toContainText("~/games$");
+  await expect(page.locator(".t-prompt")).toContainText("~/games");
   await page.keyboard.type("cd apps");
   await page.keyboard.press("Enter");
   await expect(page.locator('.file[href="#keel"]')).toBeVisible();

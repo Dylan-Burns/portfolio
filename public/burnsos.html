@@ -148,6 +148,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .file.sel { background: rgba(110, 245, 165, 0.17); color: #d9ffe8; text-shadow: 0 0 12px rgba(125, 255, 166, 0.6); }
 .file:focus-visible { outline: none; }
 .t-tools { display: flex; gap: 18px; }
+#fsBtn { display: block; width: 1em; height: 1em; cursor: pointer; color: #d9ffe8; text-decoration: none; opacity: 0.85; } #fsBtn:hover { opacity: 1; }
+#fsBtn svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 0 6px rgba(125, 255, 166, 0.5)); }
 .term a { color: #d9ffe8; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .term .file { text-decoration: none; }
 .t-body { position: relative; flex: 1; min-height: 0; z-index: 1; }
@@ -432,7 +434,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
       <div class="glass" id="g1"><span class="pw"></span></div>
       <canvas id="field" aria-hidden="true"></canvas>
       <div class="term term-os" id="t1">
-        <p class="t-head"><span>burnsOS 2.0</span><span class="t-tools"><a data-cmd="help">help</a><a data-cmd="games">games</a><a data-cmd="fullscreen" id="fsBtn">full screen</a></span></p>
+        <p class="t-head"><span>burnsOS 2.0</span><span class="t-tools"><a data-cmd="fullscreen" id="fsBtn" role="button" aria-label="Full screen"></a></span></p>
         <div class="t-body" id="tBody">
           <nav class="files" id="files" aria-label="Files on the computer"></nav>
           <div class="t-prev" id="tPrev" aria-live="polite"><p class="pv-m" id="pvMetric"></p><p class="pv-w dim" id="pvWhat"></p></div>
@@ -442,7 +444,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
           <div class="t-page" id="tPage" hidden></div>
           <div class="v-port" id="vPort"><div class="v-shield"></div></div>
         </div>
-        <p class="t-prompt"><span class="dim">guest@burnsOS:~$</span><span id="tBuf"></span><span class="caret"></span><span class="dim" id="tHint">type help, or pick a file</span><input id="tIn" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="tap to type a command" aria-label="Command"></p>
+        <p class="t-prompt"><span class="dim">~</span><span id="tBuf"></span><span class="caret"></span><span class="dim" id="tHint">type help, or pick a file</span><input id="tIn" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="tap to type a command" aria-label="Command"></p>
       </div>
     </div>
   </section>
@@ -562,8 +564,8 @@ const P = [
     links: [["View the source on GitHub", "https://github.com/Dylan-Burns/Super-Mario-Bros"]] },
 ];
 const CYCLE = ["syene", "watchtower", "parahealth", "steamhouse", "outpost", "keel", "remoteretros", "claruss", "cartlords"].map((s) => P.findIndex((p) => p.slug === s));
-const FORM_ORDER = ["capsule", "radar", "board", "stack", "globe", "page", "phone", "bars", "phyllo", "portrait", "compass", "plane", "envelope", "key", "gamepad", "folder", "house", "arrow", "joystick", "snake", "pong"];
-const ROT = { globe: 0.5, capsule: 0.5, radar: 0.42, board: 0.26, stack: 0.42, page: 0.28, phone: 0.4, bars: 0.42, phyllo: 0.32, portrait: 0.13, compass: 0.3, plane: 0.42, envelope: 0.3, key: 0.3, gamepad: 0.34, folder: 0.32, house: 0.36, arrow: 0.3, joystick: 0.4, snake: 0.3, pong: 0.26 };
+const FORM_ORDER = ["capsule", "radar", "board", "stack", "globe", "page", "phone", "bars", "phyllo", "portrait", "compass", "plane", "envelope", "key", "gamepad", "folder", "house", "arrow", "joystick", "snake", "pong", "person"];
+const ROT = { globe: 0.5, capsule: 0.5, radar: 0.42, board: 0.26, stack: 0.42, page: 0.28, phone: 0.4, bars: 0.42, phyllo: 0.32, portrait: 0.13, compass: 0.3, plane: 0.42, envelope: 0.3, key: 0.3, gamepad: 0.34, folder: 0.32, house: 0.36, arrow: 0.3, joystick: 0.4, snake: 0.3, pong: 0.26, person: 0.5 };
 
 /* --------------------------------------------------------------- shapes */
 const TAU = Math.PI * 2, R = Math.random;
@@ -734,6 +736,11 @@ SHAPES.gamepad = (N) => {
   SHAPES.snake = (N) => build(N, [[0.78, () => { const t = R(), x = -0.85 + t * 1.5; return [x + (R() - 0.5) * 0.09, Math.sin(t * TAU * 1.5) * 0.34 + (R() - 0.5) * 0.09, zz()]; }], [0.14, ball(0.72, 0.02, 0.13)], [0.04, line(0.84, 0.02, 0.98, 0.08, 0.02)], [0.04, line(0.84, 0.02, 0.98, -0.04, 0.02)]]);
   SHAPES.pong = (N) => build(N, [[0.26, line(-0.78, -0.32, -0.78, 0.22, 0.07)], [0.26, line(0.78, -0.1, 0.78, 0.44, 0.07)], [0.2, () => [(R() - 0.5) * 0.03, -0.6 + (((R() * 8) | 0) + R() * 0.5) * 0.15, zz()]], [0.16, ball(0.3, 0.12, 0.09)], [0.12, () => { const t = R(); return [0.2 - t * 0.7, 0.08 - t * 0.2 + (R() - 0.5) * 0.02, zz()]; }]]);
 }
+SHAPES.person = (N) => build(N, [
+  [0.4, () => { const u = R() * 2 - 1, t = R() * TAU, q = Math.sqrt(1 - u * u), r = 0.27; return [r * q * Math.cos(t), 0.42 + r * u, r * q * Math.sin(t)]; }],                       // head
+  [0.44, () => { const a = R() * Math.PI, t = R() * TAU, k = 0.9 + R() * 0.1; return [Math.cos(a) * 0.62 * k * Math.cos(t * 0 + 0), -0.62 + Math.sin(a) * 0.6 * k, Math.sin(t) * 0.2 * Math.sin(a)]; }],   // shoulders: a dome with some depth
+  [0.16, () => [(R() - 0.5) * 1.24, -0.62 + (R() - 0.5) * 0.03, (R() - 0.5) * 0.36]],                                                                                              // the base line
+]);
 SHAPES.key = (N) => build(N, [
   [0.44, () => { const a = R() * TAU, r = 0.25 + (R() - 0.5) * 0.06; return [-0.5 + Math.cos(a) * r, Math.sin(a) * r, (R() - 0.5) * 0.1]; }],
   [0.34, () => { const p = seg([-0.24, 0, 0], [0.78, 0, 0]); return [p[0], (R() - 0.5) * 0.07, (R() - 0.5) * 0.07]; }],
@@ -1001,7 +1008,7 @@ const FILES = [...P.map((p, i) => ({ name: p.slug, label: LABEL[p.slug], title: 
   { name: "env", label: ".env", title: "API Keys", form: "key", metric: "secrets", what: "do not open" }];
 const filesEl = $("files");
 // The top of the disk shows two folders and one file. Apps are in /apps, the text files in /usr.
-const DIRS = { apps: { label: "/apps", form: "folder", metric: "apps", what: `${P.length} things I have built` }, usr: { label: "/usr", form: "house", metric: "usr", what: "about me, principles, writing, contact" }, games: { label: "/games", form: "joystick", metric: "games", what: "two to play on a 1978 screen" } };
+const DIRS = { apps: { label: "/apps", form: "folder", metric: "apps", what: `${P.length} things I have built` }, usr: { label: "/usr", form: "person", metric: "usr", what: "about me, principles, writing, contact" }, games: { label: "/games", form: "joystick", metric: "games", what: "two to play on a 1978 screen" } };
 const GAMES = [["snake", "snake", "arrow keys or swipe"], ["pong", "pong", "arrow keys, or drag the paddle"]];   // [command, particle shape, how to play]
 const dirOf = (i) => (P[i] ? "apps" : FILES[i].name === "env" ? "" : "usr");
 let pickd = 0, vsel = 0, cwd = "", rows = [], curForm = "folder", selAt = 0, touched = false, formOverride = "";
@@ -1010,7 +1017,7 @@ function listDir() {
   const games = cwd === "games" ? GAMES.map(([cmd, form, what]) => ({ cmd, label: cmd, form, metric: "game", what })) : [];
   rows = cwd ? [{ up: true, label: "../", form: "arrow", metric: "..", what: "back to the top" }, ...files, ...games] : [...Object.entries(DIRS).map(([dir, d]) => ({ dir, ...d })), ...files];
   filesEl.innerHTML = rows.map((it, n) => `<a class="file" href="#${it.fi >= 0 ? FILES[it.fi].name : ""}" data-n="${n}"${it.dir ? ` data-dir="${it.dir}"` : it.up ? ` data-dir=".."` : it.cmd ? ` data-game="${it.cmd}"` : ""}><span class="pre">&gt;</span><span>${it.label}</span></a>`).join("");
-  const p = document.querySelector(".t-prompt .dim"); if (p) p.textContent = `guest@burnsOS:~${cwd ? "/" + cwd : ""}$`;
+  const p = document.querySelector(".t-prompt .dim"); if (p) p.textContent = `~${cwd ? "/" + cwd : ""}`;
 }
 function selectView(n, user) {
   vsel = (n + rows.length) % rows.length; selAt = performance.now(); if (user) touched = true;
@@ -1026,6 +1033,7 @@ function selectFile(i, user) {                           // select a real file w
 }
 function enterSel() { const it = rows[vsel]; if (it.dir) cd(it.dir); else if (it.up) cd("", cwd); else if (it.cmd) COMMANDS[it.cmd](); else go(FILES[it.fi].name); }
 listDir(); selectView(0);
+requestAnimationFrame(() => fsIcon());
 filesEl.addEventListener("click", (e) => { const a = e.target.closest(".file"); if (!a) return; e.preventDefault(); selectView(+a.dataset.n, true); enterSel(); });
 filesEl.addEventListener("pointermove", (e) => { const a = e.target.closest(".file"); if (a && e.pointerType === "mouse" && +a.dataset.n !== vsel) selectView(+a.dataset.n, true); });
 const isTouch = matchMedia("(hover: none)").matches; if (isTouch) document.documentElement.classList.add("touch");
@@ -1330,8 +1338,14 @@ const openTab = (url) => { const a = document.createElement("a"); a.href = url; 
 const HELP = [["ls", "list the files"], ["cat <file>", "read a file here"], ["open <file>", "open its full page"], ["ask <question>", "ask about me or my work"], ["browse <file>", "text-mode web view"],
   ["snake, pong", "games"], ["particles <shape>", "reshape the particles"], ["neofetch", "about this machine"], ["stack", "languages and tools"], ["mail", "copy my email"],
   ["fullscreen", "bigger screen"], ["history, clear, top", "the usual"], ["exit", "step back"]];
+// the one control in the header: four corners pointing out to enlarge the screen, pointing in to shrink it
+function fsIcon() {
+  const b = $("fsBtn"), d = growTo ? "M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6" : "M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6";
+  b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square" aria-hidden="true"><path d="${d}"/></svg>`;
+  b.setAttribute("aria-label", growTo ? "Small screen" : "Full screen"); b.title = growTo ? "small screen" : "full screen";
+}
 const COMMANDS = {
-  help: () => print(`<span class="d">tab completes, up arrow recalls</span>\n` + HELP.map(([c, d]) => `${c.split(", ").map((x) => cmdLink(x.split(" ")[0], x)).join(", ").padEnd(0)}${" ".repeat(Math.max(2, 20 - c.length))}<span class="d">${d}</span>`).join("\n")),
+  help: () => { shell.quiet = true; print(`<span class="d">tab completes, up arrow recalls</span>\n` + HELP.map(([c, d]) => `${c.split(", ").map((x) => cmdLink(x.split(" ")[0], x)).join(", ").padEnd(0)}${" ".repeat(Math.max(2, 20 - c.length))}<span class="d">${d}</span>`).join("\n")); },
   ls: (a) => { if (/^-[la]+$/.test(a[0] || "")) print((a[0].includes("a") ? `-r--------  dylan  ${"2026".padEnd(14)} ${cmdLink("cat .plan", ".plan")}\n` : "") + FILES.map((f, i) => `-r--r--r--  dylan  ${(P[i] ? P[i].period : "2026").padEnd(14)} ${cmdLink("cat " + f.label, f.label)}`).join("\n") + `\n-r-xr-xr-x  dylan  ${"1976, 1972".padEnd(14)} ${cmdLink("snake")}  ${cmdLink("pong")}`); else setMode("list"); },
   cat: (a) => {
     if (a[0] === ".plan") return print(PLAN);
@@ -1356,7 +1370,7 @@ const COMMANDS = {
   linkedin: () => { print("opening LinkedIn in a new tab"); openTab("https://www.linkedin.com/in/dylan-burns-"); },
   games: () => { cd("games"); setMode("list"); },
   snake: () => startGame("snake"), pong: () => startGame("pong"),
-  fullscreen: () => { growTo = growTo ? 0 : 1; $("fsBtn").textContent = growTo ? "small screen" : "full screen"; },
+  fullscreen: () => { growTo = growTo ? 0 : 1; fsIcon(); },
   clear: () => setMode("list"), close: () => go(""),
   history: () => print(shell.hist.map((h, n) => `${String(n + 1).padStart(3)}  ${esc(h)}`).join("\n") || "nothing yet"),
   whoami: () => print("guest"), pwd: () => print("/home/dylan" + (cwd ? "/" + cwd : "")), date: () => print(esc(new Date().toString())),
@@ -1387,7 +1401,7 @@ rm: removing ${esc(a.filter((x) => !x.startsWith("-")).pop() || "everything")} .
   ping: (a) => print(`PING ${esc(a[0] || "1978")}: 64 bytes, time=${new Date().getFullYear() - 1978} years`),
   xyzzy: () => print("Nothing happens."),
   ":q": () => print("you are not in vim. yet."),
-  exit: () => { growTo = 0; $("fsBtn").textContent = "full screen"; setMode("list"); zoomOut(); },
+  exit: () => { growTo = 0; fsIcon(); setMode("list"); zoomOut(); },
 };
 /* ------------------------------------------------------------ ask */
 // `ask <question>` posts to /api/ask and prints the reply. Reply text only ever goes in through textContent/text nodes;
