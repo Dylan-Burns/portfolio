@@ -154,6 +154,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .t-out { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; white-space: pre-wrap; overflow-wrap: anywhere; scrollbar-width: none; text-shadow: 0 0 10px rgba(125, 255, 166, 0.45); }
 .t-out::-webkit-scrollbar { display: none; }
 .t-out .b { color: #d9ffe8; } .t-out .d { opacity: 0.55; }
+.t-out .ask-src { margin-top: 1em; }
+.t-out .ask-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .t-game { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
 .sl { overflow: hidden; white-space: pre; line-height: 1.05; font-size: 0.62em; margin: 0.4em 0; } .sl > span { display: inline-block; animation: sl 6.5s linear both; }
 @keyframes sl { from { transform: translateX(100cqw); } to { transform: translateX(-100%); } }
@@ -1325,7 +1327,7 @@ function fileText(i) {
   return `<span class="b">Contact</span>\n\nBuilding something hard? I'd like to hear about it.\n\nmail      dylanburns1524@gmail.com   ${cmdLink("mail", "copy")}\ngithub    <a href="https://github.com/Dylan-Burns" target="_blank" rel="noopener">github.com/Dylan-Burns</a>\nlinkedin  <a href="https://www.linkedin.com/in/dylan-burns-" target="_blank" rel="noopener">linkedin.com/in/dylan-burns-</a>`;
 }
 const openTab = (url) => { const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove(); };
-const HELP = [["ls", "list the files"], ["cat <file>", "read a file here"], ["open <file>", "open its full page"], ["browse <file>", "text-mode web view"],
+const HELP = [["ls", "list the files"], ["cat <file>", "read a file here"], ["open <file>", "open its full page"], ["ask <question>", "ask about me or my work"], ["browse <file>", "text-mode web view"],
   ["snake, pong", "games"], ["particles <shape>", "reshape the particles"], ["neofetch", "about this machine"], ["stack", "languages and tools"], ["mail", "copy my email"],
   ["fullscreen", "bigger screen"], ["history, clear, top", "the usual"], ["exit", "step back"]];
 const COMMANDS = {
@@ -1386,6 +1388,82 @@ rm: removing ${esc(a.filter((x) => !x.startsWith("-")).pop() || "everything")} .
   xyzzy: () => print("Nothing happens."),
   ":q": () => print("you are not in vim. yet."),
   exit: () => { growTo = 0; $("fsBtn").textContent = "full screen"; setMode("list"); zoomOut(); },
+};
+/* ------------------------------------------------------------ ask */
+// `ask <question>` posts to /api/ask and prints the reply. Reply text only ever goes in through textContent/text nodes;
+// server-supplied file and slug values are validated and escaped before they touch markup.
+// The cap mirrors sanitizeQuestion in src/lib/ask/text.ts: after NFKC, invisible characters stripped and whitespace
+// collapsed, the length in UTF-16 code units (String.length, not code points) must be <= MAX_Q = 300.
+const ASK_MAX = 300;
+const ASK_INVISIBLE = /[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Cs}\u{E0000}-\u{E007F}\u034F\u180E\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/gu;     // same set as INVISIBLE in src/lib/ask/text.ts
+const askClean = (t) => t.normalize("NFKC").replace(/[\t\n\r\v\f]/g, " ").replace(ASK_INVISIBLE, "").replace(/\s+/g, " ").trim();
+const ASK_TIMEOUT = 12000;                              // the e2e test reaches it with a fake clock, not a seam
+const ASK_TICK = 12, ASK_TYPE_MAX = 3000;               // a reply finishes typing in about 3 s at most
+const ASK_EXAMPLES = ["what is parahealth", "which projects use postgres", "how does keel avoid made-up citations", "what are his principles"];
+const ASK_LINKEDIN = "https://www.linkedin.com/in/dylan-burns-";
+const ASK_FAIL = "ask couldn't reach the server. Try again in a moment.";
+const ask = { pending: false, stop: null, id: 0 };
+const askCancel = () => { if (ask.stop) { const f = ask.stop; ask.stop = null; f(); } };
+// starting another command ends a running typing animation (capture phase: before run() prints anything)
+document.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) askCancel(); }, true);     // document, not #tIn (it blurs after each command); an Enter that ends an IME composition is not a command
+$("t1").addEventListener("click", (e) => { if (e.target.closest("[data-cmd]")) askCancel(); }, true);
+// types into an aria-hidden node so the live region never announces partial text; done() reveals the full text once
+function askType(node, text, done) {
+  if (reduce) return done();
+  const chunk = Math.max(1, Math.ceil(text.length / (ASK_TYPE_MAX / ASK_TICK))), tn = document.createTextNode("");
+  let i = 0, timer = 0;
+  node.appendChild(tn);
+  ask.stop = () => { clearTimeout(timer); done(); };
+  (function tick() {
+    if (shell.mode !== "out" || !node.isConnected) { ask.stop = null; return; }     // left the screen: write nothing more
+    const stick = tOut.scrollHeight - tOut.scrollTop - tOut.clientHeight < 40;
+    tn.appendData(text.slice(i, i + chunk)); i += chunk;
+    if (stick) tOut.scrollTop = tOut.scrollHeight;
+    if (i < text.length) timer = setTimeout(tick, ASK_TICK); else { ask.stop = null; done(); }
+  })();
+}
+function askSources(sources, kind) {
+  const out = [];
+  for (const s of Array.isArray(sources) ? sources.slice(0, 6) : []) {
+    if (!s || typeof s.file !== "string" || findFile(s.file) < 0) continue;     // only files that exist here
+    let line = cmdLink("open " + s.file, s.file);
+    if (typeof s.slug === "string" && /^[a-z0-9-]+$/.test(s.slug)) line += `  <a href="/work/${esc(s.slug)}">case study</a>`;
+    out.push(line);
+  }
+  if (kind === "deflect") out.push(cmdLink("open contact.txt"), `<a href="${ASK_LINKEDIN}" target="_blank" rel="noopener">linkedin</a>`);
+  return out.length ? `<span class="d">sources</span>  ` + out.join("  ") : "";
+}
+async function askQuestion(question) {
+  const box = print(`<div class="ask-a" aria-live="polite"><span class="d">thinking...</span></div><div class="ask-src"></div>`);
+  const a = box.querySelector(".ask-a"), src = box.querySelector(".ask-src");
+  const gone = () => !a.isConnected || shell.mode !== "out";
+  const say = (t) => { if (!gone()) a.textContent = t; };
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), ASK_TIMEOUT);
+  // leaving the output view abandons the request at once
+  const mine = ++ask.id, watch = setInterval(() => { if (gone()) { ctl.abort(); if (ask.id === mine) ask.pending = false; } }, 150);
+  ask.pending = true;
+  try {
+    const res = await fetch("/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ question }), signal: ctl.signal });
+    if (res.status === 429) return say("Too many questions at once. Give it a minute.");
+    if (!res.ok) return say(ASK_FAIL);
+    const r = await res.json();
+    if (gone()) return;
+    if (!r || typeof r.text !== "string" || !r.text.trim()) return say(ASK_FAIL);
+    if (r.kind === "off") return say(r.text);
+    const vis = document.createElement("span"), sr = document.createElement("span"); vis.setAttribute("aria-hidden", "true"); sr.className = "ask-sr";
+    a.textContent = ""; a.append(vis, sr);
+    let shown = false;
+    const reveal = () => { if (shown || gone()) return; shown = true; vis.textContent = r.text; sr.textContent = r.text; src.innerHTML = askSources(r.sources, r.kind); };
+    askType(vis, r.text, reveal);
+  } catch (e) { say(ASK_FAIL); }
+  finally { clearTimeout(timer); clearInterval(watch); if (ask.id === mine) ask.pending = false; }
+}
+COMMANDS.ask = (a) => {
+  const q = askClean(a.join(" "));
+  if (!q) return print(`<span class="d">ask me about my work. try:</span>\n` + ASK_EXAMPLES.map((x) => cmdLink("ask " + x, x)).join("\n"));
+  if (q.length > ASK_MAX) return print(`That question is too long. Keep it under ${ASK_MAX} characters.`);
+  if (ask.pending) return print(`<span class="d">still thinking about the last one.</span>`);
+  askQuestion(q);
 };
 // the hidden file: only `ls -a` shows it
 const PLAN = `<span class="b">.plan</span>  <span class="d">hidden, so hello</span>\n\nYou ran ls -a on a stranger's computer. I like that.\n\nMost of what I know I learned by looking one flag past the default: reading the source when the docs ran out, opening the file nobody mentioned.\n\nIf you found this, tell me when you write. ${cmdLink("cat contact.txt", "contact.txt")} has the address.\n\n<span class="d">there is more in here. try the things you would try on a real machine.</span>`;
