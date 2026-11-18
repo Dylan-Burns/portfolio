@@ -166,6 +166,15 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .t-video .d { opacity: 0.55; } .t-video a { cursor: pointer; color: #d9ffe8; }
 .v-hint { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; pointer-events: none; color: #d9ffe8; background: rgba(2, 10, 5, 0.55); text-shadow: 0 0 10px rgba(125, 255, 166, 0.6); }
 .v-hint[hidden] { display: none; }
+/* Phones only allow sound when the tap lands on the player itself. So on touch screens the player is loaded early and laid,
+   invisible, over the .env line: the tap that opens the file is a tap on the video. It then moves into the frame. */
+.v-port { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: hidden; opacity: 0.01; z-index: 4; pointer-events: none; }
+.v-port.armed { pointer-events: auto; } .v-port.hold { opacity: 0; }
+.v-port iframe { position: absolute; left: calc(50% - 210px); top: calc(50% - 150px); width: 420px; height: 300px; border: 0; }
+.v-port .v-shield { pointer-events: none; }
+.v-port.show { opacity: 1; pointer-events: auto; border: 1px solid rgba(125, 255, 166, 0.45); border-radius: 6px; background: #000; }
+.v-port.show .v-shield { pointer-events: auto; }
+.v-port.show iframe { left: 50%; top: -18%; height: 136%; aspect-ratio: 16 / 9; width: auto; transform: translateX(-50%); filter: grayscale(1) sepia(1) hue-rotate(70deg) saturate(2.4) contrast(1.15) brightness(0.9); }
 .v-mid { position: relative; flex: 1; min-height: 0; }
 .v-mid > a { position: absolute; left: 0; top: 0; white-space: nowrap; pointer-events: none; will-change: transform; }   /* they ride the track and cannot be clicked */
 .v-frame { position: absolute; overflow: hidden; border: 1px solid rgba(125, 255, 166, 0.45); border-radius: 6px; background: #000; }
@@ -429,6 +438,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
           <canvas class="t-game" id="tGame" hidden></canvas>
           <div class="t-video" id="tVideo" hidden><div class="v-mid" id="vSide"><div class="v-frame" id="vFrame"><div class="v-shield" id="vShield"></div><div class="v-hint" id="vHint" hidden>tap for sound</div></div><a id="vPlay"></a><a id="vMute"></a><a data-cmd="ls">[close]</a></div><p class="v-bar"><span class="v-prog" id="vProg"></span><span id="vTime"></span><span class="sp"></span><span id="vTitle"></span></p></div>
           <div class="t-page" id="tPage" hidden></div>
+          <div class="v-port" id="vPort"><div class="v-shield"></div></div>
         </div>
         <p class="t-prompt"><span class="dim">guest@burnsOS:~$</span><span id="tBuf"></span><span class="caret"></span><span class="dim" id="tHint">type help, or pick a file</span><input id="tIn" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="tap to type a command" aria-label="Command"></p>
       </div>
@@ -1164,6 +1174,7 @@ function vPaint(note) {
   $("vMute").textContent = vid.muted ? "[unmute]" : "[mute]";
 }
 function playVideo() {
+  if (vid.port === "hold") { setMode("video"); vid.port = "show"; $("vPort").className = "v-port show"; vPaint(); vLayout(true); return; }   // already playing, started by the tap itself
   setMode("video"); stopVideo();
   const el = document.createElement("iframe");
   el.src = `${VIMEO}/video/${VIDEO_ID}?autoplay=1&playsinline=1&title=0&byline=0&portrait=0&dnt=1&pip=0&controls=0&transparent=0`;
@@ -1173,11 +1184,35 @@ function playVideo() {
   vid.timer = setTimeout(() => { if (vid.el === el && !vid.ready) vPaint(`the player did not load here. <a href="https://vimeo.com/${VIDEO_ID}" target="_blank" rel="noopener">open the video</a>`); }, 7000);
 }
 function stopVideo() {
+  if (vid.port === "hold") return;                        // the download bar is running over a video the tap already started
+  if (vid.port === "show") { vSay("pause"); vSay("setCurrentTime", 0); Object.assign(vid, { port: "armed", playing: false, t: 0, dodges: 0, needTap: true }); $("vPort").className = "v-port"; vT.L = 0; return; }
+  vid.port = ""; $("vPort").className = "v-port";
   clearTimeout(vid.timer); if (vid.el) vid.el.remove();
   Object.assign(vid, { el: null, ready: false, playing: false, muted: false, t: 0, dodges: 0, askedTap: false, needTap: false });
   $("vShield").style.pointerEvents = ""; $("vHint").hidden = true;
   vT.L = 0;
 }
+// Touch screens: keep the player loaded and parked over the .env line whenever that line is on screen.
+function vPortPlace() {
+  const port = $("vPort"), body = $("tBody"), B = body.getBoundingClientRect(), k = B.width / body.offsetWidth || 1;
+  const over = vid.port === "show" ? $("vFrame") : filesEl.querySelector('a[href="#env"]'); if (!over) return false;
+  const r = over.getBoundingClientRect(); if (!r.width) return false;
+  Object.assign(port.style, { left: (r.left - B.left) / k + "px", top: (r.top - B.top) / k + "px", width: r.width / k + "px", height: r.height / k + "px" }); return true;
+}
+if (isTouch) setInterval(() => {
+  const onList = document.documentElement.classList.contains("zoomed") && shell.mode === "list" && !cwd && !$("files").hidden;
+  if (vid.port === "hold" && (performance.now() - vid.held > 9000 || (shell.mode !== "out" && shell.mode !== "video"))) { vid.port = "show"; stopVideo(); }   // the open was abandoned: stop the sound
+  if (vid.port === "show") return void vPortPlace();
+  if (vid.port === "hold") return;
+  if (!onList) { if (vid.port === "armed") $("vPort").className = "v-port"; return; }
+  if (!vid.el) {                                           // load it once, paused, with its own controls on so a tap plays it
+    const el = document.createElement("iframe");
+    el.src = `${VIMEO}/video/${VIDEO_ID}?autoplay=0&playsinline=1&title=0&byline=0&portrait=0&dnt=1&pip=0&transparent=0`;
+    el.allow = "autoplay; encrypted-media"; el.title = "Video"; el.referrerPolicy = "strict-origin-when-cross-origin"; el.tabIndex = -1;
+    $("vPort").prepend(el); Object.assign(vid, { el, port: "armed", ready: false, playing: false, needTap: true, askedTap: true, dodges: 0 });
+  }
+  if (vid.port === "armed") $("vPort").className = vid.ready && vPortPlace() ? "v-port armed" : "v-port";
+}, 350);
 addEventListener("blur", () => setTimeout(() => { if (vid.el && document.activeElement === vid.el) { vid.el.blur(); window.focus(); } }, 0));
 const vToggle = () => vSay(vid.playing ? "pause" : "play");
 const vSeek = (t) => { vid.t = clamp(t, 0, vid.dur - 1); vSay("setCurrentTime", vid.t); vPaint(); };
@@ -1197,7 +1232,10 @@ addEventListener("message", (e) => {
     const el = vid.el.cloneNode(); el.src = vid.el.src.replace("autoplay=1", "autoplay=0").replace("&controls=0", "");   // reloaded with its own controls on, because a player with them off ignores taps
     vid.el.replaceWith(el); vid.el = el; vid.ready = false;
     $("vShield").style.pointerEvents = "none"; $("vHint").hidden = false; vid.playing = false; vid.muted = false; vid.t = 0;
-  } else if (vid.needTap && d.event === "play") { vid.needTap = false; $("vShield").style.pointerEvents = ""; $("vHint").hidden = true; }
+  } else if (vid.needTap && d.event === "play") {
+    vid.needTap = false; $("vShield").style.pointerEvents = ""; $("vHint").hidden = true;
+    if (vid.port === "armed") { vid.port = "hold"; vid.held = performance.now(); $("vPort").className = "v-port hold"; go("env"); }   // the tap on .env was a tap on the player
+  }
   vPaint();
 });
 // The controls are a trap. Play, mute and close ride a rectangular track around the picture and slide along it to keep their
@@ -1221,7 +1259,7 @@ function vLayout(reset) {
   const L0 = vT.L; Object.assign(vT, { hw: fw / 2 + lw / 2 + 9, hh: fh / 2 + lh / 2 + 6, cx: W / 2, cy: H / 2, G: lw + 14 }); vT.L = 4 * (vT.hw + vT.hh);
   if (reset || !L0 || vT.s.length !== els.length) vT.s = els.map((_, i) => 2 * vT.hw + 2 * vT.hh + vT.hw + (1 - i) * Math.max(vT.G, vT.hw * 0.5));   // along the bottom edge: play, mute, close
   else vT.s = vT.s.map((v) => v * vT.L / L0);
-  vPlace();
+  vPlace(); if (vid.port === "show") vPortPlace();
 }
 function vFlee(e) {
   const st = $("vSide"), r = st.getBoundingClientRect(), k = r.width / st.offsetWidth || 1, px = (e.clientX - r.left) / k, py = (e.clientY - r.top) / k, { hw, hh, cx, cy, L, G } = vT; if (!L) return;
