@@ -2,7 +2,7 @@ import { buildCorpus, hasDomainShape, pageName } from "./corpus";
 import { classify, REPLIES } from "./intent";
 import type { AnswerProvider } from "./provider";
 import { FALLBACK_FLOOR, retrieve, SCORE_FLOOR } from "./retrieve";
-import { inScope } from "./scope";
+import { inScope, personQuestionCovered } from "./scope";
 import { sanitizeQuestion, stripInvisible } from "./text";
 import { MODEL_ID, PROMPT_VERSION } from "./types";
 import type { AskReply, Chunk, Corpus, ModelAnswer, Source } from "./types";
@@ -68,6 +68,8 @@ async function run(raw: unknown, deps: AskDeps): Promise<AskReply> {
   if (intent.kind === "refuse") return reply("refuse", REPLIES.refuse);
 
   const corpus = deps.corpus ?? buildCorpus();
+  // A question about the person that names no project and asks nothing the portfolio covers is deflected.
+  if (!personQuestionCovered(clean.q, intent.projects, corpus)) return reply("deflect", REPLIES.deflect);
   if (!inScope(clean.q, intent.projects, corpus)) return reply("refuse", REPLIES.notFound);
   const key = `${clean.q.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()}|${corpus.hash}|${PROMPT_VERSION}|${deps.modelId ?? MODEL_ID}`;
   const cached = deps.cache?.get(key);
@@ -91,7 +93,8 @@ async function run(raw: unknown, deps: AskDeps): Promise<AskReply> {
   try {
     verdict = validateAnswer(answer, chunks);
   } catch {
-    verdict = { ok: false, reason: "no_citation" };
+    // Output the validator cannot even read: nothing of it is shown, not even a quoted passage in its place.
+    return reply("refuse", REPLIES.notFound);
   }
 
   let result: AskReply;

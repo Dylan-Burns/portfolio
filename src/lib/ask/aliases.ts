@@ -22,6 +22,8 @@ const PROJECT_ALIASES: Record<string, string[]> = {
   cartlords: ["cartlords", "cartlords.com", "grocery", "cart", "grocery price"],
   // "grow" alone misfires ("how did remote retro grow").
   steamhouse: ["steamhouse", "steamhouse.app", "cultivation", "grower", "crop", "hydroponic", "fertilizer"],
+  // The only game in the portfolio (Snake and Pong are toys on the home page, not projects).
+  mario: ["mario", "super mario", "super mario bros", "supermariobros", "supermariobros.jar", "platformer", "game"],
 };
 
 /** Trigger phrase -> words that actually occur in src/content/projects.ts. */

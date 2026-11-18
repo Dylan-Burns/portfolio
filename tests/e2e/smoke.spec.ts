@@ -339,10 +339,12 @@ test.describe("ask command, animated", () => {
   });
 
   test("a request that never resolves is aborted and shows the failure line", async ({ page }) => {
-    await page.addInitScript(() => { (window as unknown as { __askTimeout: number }).__askTimeout = 800; });
+    await page.clock.install();     // time still flows; fastForward jumps it past the page's 12 s timeout
     await page.route("**/api/ask", () => {});
     await open(page);
     await run(page, "ask what is keel");
+    await expect(page.locator("#tOut .ask-a")).toContainText("thinking");
+    await page.clock.fastForward(13000);
     await expect(page.locator("#tOut")).toContainText("ask couldn't reach the server", { timeout: 5000 });
   });
 

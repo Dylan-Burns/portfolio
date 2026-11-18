@@ -1341,17 +1341,17 @@ rm: removing ${esc(a.filter((x) => !x.startsWith("-")).pop() || "everything")} .
 // The cap mirrors sanitizeQuestion in src/lib/ask/text.ts: after NFKC, invisible characters stripped and whitespace
 // collapsed, the length in UTF-16 code units (String.length, not code points) must be <= MAX_Q = 300.
 const ASK_MAX = 300;
-const ASK_INVISIBLE = /[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Cs}\u{E0000}-\u{E007F}͏᠎︀-️\u{E0100}-\u{E01EF}]/gu;
+const ASK_INVISIBLE = /[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Cs}\u{E0000}-\u{E007F}\u034F\u180E\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/gu;     // same set as INVISIBLE in src/lib/ask/text.ts
 const askClean = (t) => t.normalize("NFKC").replace(/[\t\n\r\v\f]/g, " ").replace(ASK_INVISIBLE, "").replace(/\s+/g, " ").trim();
-const ASK_TIMEOUT = window.__askTimeout || 12000;      // the override is a test seam
+const ASK_TIMEOUT = 12000;                              // the e2e test reaches it with a fake clock, not a seam
 const ASK_TICK = 12, ASK_TYPE_MAX = 3000;               // a reply finishes typing in about 3 s at most
-const ASK_EXAMPLES = ["what is parahealth", "which projects use postgres", "how does keel avoid made-up citations", "what does dylan believe"];
+const ASK_EXAMPLES = ["what is parahealth", "which projects use postgres", "how does keel avoid made-up citations", "what are his principles"];
 const ASK_LINKEDIN = "https://www.linkedin.com/in/dylan-burns-";
 const ASK_FAIL = "ask couldn't reach the server. Try again in a moment.";
 const ask = { pending: false, stop: null, id: 0 };
 const askCancel = () => { if (ask.stop) { const f = ask.stop; ask.stop = null; f(); } };
 // starting another command ends a running typing animation (capture phase: before run() prints anything)
-document.addEventListener("keydown", (e) => { if (e.key === "Enter") askCancel(); }, true);     // document, not #tIn: the input blurs after each command
+document.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) askCancel(); }, true);     // document, not #tIn (it blurs after each command); an Enter that ends an IME composition is not a command
 $("t1").addEventListener("click", (e) => { if (e.target.closest("[data-cmd]")) askCancel(); }, true);
 // types into an aria-hidden node so the live region never announces partial text; done() reveals the full text once
 function askType(node, text, done) {

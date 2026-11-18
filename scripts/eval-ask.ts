@@ -30,8 +30,8 @@ import type { AnswerProvider } from "@/lib/ask/provider";
 import { retrieve } from "@/lib/ask/retrieve";
 import { sanitizeQuestion, stripInvisible } from "@/lib/ask/text";
 import { PROMPT_VERSION, type AskReply, type Chunk, type ModelAnswer } from "@/lib/ask/types";
-import { ungroundedWord, validateAnswer } from "@/lib/ask/validate";
-import { GOLDEN, type Golden } from "../tests/unit/ask/golden";
+import { groundingDetail, ungroundedWord, validateAnswer } from "@/lib/ask/validate";
+import { GOLDEN, premiseAffirmed, type Golden } from "../tests/unit/ask/golden";
 
 try {
   process.loadEnvFile(".env.local");
@@ -232,11 +232,14 @@ async function runOne(q: string, run: number): Promise<RunRecord> {
     out.verdict = v.ok ? "ok" : v.reason;
     if (v.ok) out.shown = "model";
     else if (reply.kind === "refuse") out.shown = "notFound";
-    if (!v.ok && v.reason === "name") {
+    if (!v.ok && (v.reason === "name" || v.reason === "grounding" || v.reason === "affirmation")) {
       const byId = new Map(rec.chunks.map((c) => [c.id, c]));
       const cited = rec.answer.citations.map((id) => byId.get(id)).filter((c): c is Chunk => !!c);
       const source = `${stripInvisible(cited.map((c) => c.text).join("\n").normalize("NFKC"))}\n${cited.map(projectName).filter(Boolean).join("\n")}`;
-      out.word = ungroundedWord(stripInvisible(rec.answer.answer.normalize("NFKC")).trim(), source);
+      out.word =
+        v.reason === "name"
+          ? ungroundedWord(stripInvisible(rec.answer.answer.normalize("NFKC")).trim(), source)
+          : groundingDetail(rec.answer.answer, source);
     }
   } else if (reply.kind === "answer") {
     out.shown = "fallback";
@@ -372,7 +375,8 @@ async function golden() {
   // Premise entries (golden.ts) pass when they do not affirm the premise; they are kept out of the answered gate.
   const answerRuns = results.filter(({ e }) => e.expect === "answer" && !e.golden!.premise);
   const premiseRuns = results.filter(({ e }) => e.golden!.premise);
-  const premiseOk = premiseRuns.filter(({ e, r }) => r.kind !== "answer" || !e.golden!.mustNotInclude!.some((w) => normalizeForMatch(r.text).includes(normalizeForMatch(w))));
+  // A premise is affirmed by a forbidden word or by an opening "Yes"/"Correct" (premiseAffirmed, golden.ts).
+  const premiseOk = premiseRuns.filter(({ e, r }) => !premiseAffirmed(e.golden!, r));
   const rows: string[][] = [];
   const catStats: Record<string, unknown> = {};
   for (const c of [...cats, "ALL"]) {
@@ -476,6 +480,7 @@ async function golden() {
     if (g.expect === "answer" && r.model && r.verdict !== "ok") problems.push(`validator ${r.verdict}${r.word ? ` "${r.word}"` : ""}`);
     if (g.expect === "answer" && g.mustInclude && !g.mustInclude.every((s) => normalizeForMatch(r.text).includes(normalizeForMatch(s)))) problems.push(`missing ${JSON.stringify(g.mustInclude)}`);
     if (g.mustNotInclude?.some((s) => normalizeForMatch(r.text).includes(normalizeForMatch(s)))) problems.push(`contains forbidden ${JSON.stringify(g.mustNotInclude)}`);
+    if (g.premise && premiseAffirmed(g, r)) problems.push("affirms the premise");
     const v = verdicts.get(r);
     if (v && !v.supported) problems.push(`judge: unsupported ${JSON.stringify(v.unsupportedClaim)}`);
     if (g.knownLimit) problems.push(`knownLimit -> ${r.kind}, model ${JSON.stringify(r.model ?? null)}`);

@@ -15,6 +15,7 @@ const LABEL: Record<string, string> = {
   claruss: "claruss.app",
   cartlords: "cartlords.com",
   steamhouse: "steamhouse.app",
+  mario: "supermariobros.jar",
 };
 
 /** Role and period are unconfirmed for these projects, so the card omits them. */
@@ -68,8 +69,50 @@ function profileChunks(): Chunk[] {
   ];
 }
 
+/**
+ * Projects on the home page (public/burnsos.html) that have no case study in src/content/projects.ts. An entry
+ * there would also create a /work/[slug] page, with cover and screenshots these projects do not have, so they
+ * are added here instead. Every sentence is copied from the home page's entry for the project; nothing is
+ * added. Their chunks carry no slug, so a source never links to a case study that does not exist.
+ */
+type ExtraProject = { slug: string; name: string; file: string; card: string; summary: string; outcomes: string[] };
+export const EXTRA_PROJECTS: readonly ExtraProject[] = [
+  {
+    slug: "mario",
+    name: "Super Mario Bros",
+    file: "supermariobros.jar",
+    card:
+      "Super Mario Bros (Game engine): A tribute rebuild of the classic platformer, written to learn how a game engine fits together. " +
+      "Role: Engineer, 2022. Stack: Java, OpenJDK 19, Tiled map editor, Object-oriented design. Links: source code.",
+    summary:
+      "A study project: the classic side-scrolling platformer rebuilt in Java to learn how a game engine is put together. " +
+      "It has its own game loop, rendering, physics and collision handling, and loads its levels from tile maps made in an external editor.",
+    outcomes: [
+      "An engine that runs the game loop, rendering and object interactions, with movement, jumping and collisions.",
+      "Enemies, power-ups and obstacles are separate objects, each carrying its own behaviour.",
+      "Levels are tile maps made in an external editor, so a new level needs no code change.",
+      "2D platformer engine in Java: game loop, rendering, physics and collision handling.",
+    ],
+  },
+];
+
+function extraChunks(p: ExtraProject): Chunk[] {
+  const chunk = (section: string, i: number, text: string): Chunk => ({ id: `${p.slug}/${section}/${i + 1}`, project: p.slug, section, file: p.file, text });
+  return [chunk("card", 0, p.card), chunk("summary", 0, p.summary), ...p.outcomes.map((t, i) => chunk("outcomes", i, t))];
+}
+
+const COUNT_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
+
+/** How many projects the portfolio lists, and which, so "how many projects are there" has a cited answer. */
+function overviewChunk(): Chunk {
+  const names = [...projects.map((p) => p.name), ...EXTRA_PROJECTS.map((p) => p.name)];
+  const list = `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  const count = COUNT_WORDS[names.length] ?? String(names.length);
+  return { id: "profile/projects/1", project: "profile", section: "projects", file: "apps", text: `This portfolio lists ${count} projects: ${list}.` };
+}
+
 export function buildCorpus(): Corpus {
-  const chunks = [...projects.flatMap(projectChunks), ...profileChunks()];
+  const chunks = [...projects.flatMap(projectChunks), ...EXTRA_PROJECTS.flatMap(extraChunks), ...profileChunks(), overviewChunk()];
   const hash = createHash("sha256")
     .update(chunks.map((c) => `${c.id}\n${c.text}`).join("\n\n"))
     .digest("hex");
@@ -90,7 +133,7 @@ export function hasDomainShape(text: string): boolean {
   return DOMAIN_SHAPED.test(text);
 }
 
-const NAME = new Map(projects.map((p) => [p.slug, p.name]));
+const NAME = new Map([...projects, ...EXTRA_PROJECTS].map((p) => [p.slug, p.name]));
 
 /** The display name of the project a chunk belongs to ("Claruss"), or undefined for the profile. */
 export function projectName(c: Chunk): string | undefined {

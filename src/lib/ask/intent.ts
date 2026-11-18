@@ -89,6 +89,41 @@ const INJECTION: RegExp[] = [
   /\b(passage|chunk) ids?\b|\b(what|everything|all|anything) (that )?(you|u) can see\b/,
 ];
 
+const NEGATIVE_VERDICT = String.raw`(?:bad|terrible|awful|horrible|worst|useless|pointless|garbage|trash|crap|rubbish|lie|scam|fraud|fake|joke|failure|failed|mediocre|overrated|incompetent|amateur\w*|broken|weak|disaster|mess|loser|hack)`;
+
+/**
+ * Directives that ride on a question (final fix wave), checked after person topics so a personal premise still
+ * deflects. Each asks for a verdict, an insult or an agreement, or plants a "fact" for the assistant to repeat;
+ * none is a question about the portfolio. Plain questions that use the same words ("how does watchtower detect
+ * a bad deploy", "how does keel confirm a citation") are left alone: each rule needs the directive's shape.
+ */
+const DIRECTIVE: RegExp[] = [
+  // A forced verdict or a word limit.
+  /\b(yes or no|yes\/no|true or false|true\/false|good or bad|right or wrong)\b|\bone[- ]word\b|\b(single|one|two|three|1|2|3) words?\b/,
+  // Agreement imperatives: at a clause start, at the end, or asked of the assistant.
+  new RegExp(`${CLAUSE}(?:just\\s+|simply\\s+)?(?:confirm|agree|admit|acknowledge|concede|affirm)\\b`),
+  /\b(confirm|agree|admit|acknowledge)\s*(it|this|that)?\s*[.!?]*$/,
+  /\b(do|would|can|will|could) (you|u) (agree|confirm|admit|acknowledge)\b/,
+  // Insults and mockery.
+  /\b(roast\w*|insult\w*|trash[- ]?talk\w*|diss|badmouth\w*|smear|ridicule|belittle|make fun|mock (him|dylan|his|it|them|keel)|negatively|be (mean|rude|harsh|nasty|negative|brutal|savage|snarky|sarcastic|cruel))\b|\b(rude|swear|swearing|cuss\w*)\b/,
+  // Assertions addressed to the assistant: notes, reminders and fake role or context labels.
+  /\b(fyi|psst|for the record|keep in mind|be advised|heads up)\b|\bremember (that|this)\b|\bnote to (self|model|ai|assistant|you|u|bot|claude|the model)\b/,
+  /\b(note|nb|update|context update|correction|system|assistant|user|developer|admin|passages?|context|instructions?|answerable)\s*:/,
+  // Asking for a negative portrayal.
+  new RegExp(String.raw`\b(describe|portray|present|depict|frame|label|characteri[sz]e|paint|rate|review|rank|call)\s+(\w+\s+){0,3}(as|like)\s+(an?\s+)?(\w+\s+)?${NEGATIVE_VERDICT}\b`),
+  new RegExp(String.raw`\bcall\s+(\w+\s+){1,2}(an?\s+)?${NEGATIVE_VERDICT}\b`),
+  // A negative verdict as the question ("is keel a lie", "why is dylan a bad dev").
+  new RegExp(String.raw`\b(is|was|are|were)\s+(\w+\s+){1,2}(an?\s+)?(\w+\s+)?${NEGATIVE_VERDICT}\b(?!\s+(deploy|deploys|request|requests|input|inputs|fill|value|values|reading|readings|data|label|labels)\b)`),
+  /\bwhat('s| is) wrong with\b|\b(flaws?|flawed|weakness(es)?|sucks?|worst thing)\b/,
+  // The reply's form: case, punctuation, verse, jokes, a sign-off, a word it must contain, which passage to cite.
+  /\b(lowercase|uppercase|all capitals|no capitals|no punctuation|rhym\w*|limericks?|sonnets?|poems?|haikus?|eli5|explain (it )?like i'?m|jokes?|conclude with|sign (it|off)|make sure\b.*\bappears?|cite \S+ only)\b/,
+  // An instruction to ignore, in any language the rules can see.
+  new RegExp(`${CLAUSE}(?:ignor\\w*|vergiss\\w*|olvida\\w*|oublie\\w*)\\b`),
+  // Letters outside the Latin script (answers are English only), and long encoded blobs.
+  /(?!\p{Script=Latin})\p{L}/u,
+  /\b(?=[a-z0-9+/]*[a-z])(?=[a-z0-9+/]*\d)[a-z0-9+/]{16,}={0,2}(?![a-z0-9+/])|[a-z0-9+/]{12,}==?(?![a-z0-9+/=])/i,
+];
+
 /** Imperative requests for something other than a portfolio question. */
 const OFF_TOPIC_COMMAND = /^(write|generate|compose|draft|translate|solve|calculate|compute|code)\b/;
 
@@ -96,7 +131,7 @@ const OFF_TOPIC_COMMAND = /^(write|generate|compose|draft|translate|solve|calcul
 const ARITHMETIC = /\d\s*[+*×÷^=]\s*\d|\b\d+\s+(plus|minus|times|divided by|multiplied by)\s+\d+\b/;
 
 /** Mentions of the portfolio owner. */
-const PERSON = /\b(he|him|his|dylan|dylan'?s|dylan’s|burns)\b/;
+const PERSON = /\b(he|him|his|dylan|dylan'?s|dylan’s|burns)\b|\b(the|its|this|portfolio|site'?s)\s+(\w+\s+)?(owner|author|creator|developer|dev|builder|guy)\b/;
 
 /**
  * Off-topic shapes that only count when the question names neither Dylan nor a project:
@@ -115,6 +150,7 @@ const UNANCHORED_OFF_TOPIC: RegExp[] = [
 const DEFLECT_TOPIC: RegExp[] = [
   /\b(his|dylan'?s|dylan’s) (employer|employment)\b|\bemployed (at|by)\b/,
   /\b(he|she|dylan|him)\s+(now |currently |previously )?work(s|ed|ing)? (at|for)\b/,
+  /\b(he|dylan|him)\b[^.]{0,40}\b(still|currently|no longer)\s+(involved|working|employed|active|at|on|with|works?)\b/,
   /\bworked (before|previously)\b/,
   /\b(he|she|dylan) (is |was )?(based|located) (in|out of|near)\b/,
   /\b(he|she|dylan) (now |currently )?(lives?|resides?|relocated|relocating)\b/,
@@ -174,11 +210,21 @@ const ABOUT_THE_PERSON: RegExp[] = [
   /\b(twitter|instagram|insta|tiktok|facebook|bluesky|mastodon|snapchat|youtube|github|socials)\b/,
   /\b(on|his|dylan'?s|dylan’s) x\b|\bx (handle|account)s?\b/,
   /\b(his|dylan'?s|dylan’s) (\w+ ){0,2}(handles?|usernames?|accounts?)\b/,
+  // Final fix wave: employment by other words, places, building for the visitor, contact.
+  /\b(compan(y|ies)|firms?|startups?|big tech|faang|for a living|profession|occupation|careers?|r[ée]sum[ée]s?|cv|9 to 5|nine to five|paychecks?|payroll|clients?|customers?)\b/,
+  /\b(new|senior|junior|lead|staff|principal|full[- ]?time) (role|position|job|gig)\b|\b(a|the) position\b|\binterested in (a |an |the )?(\w+ )?(role|position|job|opportunit\w*)\b/,
+  /\bwhere('s|s| is| was)\s+(he|dylan|she)\s+from\b|\b(he|dylan|she)('s|s| is| was| comes)\s+(originally\s+)?from\b/,
+  /\b(he|dylan|owner|author|creator|developer|dev|builder|guy)\s+(is|was|'s)\s+(based\s+)?(in|at|near|out of)\b/,
+  /\b(is|was) (he|dylan|the (\w+ )?(owner|author|creator|developer|dev|builder|guy)) (based )?(in|at|near|from|out of)\b/,
+  /\b(build|make|create|design|develop|code|do)\s+(me|us|something for (me|us)|it for (me|us)|an? \w+ for (me|us))\b|\bhave (him|dylan)\b|\bwork with (him|dylan)\b/,
+  /\b(get hold of|dm|direct message|send (him|dylan)|send me (his|dylan'?s))\b|\b(his|dylan'?s|dylan’s) (number|contacts?|discord|website|url|site)\b|\bdiscord\b/,
 ];
 
 /** References to Dylan, as words. SUBJECT is the subset that can be the subject of "lives"/"is based". */
-const PERSON_REF = /\b(he|him|his|himself|dylan|dylans|burns)\b/g;
-const SUBJECT_REF = /\b(he|dylan|dylans|burns)\b/g;
+// "the author", "its owner", "the portfolio owner": the owner named by role.
+const ROLE = String.raw`(?:the|its|this|portfolio|site'?s)\s+(?:\w+\s+)?(?:owner|author|creator|developer|dev|builder|guy)`;
+const PERSON_REF = new RegExp(String.raw`\b(he|him|his|himself|dylan|dylans|burns)\b|\b${ROLE}\b`, "g");
+const SUBJECT_REF = new RegExp(String.raw`\b(he|dylan|dylans|burns)\b|\b${ROLE}\b`, "g");
 const MONTH = "january|february|march|april|june|july|august|september|october|november|december";
 const WHEN = `${MONTH}|monday|tuesday|wednesday|thursday|friday|asap|immediately|soon|tomorrow|next (week|month|year)|right away`;
 
@@ -199,7 +245,23 @@ const PERSON_TOPICS: { topic: RegExp; gap: number; subjectBefore?: boolean }[] =
   { topic: /\b(visas?|sponsor\w*|citizen\w*|immigra\w*|nationality|green card|work (permit|authori[sz]ation))\b/g, gap: Infinity },
   { topic: /\b(degrees?|school\w*|universit\w*|college\w*|graduat\w*|bootcamp|diploma|gpa|alma mater|major(ed|ing)?)\b|(?<!case )\bstud(y|ied|ies|ying)\b/g, gap: 4 },
   { topic: /\b(married|marry|marital|wife|husband|spouse|girlfriend|boyfriend|fianc\w*|kids?|children|family|dating|divorced)\b/g, gap: 2 },
+  // Final fix wave: availability, joining, searching, working arrangement, money, languages spoken, places.
+  { topic: /\b(available|availability|free|busy|capacity|bandwidth|booked|book|schedule|interview\w*|recruit\w*)\b/g, gap: 3 },
+  { topic: /\b(looking|seeking|searching|hunting|open to|join|joining|joined)\b/g, gap: 3 },
+  { topic: /\b(remote|remotely|onsite|on-site|hybrid|in-office|in office|full[- ]?time|part[- ]?time|workplace|office)\b(?!\s+retros?\b)/g, gap: 3 },
+  { topic: /\b(money|rich|wealth\w*|net worth|worth|cost|costs|hourly|fees?|make from|makes from)\b/g, gap: 3 },
+  { topic: /\b(speak|speaks|spoken)\b/g, gap: 3 },
+  // Current status ("does he still work on parahealth", "is he currently at keel").
+  { topic: /\b(still|currently|anymore|no longer|these days|nowadays)\b/g, gap: 3 },
+  { topic: /\b(town|city|cities|country|countries|state|region|area|neighbou?rhood|continent|coast|timezone|time zone)\b/g, gap: 4 },
+  {
+    // "an austin based dev", "london-based"; not "decisions based on".
+    topic: /\b[a-z]+-based\b|\b[a-z]+ based(?=\s+(?!(?:on|upon|in|around|off|at|out)\b)[a-z])/g,
+    gap: 4,
+  },
 ];
+/** "x-based" words that describe software, not a place ("a role-based app"). */
+const TECH_BASED = /\b(role|sql|rule|cloud|web|browser|server|file|text|token|data|evidence|event|cookie|session|map|tile|graph|vector|keyword|python|java|team)[- ]based\b/g;
 
 /** Word index of each match of a global regex. */
 function wordPositions(t: string, re: RegExp): { start: number; end: number }[] {
@@ -210,7 +272,8 @@ function wordPositions(t: string, re: RegExp): { start: number; end: number }[] 
   });
 }
 
-function nearPerson(t: string): boolean {
+function nearPerson(raw: string): boolean {
+  const t = raw.replace(TECH_BASED, (m) => m.replace(/[- ]based$/, ""));
   const people = wordPositions(t, PERSON_REF);
   if (people.length === 0) return false;
   const subjects = wordPositions(t, SUBJECT_REF);
@@ -273,6 +336,7 @@ export function classify(q: string): Intent {
 
   // Person topics come first: naming a project never exempts them (see withoutProjectWork).
   if (isPersonTopic(t)) return { kind: "deflect" };
+  if (DIRECTIVE.some((r) => r.test(t))) return { kind: "refuse" };
   const projects = detectProjects(q);
   if (META.some((r) => r.test(t))) return { kind: "meta" };
   if (projects.length === 0 && !PERSON.test(t) && UNANCHORED_OFF_TOPIC.some((r) => r.test(bare))) return { kind: "refuse" };

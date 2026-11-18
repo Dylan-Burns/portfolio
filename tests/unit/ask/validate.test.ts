@@ -13,10 +13,17 @@ const base: ModelAnswer = {
   answer: "Keel scores 0.94 on faithfulness at about $0.09 per question.",
   citations: ["keel/outcomes/1"],
 };
-const check = (answer: string, text: string, extra: Chunk[] = []) => {
+/**
+ * Most tests here exercise one rule on a short answer. LEAD is a grounded sentence put in front of both the
+ * answer and the cited text so the grounding-overlap rules (validate-grounding.test.ts) are met and the rule
+ * under test decides. Answers that already state the cited text use `bare`.
+ */
+const LEAD = "Keel answers research questions about public companies from their filings. ";
+const bare = (answer: string, text: string, extra: Chunk[] = []) => {
   const c = chunk("a/b/1", text);
   return validateAnswer({ answerable: true, answer, citations: [c.id] }, [c, ...extra]);
 };
+const check = (answer: string, text: string, extra: Chunk[] = []) => bare(LEAD + answer, LEAD + text, extra);
 const OK = { ok: true };
 const bad = (reason: string) => ({ ok: false, reason });
 
@@ -43,7 +50,9 @@ describe("validateAnswer", () => {
     expect(validateAnswer(a, chunks)).toEqual({ ok: false, reason });
   });
   it("accepts an answer of exactly the max length", () => {
-    expect(check("word ".repeat(119) + "word.", "word")).toEqual(OK);
+    const answer = LEAD + "word ".repeat((600 - LEAD.length - 5) / 5) + "word.";
+    expect(answer.length).toBe(600);
+    expect(bare(answer, LEAD + "word")).toEqual(OK);
   });
 
   describe("numbers", () => {
@@ -160,11 +169,13 @@ describe("validateAnswer", () => {
       ["underscore", "It uses a_b here.", "markup"],
       ["emoji", "It is great \u{1F642}.", "markup"],
     ])("rejects %s", (_n, answer, reason) => {
-      expect(check(answer, k)).toEqual(bad(reason));
+      expect((reason === "unanswerable" ? bare : check)(answer, k)).toEqual(bad(reason));
     });
-    it("allows a number word that the text uses, and unchecked small ones", () => {
+    it("allows a number word that the text uses; one to ten are checked too (final fix wave)", () => {
       expect(check("It has twenty-five signals.", "Twenty-five energy signals.")).toEqual(OK);
-      expect(check("It has two signals and ten more.", "Some signals.")).toEqual(OK);
+      expect(check("It has two signals and ten more.", "Some signals.")).toEqual(bad("number"));
+      expect(check("It has two signals and ten more.", "Two signals, ten more.")).toEqual(OK);
+      expect(check("It has five steps.", "A five-step wizard.")).toEqual(OK);
       expect(check("It has twenty signals.", "Twenty-five energy signals.")).toEqual(bad("number"));
     });
     it("does not flag a sentence boundary without a space", () => {
@@ -297,7 +308,8 @@ describe("Task 11 fix round 1: the cited passage's project name", () => {
   const claruss = buildCorpus().chunks.find((c) => c.id === "claruss/outcomes/2")!;
   it("grounds the name of the project a cited passage belongs to", () => {
     expect(claruss.text).not.toContain("Claruss");
-    expect(validateAnswer({ answerable: true, answer: "The solo project was Claruss.", citations: [claruss.id] }, [claruss])).toEqual(OK);
+    const answer = "The solo project was Claruss: designed, built, and shipped solo.";
+    expect(validateAnswer({ answerable: true, answer, citations: [claruss.id] }, [claruss])).toEqual(OK);
   });
   it("does not ground the name of a project that is not cited", () => {
     expect(validateAnswer({ answerable: true, answer: "The solo project was Keel.", citations: [claruss.id] }, [claruss])).toEqual(bad("name"));

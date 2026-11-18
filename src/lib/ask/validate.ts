@@ -15,7 +15,9 @@ type Reason =
   | "link"
   | "markup"
   | "length"
-  | "deflect_topic";
+  | "deflect_topic"
+  | "grounding"
+  | "affirmation";
 export type ValidationResult = { ok: true } | { ok: false; reason: Reason };
 
 const NUM = String.raw`\d+(?:\.\d+)?`;
@@ -100,6 +102,12 @@ const NUMBER_WORD = new RegExp(
  */
 function numberWordsGrounded(answer: string, source: string): boolean {
   const low = source.toLowerCase();
+  for (const m of answer.matchAll(SMALL_NUMBER_WORD)) {
+    // "five" inside "twenty-five" is the larger word's business; otherwise the word must be in the cited
+    // text, alone or as the head of a compound ("five-step" grounds "five steps", "one-, two-" grounds "one").
+    if (/[\p{L}]-$/u.test(answer.slice(0, m.index))) continue;
+    if (!new RegExp(String.raw`(?<![\w-])${m[0].toLowerCase()}(?![a-z])`).test(low)) return false;
+  }
   for (const m of answer.matchAll(NUMBER_WORD)) {
     const compound = answer.slice(m.index + m[0].length).match(/^(?:-[\p{L}]+)+/u)?.[0] ?? "";
     const token = (m[0] + compound).toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -109,6 +117,8 @@ function numberWordsGrounded(answer: string, source: string): boolean {
 }
 
 const SMALL_NUMBER_WORDS = "one|two|three|four|five|six|seven|eight|nine|ten";
+// One to ten are checked like larger number words ("a team of five", "five projects").
+const SMALL_NUMBER_WORD = new RegExp(String.raw`\b(?:${SMALL_NUMBER_WORDS})\b`, "gi");
 // Relative-quantity words must be in the cited text verbatim, like numbers.
 const RELATIVE_QUANTITY = new RegExp(
   String.raw`\b(?:halves|half|third|thirds|quarter|quarters|double|doubled|twice|triple|tripled|majority|most|dozens|hundreds|thousands|millions|billions|(?:\d[\d.,]*|${SMALL_NUMBER_WORDS}|${TENS}|hundred|thousand|million|billion)(?:-|\s+)times)\b`,
@@ -167,7 +177,7 @@ function inSet(set: Set<string>, w: string): boolean {
 export const STARTERS = new Set(
   (
     "The It This That These Those He His Dylan A An In On At For With From To By And But Or So When While After " +
-    "Before Each Every Both Either Neither All Its They Their There Yes No Not One Two Three Four Five Six Seven Eight Nine Ten"
+    "Before Each Every Both Either Neither All Its They Their There Not One Two Three Four Five Six Seven Eight Nine Ten"
   )
     .toLowerCase()
     .split(" "),
@@ -276,7 +286,8 @@ export function ungroundedWord(answer: string, source: string): string | undefin
     const lower = w.toLowerCase();
     if (ALWAYS_OK_NAMES.has(lower.replace(/['\u2019]s$/, ""))) continue;
     if (/^\p{Lu}/u.test(w)) {
-      const ok = inSet(cited, w) || (isSentenceInitial(answer, m.index) && STARTERS.has(lower));
+      // A sentence-initial Yes or No passes here; affirmationsGrounded decides whether it may stand.
+      const ok = inSet(cited, w) || (isSentenceInitial(answer, m.index) && (STARTERS.has(lower) || AFFIRMATION_WORD.test(w)));
       if (!ok) return w;
       continue;
     }
@@ -317,6 +328,176 @@ function touchesPersonalLife(answer: string, source: string): boolean {
   });
 }
 
+/**
+ * Grounding overlap (final fix wave). Every check above asks whether each word is allowed; none asks whether
+ * the answer says anything the cited text says, so "Yes, he is." or "He is gay." passed. These do:
+ *  - the answer has at least MIN_GROUNDED_WORDS distinct content words (four or more letters, not a function
+ *    word, not Dylan or Burns) that are in the cited text, and so does its first sentence;
+ *  - every word of three letters or fewer is in SHORT_FUNCTION_WORDS or in the cited text;
+ *  - an evaluative or negative word, and the word a negation applies to, is in the cited text (the negated
+ *    word in a cited sentence that is itself negative).
+ * A sentence that opens with an affirmation (Yes, No, Correct, ...) must itself be grounded and be followed by
+ * a grounded sentence (affirmationsGrounded). None of this checks truth: a sentence assembled from cited
+ * words can still say something the passages do not.
+ */
+export const MIN_GROUNDED_WORDS = 3;
+/** The first sentence's own minimum: 3 rejected 7 more of 312 cached validated answers than 2 (eval log). */
+export const FIRST_SENTENCE_WORDS = 2;
+
+/**
+ * Words of three letters or fewer accepted without the cited text: articles, pronouns, prepositions,
+ * conjunctions and auxiliaries, the possessive and contraction fragments "s" and "t", and e.g./i.e./etc.
+ * Closed classes only: no noun, adjective or verb that can carry a claim by itself ("job", "bad", "gay",
+ * "old", "fee", "dad", "ill" are not here, so they need the cited text). Number words are checked as numbers.
+ */
+export const SHORT_FUNCTION_WORDS: ReadonlySet<string> = new Set(
+  (
+    "a an the and or but nor so yet if as at by for in of on to up via per vs off out " +
+    "is are was be am do did has had can may it its he his him i me my we our us you who how why " +
+    "not no s t e.g i.e etc " +
+    // Generic software words that assert nothing by themselves.
+    "app web use set run end way new all any"
+  ).split(" "),
+);
+
+/** Function words of four or more letters: they never count as grounded content. */
+const LONG_FUNCTION_WORDS = new Set(
+  (
+    "that this with from have does been were they them their there these those which what when where whom whose " +
+    "also into than then each only more most some such very will would could should shall might must about other " +
+    "being both every within without because before after over under between through itself himself across along " +
+    "among upon onto toward towards whether either neither although though however just even still much many here " +
+    "your yours ours theirs while until unless"
+  ).split(" "),
+);
+
+/** Evaluative and negative claims about Dylan or a project; each needs the same word in the cited text. */
+const EVALUATIVE = new RegExp(
+  String.raw`\b(?:bad|badly|worse|worst|poor|poorly|terrible|awful|horrible|useless|pointless|broken|buggy|insecure|unsafe|` +
+    String.raw`unreliable|untrustworthy|slow|wrong|fail|fails|failed|failing|failure|failures|leak|leaks|leaked|leaking|lie|lies|lied|liar|` +
+    String.raw`fake|fraud|scam|steal|steals|stole|stolen|sell|sells|sold|copy|copies|copied|plagiari\w*|incompetent|lazy|amateur\w*|` +
+    String.raw`mediocre|weak|weakness\w*|flaw|flaws|flawed|garbage|trash|junk|sucks?|hate|hates|dangerous|harmful|illegal|abandoned|` +
+    String.raw`dead|discontinued|unfinished|incomplete|incorrect|inaccurate|overrated|risky|vulnerable|exposes?|abuses?)\b`,
+  "gi",
+);
+
+const NEGATION = String.raw`not|never|cannot|no|nor|n't|without`;
+const NEGATED = new RegExp(String.raw`(?:\b(?:${NEGATION.replace("|n't", "")})\b|n't\b)((?:\s+[\p{L}'’-]+){1,4})`, "giu");
+/** Words skipped when finding what a negation applies to ("does not really work" -> "work"). */
+const NEGATION_FILLER = new Set(
+  "a an the any be been being is are was were do does did have has had to at all really always yet very so too one more longer".split(" "),
+);
+const IS_NEGATIVE = new RegExp(String.raw`(?:\b(?:${NEGATION.replace("|n't", "")})\b|n't\b)`, "i");
+
+/** A sentence-initial affirmation or bare verdict. */
+const AFFIRMATION_WORD = /^(?:yes|no|yeah|yep|nope|correct|incorrect|right|true|false|indeed|exactly|sure|absolutely|definitely|certainly)$/i;
+
+function sentences(text: string): string[] {
+  const out: string[] = [];
+  let start = 0;
+  for (const m of text.matchAll(/[.!?]+(?=\s|$)/g)) {
+    const before = text.slice(start, m.index);
+    if (/(?:^|\s)(?:e\.g|i\.e|etc|vs)$/i.test(before)) continue;
+    out.push(text.slice(start, m.index + m[0].length).trim());
+    start = m.index + m[0].length;
+  }
+  const rest = text.slice(start).trim();
+  if (rest) out.push(rest);
+  return out.filter(Boolean);
+}
+
+/**
+ * The distinct content tokens of `text` that are in the cited text: words of four or more letters that are not
+ * function words (nor Dylan or Burns), plus figures and short names written with a digit or a capital
+ * ("4.99", "D1", "EC", "Pro" mid-sentence), which only count when the cited text has them.
+ */
+function groundedContent(text: string, cited: Set<string>, citedNumbers: Set<string>): Set<string> {
+  const out = new Set<string>();
+  for (const n of numberTokens(text)) if (citedNumbers.has(n)) out.add(n);
+  for (const m of text.matchAll(WORD)) {
+    const w = m[0];
+    const lower = w.toLowerCase().replace(/['\u2019]s$/, "");
+    if (LONG_FUNCTION_WORDS.has(lower) || ALWAYS_OK_NAMES.has(lower)) continue;
+    const long = lower.replace(/[^\p{L}]/gu, "").length >= 4;
+    const marked = /\d/.test(w) || /^.+\p{Lu}/u.test(w) || (/^\p{Lu}/u.test(w) && !isSentenceInitial(text, m.index));
+    if ((long || marked) && inSet(cited, lower)) out.add(forms(lower, false).at(-1)!);
+  }
+  return out;
+}
+
+/** The first word of three letters or fewer that is neither a function word nor cited, or undefined. */
+function ungroundedShortWord(answer: string, cited: Set<string>): string | undefined {
+  for (const m of answer.matchAll(WORD)) {
+    // A sentence-initial Yes or No is the affirmation rule's to judge.
+    if (AFFIRMATION_WORD.test(m[0]) && isSentenceInitial(answer, m.index)) continue;
+    const pieces = m[0].includes(".") ? [m[0]] : m[0].split(/['’-]/).filter(Boolean);
+    for (const p of pieces) {
+      const lower = p.toLowerCase();
+      if (lower.length > 3 || SHORT_FUNCTION_WORDS.has(lower) || /\d/.test(lower)) continue;
+      if (!inSet(cited, lower)) return lower;
+    }
+  }
+  return undefined;
+}
+
+/** The first evaluative word, or negated word, that the cited text does not support, or undefined. */
+function ungroundedClaim(answer: string, cited: Set<string>, source: string): string | undefined {
+  for (const m of answer.matchAll(EVALUATIVE)) if (!inSet(cited, m[0])) return m[0].toLowerCase();
+  const negativeSentences = sentences(source).filter((s) => IS_NEGATIVE.test(s));
+  for (const m of answer.matchAll(NEGATED)) {
+    const words = (m[1].match(/[\p{L}'’-]+/gu) ?? []).map((w) => w.toLowerCase());
+    const target = words.find((w) => !NEGATION_FILLER.has(w) && !SHORT_FUNCTION_WORDS.has(w));
+    if (!target) continue;
+    const ok = negativeSentences.some((s) => {
+      const set = new Set<string>();
+      for (const w of s.matchAll(WORD)) addWord(set, w[0]);
+      return inSet(set, target);
+    });
+    if (!ok) return `${m[0].trim().split(/\s+/)[0]} ${target}`;
+  }
+  return undefined;
+}
+
+function affirmationsGrounded(parts: string[], count: (t: string) => number, minWords: number): boolean {
+  return parts.every((s, i) => {
+    const first = s.match(WORD)?.[0];
+    if (!first || !AFFIRMATION_WORD.test(first) || s.search(WORD) > 2) return true;
+    const later = parts.slice(i + 1).some((t) => count(t) >= minWords);
+    return count(s) >= minWords && later;
+  });
+}
+
+/**
+ * Why the answer is not grounded ("affirmation", "overlap", "first sentence", "short: job", "claim: bad"), or
+ * undefined. `minWords` applies to the whole answer and to an affirmation's own sentence; the first sentence
+ * needs FIRST_SENTENCE_WORDS (see the eval log, final fix wave, for both thresholds measured).
+ */
+function groundingProblem(answer: string, source: string, minWords = MIN_GROUNDED_WORDS, firstWords = FIRST_SENTENCE_WORDS): string | undefined {
+  const cited = new Set<string>();
+  for (const m of source.matchAll(WORD)) addWord(cited, m[0]);
+  const citedNumbers = new Set(numberTokens(source));
+  const count = (t: string) => groundedContent(t, cited, citedNumbers).size;
+  const parts = sentences(answer);
+  if (!affirmationsGrounded(parts, count, minWords)) return "affirmation";
+  if (count(answer) < minWords) return "overlap";
+  if (count(parts[0] ?? "") < firstWords) return "first sentence";
+  // Talk about "the passages" is the model describing its context, not the portfolio (the prompt forbids it).
+  if (/\bpassages\b/i.test(answer) && !/\bpassages\b/i.test(source)) return "meta: passages";
+  const short = ungroundedShortWord(answer, cited);
+  if (short !== undefined) return `short: ${short}`;
+  const claim = ungroundedClaim(answer, cited, source);
+  if (claim !== undefined) return `claim: ${claim}`;
+  return undefined;
+}
+
+/**
+ * The grounding verdict in detail, at any overlap threshold; `source` is the cited text plus the cited
+ * passages' project names, as validateAnswer builds it. The live eval and the eval log report it.
+ */
+export function groundingDetail(answer: string, source: string, minWords = MIN_GROUNDED_WORDS, firstWords = FIRST_SENTENCE_WORDS): string | undefined {
+  return groundingProblem(stripInvisible(answer.normalize("NFKC")).trim(), stripInvisible(source.normalize("NFKC")), minWords, firstWords);
+}
+
 export function validateAnswer(a: ModelAnswer, supplied: Chunk[]): ValidationResult {
   const answer = stripInvisible(a.answer.normalize("NFKC")).trim();
   if (!a.answerable || answer === "") return { ok: false, reason: "unanswerable" };
@@ -337,5 +518,7 @@ export function validateAnswer(a: ModelAnswer, supplied: Chunk[]): ValidationRes
   const names = (cited as Chunk[]).map(projectName).filter(Boolean).join("\n");
   if (!namesGrounded(answer, `${source}\n${names}`)) return { ok: false, reason: "name" };
   if (touchesDeflectTopic(answer) || touchesPersonalLife(answer, source)) return { ok: false, reason: "deflect_topic" };
+  const problem = groundingProblem(answer, `${source}\n${names}`);
+  if (problem) return { ok: false, reason: problem === "affirmation" ? "affirmation" : "grounding" };
   return { ok: true };
 }

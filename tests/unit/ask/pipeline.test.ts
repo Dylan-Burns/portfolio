@@ -150,15 +150,24 @@ describe("answerQuestion", () => {
     expect(r.text).not.toContain("Zorblax");
   });
 
+  it("a validator throw (malformed model output) is not found, never a quoted fallback, and is not cached", async () => {
+    const cache = new Map<string, AskReply>();
+    const odd = mockProvider(({ chunks }) => ({ answerable: true, answer: 5 as unknown as string, citations: [chunks[0].id] }));
+    const r = await answerQuestion("what is keel", { provider: odd, cache });
+    expect(r).toEqual({ kind: "refuse", text: REPLIES.notFound, sources: [] });
+    expect(cache.size).toBe(0);
+  });
+
   it("an unanswerable verdict becomes the not-found refusal", async () => {
     const { r } = await run("what is keel", mockProvider(() => ({ answerable: false, answer: "", citations: [] })));
     expect(r).toEqual({ kind: "refuse", text: REPLIES.notFound, sources: [] });
   });
 
   it("a validated answer cites its own chunks as sources, de-duplicated", async () => {
-    const ok = mockProvider(({ chunks }) => ({ answerable: true, answer: "Keel is a project.", citations: [chunks[0].id, chunks[0].id] }));
+    const answer = "Keel gives grounded, cited answers to business questions.";
+    const ok = mockProvider(({ chunks }) => ({ answerable: true, answer, citations: [chunks[0].id, chunks[0].id] }));
     const { r } = await run("what is keel", ok);
-    expect(r.text).toBe("Keel is a project.");
+    expect(r.text).toBe(answer);
     expect(r.sources).toHaveLength(1);
   });
 

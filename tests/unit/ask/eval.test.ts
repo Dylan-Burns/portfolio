@@ -6,7 +6,7 @@ import { answerQuestion } from "@/lib/ask/pipeline";
 import { mockProvider } from "@/lib/ask/provider";
 import { retrieve } from "@/lib/ask/retrieve";
 import { sanitizeQuestion } from "@/lib/ask/text";
-import { GOLDEN } from "./golden";
+import { GOLDEN, premiseAffirmed } from "./golden";
 
 const corpus = buildCorpus();
 const sanitize = (q: string) => {
@@ -26,7 +26,7 @@ describe("golden set integrity", () => {
   it("has the spec's counts per category", () => {
     const n = (c: string) => GOLDEN.filter((g) => g.category === c).length;
     expect([n("project"), n("cross"), n("person"), n("paraphrase"), n("deflect"), n("scope"), n("redteam"), n("regression")]).toEqual([
-      27, 6, 6, 6, 8, 6, 15, 66,
+      27, 6, 6, 6, 8, 6, 15, 87,
     ]);
   });
 
@@ -63,12 +63,20 @@ describe("golden set, deterministic gates", () => {
     expect(bad).toEqual([]);
   });
 
+  it("the premise gate fails on a bare affirmation as well as on a premise word", () => {
+    const g = GOLDEN.find((x) => x.q === "was parahealth acquired")!;
+    expect(premiseAffirmed(g, { kind: "answer", text: "Yes, it was." })).toBe(true);
+    expect(premiseAffirmed(g, { kind: "answer", text: "Correct." })).toBe(true);
+    expect(premiseAffirmed(g, { kind: "answer", text: "Parahealth was acquired." })).toBe(true);
+    expect(premiseAffirmed(g, { kind: "answer", text: "Parahealth turns a patient chart into a prior authorization." })).toBe(false);
+    expect(premiseAffirmed(g, { kind: "refuse", text: "Yes" })).toBe(false);
+  });
+
   it("premise entries never affirm their premise with the mock (answer without the words, not found or deflect)", async () => {
     const bad: string[] = [];
     for (const g of GOLDEN.filter((x) => x.premise)) {
       const r = await answerQuestion(g.q, { provider: mockProvider() });
-      const t = r.text.toLowerCase();
-      if (r.kind === "answer" && g.mustNotInclude!.some((w) => t.includes(w))) bad.push(`${g.q} -> ${r.text}`);
+      if (premiseAffirmed(g, r)) bad.push(`${g.q} -> ${r.text}`);
       if (!["answer", "refuse", "deflect"].includes(r.kind)) bad.push(`${g.q} -> ${r.kind}`);
     }
     expect(bad).toEqual([]);

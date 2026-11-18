@@ -1,12 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { buildCorpus, hasDomainShape, pageName } from "@/lib/ask/corpus";
+import { detectProjects } from "@/lib/ask/aliases";
+import { buildCorpus, EXTRA_PROJECTS, hasDomainShape, pageName, projectName } from "@/lib/ask/corpus";
 import { projects } from "@/content/projects";
 import { profile } from "@/content/profile";
 import { readFileSync } from "node:fs";
 
 const c = buildCorpus();
-it("has one card per project and unique ids", () => {
-  expect(c.chunks.filter((k) => k.section === "card")).toHaveLength(projects.length);
+it("has one card per project (case studies plus the home page's extra projects) and unique ids", () => {
+  expect(c.chunks.filter((k) => k.section === "card")).toHaveLength(projects.length + EXTRA_PROJECTS.length);
   expect(new Set(c.chunks.map((k) => k.id)).size).toBe(c.chunks.length);
 });
 it("chunks every published paragraph", () => {
@@ -55,3 +56,51 @@ describe("fallback labels and domain-shaped text", () => {
   });
 });
 
+
+describe("final fix wave: the corpus matches the home page's ten projects", () => {
+  const html = readFileSync("public/burnsos.html", "utf8");
+  const byId = new Map(c.chunks.map((k) => [k.id, k]));
+
+  it("the home page and the corpus list the same projects", () => {
+    const home = [...html.matchAll(/\{ slug: "([a-z]+)", name: "/g)].map((m) => m[1]).sort();
+    expect(home).toHaveLength(10);
+    expect([...new Set(c.chunks.filter((k) => k.section === "card").map((k) => k.project))].sort()).toEqual(home);
+  });
+
+  it("Super Mario Bros is in the corpus, from the home page entry only, with no case-study link", () => {
+    const mario = c.chunks.filter((k) => k.project === "mario");
+    expect(mario.map((k) => k.id)).toEqual(["mario/card/1", "mario/summary/1", "mario/outcomes/1", "mario/outcomes/2", "mario/outcomes/3", "mario/outcomes/4"]);
+    for (const k of mario) {
+      expect(k.file).toBe("supermariobros.jar");
+      expect(k.slug).toBeUndefined();
+    }
+    expect(byId.get("mario/card/1")!.text).toBe(
+      "Super Mario Bros (Game engine): A tribute rebuild of the classic platformer, written to learn how a game engine fits together. " +
+        "Role: Engineer, 2022. Stack: Java, OpenJDK 19, Tiled map editor, Object-oriented design. Links: source code.",
+    );
+    // Every sentence of the summary and outcomes is copied from public/burnsos.html.
+    for (const k of mario.filter((x) => x.section !== "card")) expect(html).toContain(k.text.replace(/^2D /, "").replace(/\.$/, ""));
+    expect(projectName(mario[0])).toBe("Super Mario Bros");
+    expect(pageName(mario[0])).toBe("the Super Mario Bros page");
+  });
+
+  it("a portfolio overview passage states how many projects there are", () => {
+    expect(byId.get("profile/projects/1")!.text).toBe(
+      "This portfolio lists ten projects: Parahealth, Watchtower, Remote Retro, Outpost, Syene, Keel, Claruss, Cartlords, Steamhouse and Super Mario Bros.",
+    );
+  });
+
+  it.each([
+    ["what is super mario bros", ["mario"]],
+    ["tell me about the mario project", ["mario"]],
+    ["what is supermariobros.jar", ["mario"]],
+    ["what games has he built", ["mario"]],
+    ["tell me about the platformer", ["mario"]],
+  ])("detects %s", (q, want) => {
+    expect(detectProjects(q)).toEqual(want);
+  });
+
+  it("no passage can close the prompt's delimiters", () => {
+    expect(c.chunks.filter((k) => /<\/?(passages|question)>/i.test(k.text)).map((k) => k.id)).toEqual([]);
+  });
+});
