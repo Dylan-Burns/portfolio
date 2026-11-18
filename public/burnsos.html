@@ -141,7 +141,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 @media (max-width: 1100px) { .legend.zoomed { left: 50%; top: auto; bottom: 3vh; transform: translateX(-50%); flex-direction: row; gap: 18px; font-size: 10px; } }
 .term-os { padding: 26px 30px; font-size: 25px; line-height: 27px; justify-content: flex-start; gap: 10px; }
 .term-os .t-head { display: flex; justify-content: space-between; }
-.files { display: flex; flex-direction: column; width: 58%; position: relative; z-index: 1; line-height: 23px; }
+.files { display: flex; flex-direction: column; width: 58%; height: 100%; position: relative; z-index: 1; line-height: 23px; }
+.files .file { flex: 0 1 23px; min-height: 0; align-items: center; }   /* rows share the height, so a longer list tightens instead of spilling under the prompt */
 .file { display: flex; gap: 8px; padding: 0 8px; margin: 0 -8px; border-radius: 4px; color: #62d68b; text-decoration: none; white-space: nowrap; text-shadow: none; }
 .file .pre { width: 1ch; opacity: 0; } .file.sel .pre { opacity: 1; }
 .file.sel { background: rgba(110, 245, 165, 0.17); color: #d9ffe8; text-shadow: 0 0 12px rgba(125, 255, 166, 0.6); }
@@ -163,13 +164,12 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .t-video[hidden] { display: none; }
 .t-video p { margin: 0; white-space: pre; overflow: hidden; }
 .t-video .d { opacity: 0.55; } .t-video a { cursor: pointer; color: #d9ffe8; }
-.v-mid { flex: 1; min-height: 0; display: flex; gap: 1.5ch; }
-.v-side { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 0.9em; }
-.v-frame { position: relative; flex: none; height: 100%; aspect-ratio: 4 / 3; max-width: 72%; overflow: hidden; border: 1px solid rgba(125, 255, 166, 0.45); border-radius: 6px; background: #000; }
-.v-frame iframe { position: absolute; left: 50%; top: -48px; height: calc(100% + 96px); aspect-ratio: 16 / 9; width: auto; transform: translateX(-50%); border: 0;   /* 16:9 player, centred behind a 4:3 window: its black side bars and its own controls fall outside */ filter: grayscale(1) sepia(1) hue-rotate(70deg) saturate(2.4) contrast(1.15) brightness(0.9); }
+.v-mid { position: relative; flex: 1; min-height: 0; }
+.v-mid > a { position: absolute; left: 0; top: 0; white-space: nowrap; pointer-events: none; will-change: transform; }   /* they ride the track and cannot be clicked */
+.v-frame { position: absolute; overflow: hidden; border: 1px solid rgba(125, 255, 166, 0.45); border-radius: 6px; background: #000; }
+.v-frame iframe { position: absolute; left: 50%; top: -18%; height: 136%; aspect-ratio: 16 / 9; width: auto; transform: translateX(-50%); border: 0;   /* 16:9 player centred behind a 4:3 window: its black side bars and its own controls fall outside */ filter: grayscale(1) sepia(1) hue-rotate(70deg) saturate(2.4) contrast(1.15) brightness(0.9); }
 .v-shield { position: absolute; inset: 0; z-index: 1; cursor: pointer; display: grid; place-items: center; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 3px); }
 .t-out video.meme { display: block; height: 8.2em; max-width: 60%; margin: 0.5em 0; border: 1px solid rgba(125, 255, 166, 0.45); border-radius: 6px; background: #000; }
-.v-side a.fled { position: absolute; z-index: 3; transition: left .16s ease-out, top .16s ease-out; background: rgba(2, 10, 5, 0.85); padding: 0 0.4ch; }
 .v-bar { display: flex; gap: 1ch; align-items: baseline; } .v-prog { cursor: pointer; flex: none; } .v-bar .sp { flex: 1; }
 .t-prompt { display: flex; gap: 10px; align-items: baseline; position: relative; z-index: 1; border-top: 1px solid rgba(125, 255, 166, 0.38); padding-top: 7px; }
 .t-prompt #tBuf { white-space: pre; color: #d9ffe8; }
@@ -425,7 +425,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
           <div class="t-prev" id="tPrev" aria-live="polite"><p class="pv-m" id="pvMetric"></p><p class="pv-w dim" id="pvWhat"></p></div>
           <div class="t-out" id="tOut" hidden></div>
           <canvas class="t-game" id="tGame" hidden></canvas>
-          <div class="t-video" id="tVideo" hidden><p><span id="vTitle"></span></p><div class="v-mid"><div class="v-frame" id="vFrame"><div class="v-shield" id="vShield"></div></div><div class="v-side" id="vSide"><a id="vPlay"></a><a id="vMute"></a><a data-cmd="ls">[close]</a></div></div><p class="v-bar"><span class="v-prog" id="vProg"></span><span id="vTime"></span></p></div>
+          <div class="t-video" id="tVideo" hidden><div class="v-mid" id="vSide"><div class="v-frame" id="vFrame"><div class="v-shield" id="vShield"></div></div><a id="vPlay"></a><a id="vMute"></a><a data-cmd="ls">[close]</a></div><p class="v-bar"><span class="v-prog" id="vProg"></span><span id="vTime"></span><span class="sp"></span><span id="vTitle"></span></p></div>
           <div class="t-page" id="tPage" hidden></div>
         </div>
         <p class="t-prompt"><span class="dim">guest@burnsOS:~$</span><span id="tBuf"></span><span class="caret"></span><span class="dim" id="tHint">type help, or pick a file</span><input id="tIn" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="tap to type a command" aria-label="Command"></p>
@@ -537,10 +537,19 @@ const P = [
           "A zero-setup demo: seeded data refreshed daily and one-click sign-in."],
     stack: ["TypeScript", "Next.js", "React", "MUI", "MongoDB", "NextAuth", "AWS S3", "mathjs"],
     links: [["Open the live demo", "https://steamhouse.vercel.app/"]] },
+  { slug: "mario", name: "Super Mario Bros", cat: "Game engine", role: "Engineer", period: "2022", form: "gamepad", url: "github.com/Dylan-Burns/Super-Mario-Bros",
+    what: "a platformer engine in Java",
+    tag: "A tribute rebuild of the classic platformer, written to learn how a game engine fits together.",
+    metric: "2D", label: "platformer engine in Java: game loop, rendering, physics and collision handling",
+    out: ["An engine that runs the game loop, rendering and object interactions, with movement, jumping and collisions.",
+          "Enemies, power-ups and obstacles are separate objects, each carrying its own behaviour.",
+          "Levels are tile maps made in an external editor, so a new level needs no code change."],
+    stack: ["Java", "OpenJDK 19", "Tiled map editor", "Object-oriented design"],
+    links: [["View the source on GitHub", "https://github.com/Dylan-Burns/Super-Mario-Bros"]] },
 ];
 const CYCLE = ["syene", "watchtower", "parahealth", "steamhouse", "outpost", "keel", "remoteretros", "claruss", "cartlords"].map((s) => P.findIndex((p) => p.slug === s));
-const FORM_ORDER = ["capsule", "radar", "board", "stack", "globe", "page", "phone", "bars", "phyllo", "portrait", "compass", "plane", "envelope", "key"];
-const ROT = { globe: 0.5, capsule: 0.5, radar: 0.42, board: 0.26, stack: 0.42, page: 0.28, phone: 0.4, bars: 0.42, phyllo: 0.32, portrait: 0.13, compass: 0.3, plane: 0.42, envelope: 0.3, key: 0.3 };
+const FORM_ORDER = ["capsule", "radar", "board", "stack", "globe", "page", "phone", "bars", "phyllo", "portrait", "compass", "plane", "envelope", "key", "gamepad"];
+const ROT = { globe: 0.5, capsule: 0.5, radar: 0.42, board: 0.26, stack: 0.42, page: 0.28, phone: 0.4, bars: 0.42, phyllo: 0.32, portrait: 0.13, compass: 0.3, plane: 0.42, envelope: 0.3, key: 0.3, gamepad: 0.34 };
 
 /* --------------------------------------------------------------- shapes */
 const TAU = Math.PI * 2, R = Math.random;
@@ -690,6 +699,12 @@ SHAPES.plane = (N) => {
     [0.36, () => { const f = pick(faces); return tri(f[0], f[1], f[2]); }],
     [0.12, () => { const k = (R() * 5) | 0, t = (k + R() * 0.45) / 5, x = -1 - t * 0.9; return j([x, -0.05 - 0.5 * t * t + 0.12 * Math.sin(t * 6), 0], 0.006); }],   // dashed trail
   ], (p) => rotX(rotZ(rotY([p[0] * 0.82 + 0.25, p[1] * 0.82, p[2] * 0.82], 0.55), 0.3), 0.32));
+};
+SHAPES.gamepad = (N) => {
+  const z = () => (R() - 0.5) * 0.12, disc = (cx, cy, r) => { const a = R() * TAU, d = Math.sqrt(R()) * r; return [cx + Math.cos(a) * d, cy + Math.sin(a) * d, 0.06 + z() * 0.3]; };
+  const body = () => { const a = R() * TAU, c = Math.cos(a), sn = Math.sin(a), k = 1 + (R() - 0.5) * 0.05; return [Math.sign(c) * Math.pow(Math.abs(c), 0.42) * 0.82 * k, Math.sign(sn) * Math.pow(Math.abs(sn), 0.42) * 0.36 * k, z()]; };
+  const bar = (x0, y0, x1, y1) => { const p = seg([x0, y0, 0], [x1, y1, 0]); return [p[0] + (R() - 0.5) * 0.05, p[1] + (R() - 0.5) * 0.05, 0.06]; };
+  return build(N, [[0.46, body], [0.11, () => bar(-0.6, 0, -0.3, 0)], [0.11, () => bar(-0.45, -0.15, -0.45, 0.15)], [0.12, () => disc(0.36, -0.07, 0.085)], [0.12, () => disc(0.58, 0.07, 0.085)], [0.04, () => bar(-0.1, -0.12, -0.02, -0.12)], [0.04, () => bar(0.04, -0.12, 0.12, -0.12)]]);
 };
 SHAPES.key = (N) => build(N, [
   [0.44, () => { const a = R() * TAU, r = 0.25 + (R() - 0.5) * 0.06; return [-0.5 + Math.cos(a) * r, Math.sin(a) * r, (R() - 0.5) * 0.1]; }],
@@ -943,13 +958,13 @@ const toKeyboard = () => { zoomTo = 1; };
 const zoomOut = () => { zoomTo = 0; };
 
 /* ------------------------------------------- burnsOS: files on the CRT */
-const LABEL = { parahealth: "parahealth.ai", watchtower: "watchtower", remoteretros: "remoteretros.org", outpost: "projectoutpost.org", syene: "syene.ai", keel: "keeldd.com", claruss: "claruss.app", cartlords: "cartlords.com", steamhouse: "steamhouse.app" };
+const LABEL = { parahealth: "parahealth.ai", watchtower: "watchtower", remoteretros: "remoteretros.org", outpost: "projectoutpost.org", syene: "syene.ai", keel: "keeldd.com", claruss: "claruss.app", cartlords: "cartlords.com", steamhouse: "steamhouse.app", mario: "supermariobros.jar" };
 // the preview beside the file list: the product's category, and the plainest one-line description of what it does
 const KIND = { parahealth: ["healthcare", "AI-powered prior authorization workflow"], watchtower: ["infrastructure", "self-healing software infra"],
   remoteretros: ["collaboration", "Agile retrospectives for remote teams"], outpost: ["self-hosted", "emergency offline library with local AI models"],
   syene: ["fintech", "oil market signals from satellite images"], keel: ["research", "answers about companies, cited from SEC filings"],
   claruss: ["wellness", "iOS screentime app that requires a partner to approve screentime overrides"], cartlords: ["commerce", "finds the cheapest way to buy your groceries"],
-  steamhouse: ["agtech", "crop and feeding plans for commercial growers"] };
+  steamhouse: ["agtech", "crop and feeding plans for commercial growers"], mario: ["game", "the classic platformer, rebuilt in Java"] };
 const FILES = [...P.map((p, i) => ({ name: p.slug, label: LABEL[p.slug], title: p.name, form: p.form, metric: KIND[p.slug][0], what: KIND[p.slug][1] })),
   { name: "about", label: "about.txt", title: "About", form: "portrait", metric: "about", what: "passionate technologist and explorer" },
   { name: "principles", label: "principles.txt", title: "Principles", form: "compass", metric: "principles", what: "what I try to live by" },
@@ -989,6 +1004,7 @@ const ABOUT = {
   claruss: "Claruss blocks the apps and websites you choose on a schedule you set, enforced at the system level. An accountability partner can approve early unlocks, and a one-time passcode arrives by email or SMS when you genuinely need out.",
   cartlords: "Cartlords compares a whole grocery list across the stores near you using real prices, then finds the cheapest way to buy it, including splitting the cart across two or three stores. Prices are normalized to a true per-unit cost so the comparison is fair.",
   steamhouse: "A multi-tenant platform for commercial growing operations that replaces the spreadsheets and paper logs most grows run on. Teams write week-by-week feed schedules, attach them to a crop, then log daily readings, feedings and climate against the plan.",
+  mario: "A study project: the classic side-scrolling platformer rebuilt in Java to learn how a game engine is put together. It has its own game loop, rendering, physics and collision handling, and loads its levels from tile maps made in an external editor. It is a desktop program, so the source lives on GitHub and it does not run on this screen.",
 };
 // Dated entries for dispatch.txt, newest first: { at: "2026-11-17T12:30:00-08:00", title: "...", body: "..." }
 const DISPATCH = [];
@@ -1108,7 +1124,7 @@ const vSay = (method, value) => { if (vid.el && vid.el.contentWindow) vid.el.con
 const vClock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
 function vPaint(note) {
   const W = 14, n = Math.round(clamp(vid.t / vid.dur) * W);
-  $("vTitle").innerHTML = `<span class="d">$ cat .env</span>   ${note || (vid.dodges >= 6 ? "esc is the only way out" : vid.playing ? "API_KEY=never-gonna-give-you-up" : vid.ready ? "paused" : "decrypting ...")}`;
+  $("vTitle").innerHTML = note || (vid.dodges >= 6 ? "esc is the only way out" : vid.ready ? "" : "decrypting ...");
   $("vPlay").textContent = vid.playing ? "[pause]" : "[play]";
   $("vProg").innerHTML = `${"#".repeat(n)}<span class="d">${"-".repeat(W - n)}</span>`;
   $("vTime").textContent = `${vClock(vid.t)}/${vClock(vid.dur)}`;
@@ -1119,14 +1135,14 @@ function playVideo() {
   const el = document.createElement("iframe");
   el.src = `${VIMEO}/video/${VIDEO_ID}?autoplay=1&playsinline=1&title=0&byline=0&portrait=0&dnt=1&pip=0&controls=0&transparent=0`;
   el.allow = "autoplay; encrypted-media"; el.title = "Video"; el.referrerPolicy = "strict-origin-when-cross-origin"; el.tabIndex = -1;
-  $("vFrame").prepend(el); vid.el = el; vPaint();
+  $("vFrame").prepend(el); vid.el = el; vPaint(); vLayout(true);
   el.addEventListener("load", () => { if (document.activeElement === el) { el.blur(); window.focus(); } });
   vid.timer = setTimeout(() => { if (vid.el === el && !vid.ready) vPaint(`the player did not load here. <a href="https://vimeo.com/${VIDEO_ID}" target="_blank" rel="noopener">open the video</a>`); }, 7000);
 }
 function stopVideo() {
   clearTimeout(vid.timer); if (vid.el) vid.el.remove();
   Object.assign(vid, { el: null, ready: false, playing: false, muted: false, t: 0, dodges: 0 });
-  $("vSide").classList.remove("loose"); for (const el of vDodgers()) { el.classList.remove("fled"); el.style.left = el.style.top = ""; }
+  vT.L = 0;
 }
 addEventListener("blur", () => setTimeout(() => { if (vid.el && document.activeElement === vid.el) { vid.el.blur(); window.focus(); } }, 0));
 const vToggle = () => vSay(vid.playing ? "pause" : "play");
@@ -1143,27 +1159,56 @@ addEventListener("message", (e) => {
   else if (d.event === "volumechange" && d.data) vid.muted = !!d.data.muted || d.data.volume === 0;
   vPaint();
 });
-// The controls are a trap. Pause, mute and close slide away from the pointer before it can reach them, and a tap only makes them jump.
-const vDodgers = () => [...$("vSide").children];
-function vDodge(el, px, py) {
-  const side = $("vSide"), box = side.getBoundingClientRect(), all = vDodgers();
-  if (!side.classList.contains("loose")) {          // first scare: pin all three where they stand, so the others do not re-centre onto each other
-    const at = all.map((o) => o.getBoundingClientRect());
-    all.forEach((o, i) => { o.spot = [at[i].left - box.left, at[i].top - box.top]; o.style.left = o.spot[0] + "px"; o.style.top = o.spot[1] + "px"; });
-    side.classList.add("loose"); all.forEach((o) => o.classList.add("fled")); side.getBoundingClientRect();
-  }
-  const w = el.offsetWidth, h = el.offsetHeight, far = Math.min(box.width, box.height) * 0.42; let pick = null;
-  const clear = (x, y) => !all.some((o) => o !== el && x < o.spot[0] + o.offsetWidth + 6 && x + w > o.spot[0] - 6 && y < o.spot[1] + o.offsetHeight + 6 && y + h > o.spot[1] - 6);
-  for (let k = 0; k < 80; k++) {
-    const x = Math.max(0, R() * (box.width - w)), y = Math.max(0, R() * (box.height - h)); if (!clear(x, y)) continue;
-    const d = Math.hypot(box.left + x + w / 2 - px, box.top + y + h / 2 - py); if (!pick || d > pick[2]) pick = [x, y, d]; if (d > far) break;
-  }
-  if (!pick) pick = [Math.max(0, R() * (box.width - w)), Math.max(0, R() * (box.height - h))];
-  el.spot = [pick[0], pick[1]]; el.style.left = pick[0] + "px"; el.style.top = pick[1] + "px";
-  vid.dodges = (vid.dodges || 0) + 1; if (vid.dodges === 6) vPaint();
+// The controls are a trap. Play, mute and close ride a rectangular track around the picture and slide along it to keep their
+// distance from the pointer; they also ignore clicks outright. Esc is the only way out.
+const vT = { s: [], L: 0, hw: 0, hh: 0, cx: 0, cy: 0, G: 0, last: 0 }, V_KEEP = 92, V_MIN = 40;      // V_KEEP: the stretch of track the pointer clears; V_MIN: the least gap ever allowed between pointer and control (terminal pixels)
+const vDodgers = () => [...$("vSide").querySelectorAll("a")];
+const vWrap = (d) => { const L = vT.L; d = ((d % L) + L) % L; return d > L / 2 ? d - L : d; };
+function vAt(s) {                                         // distance along the track, clockwise from its top-left corner -> a point
+  const { hw, hh, cx, cy, L } = vT; s = ((s % L) + L) % L;
+  if (s < 2 * hw) return [cx - hw + s, cy - hh]; s -= 2 * hw;
+  if (s < 2 * hh) return [cx + hw, cy - hh + s]; s -= 2 * hh;
+  if (s < 2 * hw) return [cx + hw - s, cy + hh]; s -= 2 * hw;
+  return [cx - hw, cy + hh - s];
 }
-$("tVideo").addEventListener("pointermove", (e) => { for (const el of vDodgers()) { const r = el.getBoundingClientRect(); if (Math.hypot(Math.max(r.left - e.clientX, 0, e.clientX - r.right), Math.max(r.top - e.clientY, 0, e.clientY - r.bottom)) < 34) vDodge(el, e.clientX, e.clientY); } });
-for (const type of ["pointerdown", "click"]) $("tVideo").addEventListener(type, (e) => { const el = e.target.closest(".v-side a"); if (!el) return; e.preventDefault(); e.stopPropagation(); if (type === "pointerdown") vDodge(el, e.clientX, e.clientY); }, true);
+function vPlace() { vDodgers().forEach((el, i) => { const [x, y] = vAt(vT.s[i]); el.style.transform = `translate(${x - el.offsetWidth / 2}px, ${y - el.offsetHeight / 2}px)`; }); }
+function vLayout(reset) {
+  const st = $("vSide"), W = st.clientWidth, H = st.clientHeight, els = vDodgers(); if (!W || !H) return;
+  const lw = Math.max(...els.map((e) => e.offsetWidth)), lh = els[0].offsetHeight;
+  let fh = H - 2 * (lh + 12), fw = fh * 4 / 3; if (fw > W - 2 * (lw + 18)) { fw = W - 2 * (lw + 18); fh = fw * 3 / 4; }
+  Object.assign($("vFrame").style, { width: fw + "px", height: fh + "px", left: (W - fw) / 2 + "px", top: (H - fh) / 2 + "px" });
+  const L0 = vT.L; Object.assign(vT, { hw: fw / 2 + lw / 2 + 9, hh: fh / 2 + lh / 2 + 6, cx: W / 2, cy: H / 2, G: lw + 14 }); vT.L = 4 * (vT.hw + vT.hh);
+  if (reset || !L0 || vT.s.length !== els.length) vT.s = els.map((_, i) => 2 * vT.hw + 2 * vT.hh + vT.hw + (1 - i) * Math.max(vT.G, vT.hw * 0.5));   // along the bottom edge: play, mute, close
+  else vT.s = vT.s.map((v) => v * vT.L / L0);
+  vPlace();
+}
+function vFlee(e) {
+  const st = $("vSide"), r = st.getBoundingClientRect(), k = r.width / st.offsetWidth || 1, px = (e.clientX - r.left) / k, py = (e.clientY - r.top) / k, { hw, hh, cx, cy, L, G } = vT; if (!L) return;
+  const qx = clamp(px, cx - hw, cx + hw), qy = clamp(py, cy - hh, cy + hh);
+  const near = [[Math.hypot(px - qx, py - (cy - hh)), qx - (cx - hw)], [Math.hypot(px - (cx + hw), py - qy), 2 * hw + qy - (cy - hh)], [Math.hypot(px - qx, py - (cy + hh)), 2 * hw + 2 * hh + cx + hw - qx], [Math.hypot(px - (cx - hw), py - qy), 4 * hw + 2 * hh + cy + hh - qy]].sort((a, b) => a[0] - b[0])[0];
+  const off = near[0], sc = near[1]; if (off >= V_KEEP) return;
+  const els = vDodgers(), start = vT.s.slice(); let D = Math.sqrt(V_KEEP * V_KEEP - off * off) + 10, gap = G;
+  const box = (i, v) => { const [x, y] = vAt(v), w = els[i].offsetWidth / 2, h = els[i].offsetHeight / 2; return [x - w, y - h, x + w, y + h]; };
+  for (let attempt = 0; attempt < 9; attempt++) {         // widen the clear stretch until every control is truly out of reach and none touch (corners need more room)
+    let t = start.map((v) => { const d = vWrap(v - sc); return Math.abs(d) >= D ? v : sc + (d >= 0 ? D : -D); });
+    for (let pass = 0; pass < 6; pass++) {                // neighbours shove each other along the track, away from the pointer
+      const order = t.map((v, i) => i).sort((p, q) => vWrap(t[p] - sc) - vWrap(t[q] - sc)); let ok = true;
+      for (let n = 0; n < order.length - 1; n++) { const p = order[n], q = order[n + 1], da = vWrap(t[p] - sc), db = vWrap(t[q] - sc); if (db - da >= gap) continue; ok = false;
+        if (Math.abs(db) >= Math.abs(da)) t[q] = sc + da + gap; else t[p] = sc + db - gap; }
+      if (ok) break;
+    }
+    const B = t.map((v, i) => box(i, v)), reach = Math.min(...B.map((r) => Math.hypot(Math.max(r[0] - px, 0, px - r[2]), Math.max(r[1] - py, 0, py - r[3]))));
+    const touch = B.some((r, i) => B.some((o, j) => j > i && r[0] < o[2] + 4 && r[2] > o[0] - 4 && r[1] < o[3] + 4 && r[3] > o[1] - 4));
+    vT.s = t; if (reach >= V_MIN && !touch) break;
+    if (reach < V_MIN) D *= 1.22; if (touch) gap *= 1.18;
+  }
+  const moved = vT.s.some((v, i) => Math.abs(v - start[i]) > 0.5);
+  if (!moved) return;
+  vPlace(); const now = performance.now(); if (now - vT.last > 450) { vT.last = now; if (++vid.dodges === 6) vPaint(); }
+}
+for (const type of ["pointermove", "pointerdown"]) $("tVideo").addEventListener(type, vFlee);
+new ResizeObserver(() => { if (!$("tVideo").hidden) vLayout(false); }).observe($("vSide"));
+$("vShield").addEventListener("click", () => { if (!vid.playing) vSay("play"); });       // a blocked autoplay can still be started; it can never be paused
 $("vProg").addEventListener("click", (e) => { const r = e.currentTarget.getBoundingClientRect(); vSeek(((e.clientX - r.left) / r.width) * vid.dur); });
 // the vim trap: only :q and friends get you out
 function vimInput(line) {

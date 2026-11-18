@@ -161,13 +161,23 @@ test("developer easter eggs, and the video player's controls cannot be clicked",
   await expect(page.locator("#tOut")).toContainText("party parrot");
   await run("cat .env");
   await expect(page.locator("#tVideo")).toBeVisible();
+  const before = await page.locator("#vPlay").boundingBox();
   for (const sel of ["#vPlay", "#vMute", '#vSide [data-cmd="ls"]']) {
     const box = (await page.locator(sel).boundingBox())!;
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 4 });
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   }
   await expect(page.locator("#tVideo")).toBeVisible();          // close never landed
-  await expect(page.locator("#vSide a.fled")).toHaveCount(3);
+  expect((await page.locator("#vPlay").boundingBox())!.x).not.toBe(before!.x);   // it slid along its track instead
   await page.keyboard.press("Escape");
   await expect(page.locator("#files")).toBeVisible();
+});
+
+test("super mario bros is listed like the other projects and opens its page", async ({ page }) => {
+  await page.goto("/#mario");
+  await expect(page.locator("#tPage h2")).toHaveText("Super Mario Bros");
+  await expect(page.locator('#tPage a[href="https://github.com/Dylan-Burns/Super-Mario-Bros"]')).toBeVisible();
+  await expect(page.locator("#tPage .pg-shot img")).toHaveJSProperty("complete", true);
+  await page.keyboard.press("Escape");
+  await expect(page.locator('#files a[href="#mario"]')).toHaveText(/supermariobros\.jar$/);
 });
