@@ -14,6 +14,7 @@
     "build:plain": "node scripts/build-plain.mjs"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "clsx": "^2.1.1",
     "geist": "^1.9.2",
     "motion": "^12.38.0",

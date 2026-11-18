@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import localFont from "next/font/local";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import { Analytics } from "@vercel/analytics/next";
 import { site } from "@/content/site";
 import { WarpProvider } from "@/components/retro/WarpOverlay";
 import "./globals.css";
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${spaceGrotesk.variable}`}>
       <body className="min-h-dvh antialiased">
         <WarpProvider>{children}</WarpProvider>
+        <Analytics />
       </body>
     </html>
   );
