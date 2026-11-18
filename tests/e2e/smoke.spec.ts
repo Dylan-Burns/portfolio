@@ -155,3 +155,109 @@ test("easter eggs: a hidden file, the rm clip, the vim trap and the video player
   await expect(page.locator("#files")).toBeVisible();
   await expect(page.locator("#vFrame iframe")).toHaveCount(0);
 });
+
+test.describe("ask command", () => {
+  test.use({ contextOptions: { reducedMotion: "reduce" } });
+  const open = async (page: import("@playwright/test").Page) => {
+    await page.goto("/");
+    await page.keyboard.press("Space");
+    await screenOn(page);
+  };
+  const run = async (page: import("@playwright/test").Page, cmd: string) => {
+    await page.keyboard.type(cmd);
+    await page.keyboard.press("Enter");
+  };
+
+  test("ask renders the answer as text with clickable sources", async ({ page }) => {
+    await page.route("**/api/ask", (r) =>
+      r.fulfill({ json: { kind: "answer", text: "Keel <b>answers</b> questions about SEC filings.", sources: [{ file: "keeldd.com", section: "summary", slug: "keel" }] } }),
+    );
+    await open(page);
+    await run(page, "ask what is keel");
+    await expect(page.locator("#tOut")).toContainText("Keel <b>answers</b> questions about SEC filings.");
+    await expect(page.locator("#tOut b")).toHaveCount(0);
+    await expect(page.locator('#tOut a[data-cmd="open keeldd.com"]')).toBeVisible();
+    await expect(page.locator('#tOut a[href="/work/keel"]')).toBeVisible();
+    await expect(page.locator('#tOut [aria-live="polite"]')).toHaveCount(1);
+  });
+
+  test("ask with no question lists examples, and a failed request shows a plain message", async ({ page }) => {
+    await page.route("**/api/ask", (r) => r.abort());
+    await open(page);
+    await run(page, "ask");
+    await expect(page.locator('#tOut a[data-cmd^="ask "]')).toHaveCount(4);
+    await run(page, "ask what is keel");
+    await expect(page.locator("#tOut")).toContainText("ask couldn't reach the server");
+  });
+
+  test("a deflection links to the contact file", async ({ page }) => {
+    await page.route("**/api/ask", (r) =>
+      r.fulfill({ json: { kind: "deflect", text: "I don't answer questions about employers, location or availability. For those, open contact.txt or reach Dylan on LinkedIn.", sources: [] } }),
+    );
+    await open(page);
+    await run(page, "ask where does he work");
+    await expect(page.locator('#tOut a[data-cmd="open contact.txt"]')).toBeVisible();
+    await expect(page.locator('#tOut a[href^="https://www.linkedin.com/"]')).toBeVisible();
+  });
+
+  test("a hostile slug or file from the server never becomes markup", async ({ page }) => {
+    let dialogs = 0;
+    page.on("dialog", (d) => { dialogs++; void d.dismiss(); });
+    await page.route("**/api/ask", (r) =>
+      r.fulfill({ json: { kind: "answer", text: "ok", sources: [{ file: '"><img src=x onerror=alert(1)>', section: "s", slug: '"><img src=x onerror=alert(1)>' }] } }),
+    );
+    await open(page);
+    await run(page, "ask what is keel");
+    await expect(page.locator("#tOut")).toContainText("ok");
+    await expect(page.locator("#tOut img")).toHaveCount(0);
+    await expect(page.locator('#tOut a[href^="/work/"]')).toHaveCount(0);
+    expect(dialogs).toBe(0);
+  });
+
+  test("429, off, and an over-long question are handled without inventing copy", async ({ page }) => {
+    let calls = 0;
+    await page.route("**/api/ask", (r) => {
+      calls++;
+      return calls === 1
+        ? r.fulfill({ status: 429, json: { kind: "busy", text: "x", sources: [] } })
+        : r.fulfill({ json: { kind: "off", text: "Ask is not switched on yet.", sources: [] } });
+    });
+    await open(page);
+    await run(page, "ask what is keel");
+    await expect(page.locator("#tOut")).toContainText("Too many questions at once. Give it a minute.");
+    await run(page, "ask what is keel again");
+    await expect(page.locator("#tOut")).toContainText("Ask is not switched on yet.");
+    await page.keyboard.type("ask");
+    await page.locator("#tIn").evaluate((el, v) => { (el as HTMLInputElement).value = v; el.dispatchEvent(new Event("input")); }, "ask " + "a".repeat(301));
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#tOut")).toContainText("too long");
+    expect(calls).toBe(2);
+  });
+
+  test("a second ask is ignored while one is pending", async ({ page }) => {
+    let calls = 0;
+    await page.route("**/api/ask", async (r) => {
+      calls++;
+      await new Promise((res) => setTimeout(res, 600));
+      await r.fulfill({ json: { kind: "answer", text: "slow answer", sources: [] } });
+    });
+    await open(page);
+    await run(page, "ask what is keel");
+    await run(page, "ask what is parahealth");
+    await expect(page.locator("#tOut")).toContainText("slow answer");
+    expect(calls).toBe(1);
+  });
+
+  test("a late reply never lands on a different screen", async ({ page }) => {
+    await page.route("**/api/ask", async (r) => {
+      await new Promise((res) => setTimeout(res, 500));
+      await r.fulfill({ json: { kind: "answer", text: "stale words", sources: [] } });
+    });
+    await open(page);
+    await run(page, "ask what is keel");
+    await run(page, "clear");
+    await run(page, "help");
+    await page.waitForTimeout(900);
+    await expect(page.locator("#tOut")).not.toContainText("stale words");
+  });
+});
