@@ -95,29 +95,11 @@ test("the shell runs typed commands and starts a game", async ({ page }) => {
   await expect(page.locator("#tGame")).toBeVisible();
 });
 
-test("a work page's home link lands back at the computer, already at the keyboard", async ({ page }) => {
-  await page.goto("/work/keel");
-  await page.getByRole("link", { name: "home" }).first().click();
-  await expect(page).toHaveURL(/\/\?view=files$/);
-  await screenOn(page);
-  await expect(page.locator("#files")).toBeVisible();
-});
-
-test("each project page renders with a launch action", async ({ page }) => {
-  test.setTimeout(120_000); // walks every /work page in one test
-  for (const s of WORK_SLUGS) {
+test("the old project addresses open that project on the computer", async ({ page }) => {
+  for (const s of ["keel", "parahealth", "steamhouse"]) {
     await page.goto(`/work/${s}`);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    // Gated projects with `links: {}` (cartlords) render no launch button by design —
-    // their case study leads with an embedded walkthrough instead.
-    const links = projects.find((p) => p.slug === s)?.links ?? {};
-    // Source-only projects lead with "View source".
-    const hasLaunch = Boolean(links.live || links.app || links.demo || links.appStore);
-    if (hasLaunch) {
-      await expect(page.getByRole("link", { name: /\bapp\b|site|store|launch|demo/i }).first()).toBeVisible();
-    } else if (links.source) {
-      await expect(page.getByRole("link", { name: /view source/i }).first()).toBeVisible();
-    }
+    await expect(page).toHaveURL(new RegExp(`/#${s}$`));
+    await expect(page.locator("#tPage h2")).toBeVisible();
   }
 });
 
@@ -207,4 +189,17 @@ test("super mario bros is listed like the other projects and opens its page", as
   await expect(page.locator("#tPage .pg-shot img")).toHaveJSProperty("complete", true);
   await page.keyboard.press("Escape");
   await expect(page.locator('#files a[href="#mario"]')).toHaveText(/supermariobros\.jar$/);
+});
+
+test("timeline lists every project, and the header has the sound and full-screen controls", async ({ page }) => {
+  await page.goto("/#timeline");
+  await expect(page.locator("#tPage h2")).toHaveText("Timeline");
+  await expect(page.locator("#tPage .tl p")).toHaveCount(10);
+  await expect(page.locator("#tPage .tl p").first()).toContainText("Parahealth");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".t-prompt")).toContainText("guest@burnsOS: ~/usr$");
+  await expect(page.locator("#fsBtn svg")).toBeVisible();
+  await expect(page.locator("#sndBtn")).toHaveAttribute("aria-label", "Sound off");
+  await page.locator("#sndBtn").click();
+  await expect(page.locator("#sndBtn")).toHaveAttribute("aria-label", "Sound on");
 });
