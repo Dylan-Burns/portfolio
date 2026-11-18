@@ -261,3 +261,81 @@ test.describe("ask command", () => {
     await expect(page.locator("#tOut")).not.toContainText("stale words");
   });
 });
+
+test.describe("ask command, animated", () => {
+  test.use({ contextOptions: { reducedMotion: "no-preference" } });     // set explicitly: the option above otherwise carries over
+  const LONG = "Keel answers questions about SEC filings with citations. ".repeat(12).trim();
+  const reply = { kind: "deflect", text: LONG, sources: [{ file: "keeldd.com", section: "s", slug: "keel" }] };
+  const open = async (page: import("@playwright/test").Page) => {
+    await page.goto("/");
+    await page.keyboard.press("Space");
+    await screenOn(page);
+  };
+  const run = async (page: import("@playwright/test").Page, cmd: string) => {
+    await page.keyboard.type(cmd);
+    await page.keyboard.press("Enter");
+  };
+
+  test("starting another command mid-type still shows the full text and the sources", async ({ page }) => {
+    await page.route("**/api/ask", (r) => r.fulfill({ json: reply }));
+    await open(page);
+    await run(page, "ask what is keel");
+    await expect(page.locator("#tOut .ask-a")).not.toContainText("thinking");
+    await expect(page.locator('#tOut a[data-cmd="open keeldd.com"]')).toHaveCount(0);
+    await run(page, "help");
+    await expect(page.locator("#tOut .ask-a")).toContainText(LONG);
+    await expect(page.locator('#tOut a[data-cmd="open keeldd.com"]')).toBeVisible();
+    await expect(page.locator('#tOut a[data-cmd="open contact.txt"]')).toBeVisible();
+  });
+
+  test("the live region holds only the full text, never partial text", async ({ page }) => {
+    await page.route("**/api/ask", (r) => r.fulfill({ json: reply }));
+    await open(page);
+    await run(page, "ask what is keel");
+    await expect(page.locator("#tOut .ask-a [aria-hidden=true]")).toHaveCount(1);
+    await expect(page.locator("#tOut .ask-sr")).toHaveText("");
+    await expect(page.locator("#tOut .ask-sr")).toHaveText(LONG, { timeout: 20000 });
+  });
+
+  test("leaving to the file list mid-type writes nothing more and throws nothing", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.route("**/api/ask", (r) => r.fulfill({ json: reply }));
+    await open(page);
+    await run(page, "ask what is keel");
+    await expect(page.locator("#tOut .ask-a")).not.toContainText("thinking");
+    await run(page, "ls");
+    await expect(page.locator("#files")).toBeVisible();
+    await page.waitForTimeout(600);
+    expect(await page.evaluate(() => document.body.innerText)).not.toContain("Keel answers questions");     // innerText: visible text only
+    expect(errors).toEqual([]);
+  });
+
+  test("a request that never resolves is aborted and shows the failure line", async ({ page }) => {
+    await page.addInitScript(() => { (window as unknown as { __askTimeout: number }).__askTimeout = 800; });
+    await page.route("**/api/ask", () => {});
+    await open(page);
+    await run(page, "ask what is keel");
+    await expect(page.locator("#tOut")).toContainText("ask couldn't reach the server", { timeout: 5000 });
+  });
+
+  test("a second ask while pending prints a note; a non-file source is never linked", async ({ page }) => {
+    await page.route("**/api/ask", async (r) => {
+      await new Promise((res) => setTimeout(res, 500));
+      await r.fulfill({ json: { kind: "answer", text: "fine", sources: [{ file: "https://evil.example", section: "s" }] } });
+    });
+    await open(page);
+    await run(page, "ask what is keel");
+    await run(page, "ask what is parahealth");
+    await expect(page.locator("#tOut")).toContainText("still thinking about the last one.");
+    await expect(page.locator("#tOut")).toContainText("fine");
+    await expect(page.locator('#tOut a[data-cmd*="evil"]')).toHaveCount(0);
+  });
+
+  test("whitespace-only reply text shows the failure line", async ({ page }) => {
+    await page.route("**/api/ask", (r) => r.fulfill({ json: { kind: "answer", text: "   ", sources: [] } }));
+    await open(page);
+    await run(page, "ask what is keel");
+    await expect(page.locator("#tOut")).toContainText("ask couldn't reach the server");
+  });
+});

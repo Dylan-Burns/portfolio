@@ -154,6 +154,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .t-out::-webkit-scrollbar { display: none; }
 .t-out .b { color: #d9ffe8; } .t-out .d { opacity: 0.55; }
 .t-out .ask-src { margin-top: 1em; }
+.t-out .ask-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .t-game { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
 /* .env: a video player built into the terminal */
 .t-video { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 0.5em; text-shadow: 0 0 10px rgba(125, 255, 166, 0.45); }
@@ -1230,32 +1231,42 @@ rm: removing ${esc(a.filter((x) => !x.startsWith("-")).pop() || "everything")} .
   exit: () => { growTo = 0; $("fsBtn").textContent = "full screen"; setMode("list"); zoomOut(); },
 };
 /* ------------------------------------------------------------ ask */
-// `ask <question>` posts to /api/ask and prints the reply. Reply text only ever goes in through textContent;
-// server-supplied file and slug values are escaped (and the slug pattern-checked) before they touch markup.
-const ASK_MAX = 300;                       // mirrors MAX_Q in src/lib/ask/text.ts, which the server enforces
-const ASK_TIMEOUT = 12000, ASK_MS_PER_CHAR = 12;
+// `ask <question>` posts to /api/ask and prints the reply. Reply text only ever goes in through textContent/text nodes;
+// server-supplied file and slug values are validated and escaped before they touch markup.
+// The cap mirrors sanitizeQuestion in src/lib/ask/text.ts: after NFKC, invisible characters stripped and whitespace
+// collapsed, the length in UTF-16 code units (String.length, not code points) must be <= MAX_Q = 300.
+const ASK_MAX = 300;
+const ASK_INVISIBLE = /[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Cs}\u{E0000}-\u{E007F}͏᠎︀-️\u{E0100}-\u{E01EF}]/gu;
+const askClean = (t) => t.normalize("NFKC").replace(/[\t\n\r\v\f]/g, " ").replace(ASK_INVISIBLE, "").replace(/\s+/g, " ").trim();
+const ASK_TIMEOUT = window.__askTimeout || 12000;      // the override is a test seam
+const ASK_TICK = 12, ASK_TYPE_MAX = 3000;               // a reply finishes typing in about 3 s at most
 const ASK_EXAMPLES = ["what is parahealth", "which projects use postgres", "how does keel avoid made-up citations", "what does dylan believe"];
 const ASK_LINKEDIN = "https://www.linkedin.com/in/dylan-burns-";
-const ask = { pending: false, stop: null };
-const askCancel = () => { if (ask.stop) { ask.stop(); ask.stop = null; } };
+const ASK_FAIL = "ask couldn't reach the server. Try again in a moment.";
+const ask = { pending: false, stop: null, id: 0 };
+const askCancel = () => { if (ask.stop) { const f = ask.stop; ask.stop = null; f(); } };
 // starting another command ends a running typing animation (capture phase: before run() prints anything)
-tIn.addEventListener("keydown", (e) => { if (e.key === "Enter") askCancel(); }, true);
+document.addEventListener("keydown", (e) => { if (e.key === "Enter") askCancel(); }, true);     // document, not #tIn: the input blurs after each command
 $("t1").addEventListener("click", (e) => { if (e.target.closest("[data-cmd]")) askCancel(); }, true);
+// types into an aria-hidden node so the live region never announces partial text; done() reveals the full text once
 function askType(node, text, done) {
+  if (reduce) return done();
+  const chunk = Math.max(1, Math.ceil(text.length / (ASK_TYPE_MAX / ASK_TICK))), tn = document.createTextNode("");
   let i = 0, timer = 0;
-  if (reduce) { node.textContent = text; return done(); }
-  ask.stop = () => { clearTimeout(timer); if (node.isConnected) node.textContent = text; };
+  node.appendChild(tn);
+  ask.stop = () => { clearTimeout(timer); done(); };
   (function tick() {
     if (shell.mode !== "out" || !node.isConnected) { ask.stop = null; return; }     // left the screen: write nothing more
-    node.textContent = text.slice(0, ++i);
-    tOut.scrollTop = tOut.scrollHeight;
-    if (i < text.length) timer = setTimeout(tick, ASK_MS_PER_CHAR); else { ask.stop = null; done(); }
+    const stick = tOut.scrollHeight - tOut.scrollTop - tOut.clientHeight < 40;
+    tn.appendData(text.slice(i, i + chunk)); i += chunk;
+    if (stick) tOut.scrollTop = tOut.scrollHeight;
+    if (i < text.length) timer = setTimeout(tick, ASK_TICK); else { ask.stop = null; done(); }
   })();
 }
 function askSources(sources, kind) {
   const out = [];
   for (const s of Array.isArray(sources) ? sources.slice(0, 6) : []) {
-    if (!s || typeof s.file !== "string") continue;
+    if (!s || typeof s.file !== "string" || findFile(s.file) < 0) continue;     // only files that exist here
     let line = cmdLink("open " + s.file, s.file);
     if (typeof s.slug === "string" && /^[a-z0-9-]+$/.test(s.slug)) line += `  <a href="/work/${esc(s.slug)}">case study</a>`;
     out.push(line);
@@ -1268,27 +1279,31 @@ async function askQuestion(question) {
   const a = box.querySelector(".ask-a"), src = box.querySelector(".ask-src");
   const gone = () => !a.isConnected || shell.mode !== "out";
   const say = (t) => { if (!gone()) a.textContent = t; };
-  const FAIL = "ask couldn't reach the server. Try again in a moment.";
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), ASK_TIMEOUT);
+  // leaving the output view abandons the request at once
+  const mine = ++ask.id, watch = setInterval(() => { if (gone()) { ctl.abort(); if (ask.id === mine) ask.pending = false; } }, 150);
   ask.pending = true;
   try {
     const res = await fetch("/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ question }), signal: ctl.signal });
     if (res.status === 429) return say("Too many questions at once. Give it a minute.");
-    if (!res.ok) return say(FAIL);
+    if (!res.ok) return say(ASK_FAIL);
     const r = await res.json();
     if (gone()) return;
-    if (!r || typeof r.text !== "string") return say(FAIL);
+    if (!r || typeof r.text !== "string" || !r.text.trim()) return say(ASK_FAIL);
     if (r.kind === "off") return say(r.text);
-    const span = document.createElement("span"); a.textContent = ""; a.appendChild(span);
-    askType(span, r.text, () => { if (!gone()) src.innerHTML = askSources(r.sources, r.kind); });
-  } catch (e) { say(FAIL); }
-  finally { clearTimeout(timer); ask.pending = false; }
+    const vis = document.createElement("span"), sr = document.createElement("span"); vis.setAttribute("aria-hidden", "true"); sr.className = "ask-sr";
+    a.textContent = ""; a.append(vis, sr);
+    let shown = false;
+    const reveal = () => { if (shown || gone()) return; shown = true; vis.textContent = r.text; sr.textContent = r.text; src.innerHTML = askSources(r.sources, r.kind); };
+    askType(vis, r.text, reveal);
+  } catch (e) { say(ASK_FAIL); }
+  finally { clearTimeout(timer); clearInterval(watch); if (ask.id === mine) ask.pending = false; }
 }
 COMMANDS.ask = (a) => {
-  const q = a.join(" ").trim();
+  const q = askClean(a.join(" "));
   if (!q) return print(`<span class="d">ask me about my work. try:</span>\n` + ASK_EXAMPLES.map((x) => cmdLink("ask " + x, x)).join("\n"));
   if (q.length > ASK_MAX) return print(`That question is too long. Keep it under ${ASK_MAX} characters.`);
-  if (ask.pending) return;
+  if (ask.pending) return print(`<span class="d">still thinking about the last one.</span>`);
   askQuestion(q);
 };
 // the hidden file: only `ls -a` shows it
