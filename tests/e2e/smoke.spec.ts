@@ -145,3 +145,29 @@ test("easter eggs: a hidden file, the rm clip, the vim trap and the video player
   await expect(page.locator("#files")).toBeVisible();
   await expect(page.locator("#vFrame iframe")).toHaveCount(0);
 });
+
+test("developer easter eggs, and the video player's controls cannot be clicked", async ({ page }) => {
+  await page.goto("/");
+  await page.keyboard.press("Space");
+  await screenOn(page);
+  const run = async (cmd: string) => { await page.keyboard.type(cmd); await page.keyboard.press("Enter"); };
+  await run("git log");
+  await expect(page.locator("#tOut")).toContainText("create more than you consume");
+  await run("man dylan");
+  await expect(page.locator("#tOut")).toContainText("DYLAN(1)");
+  await run("cowsay <img src=x onerror=alert(1)>");
+  await expect(page.locator("#tOut img")).toHaveCount(0);
+  await run("curl parrot.live");
+  await expect(page.locator("#tOut")).toContainText("party parrot");
+  await run("cat .env");
+  await expect(page.locator("#tVideo")).toBeVisible();
+  for (const sel of ["#vPlay", "#vMute", '#vSide [data-cmd="ls"]']) {
+    const box = (await page.locator(sel).boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 4 });
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  }
+  await expect(page.locator("#tVideo")).toBeVisible();          // close never landed
+  await expect(page.locator("#vSide a.fled")).toHaveCount(3);
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#files")).toBeVisible();
+});
